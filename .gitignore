@@ -1,0 +1,6 @@
+data/
+figures/
+tmp_data/
+*.xml
+*.txt
+20*.ipynb
