@@ -23,4 +23,3 @@ def get_date_time(utc_code):
     tz_UTC = "UTC"
     t = tz_from_utc_ms_ts(utc_code,pytz.timezone(tz_UTC))
     return t
-

@@ -53,6 +53,8 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
     xfmt = mdates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(xfmt)
 
+    
+
 
     # get correct binx
     # binx = np.arange(np.min(uHTR4.orbit),np.max(uHTR4.orbit),3564*25*10**-6*25000)# 25 secs
@@ -62,7 +64,7 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
     #Plotting the Run No:
     def plot_runNo(uHTR):
         for run in np.unique(uHTR.run)[:]:
-            orbit_value = (np.min(uHTR.orbit[uHTR.run == run])-uHTR.orbit[0])*3564*25*10**-6 + start_time
+            orbit_value = (np.min(uHTR.orbit[uHTR.run == run])-uHTR.orbit[0])*3564*25*10**-6 + start_time # time in mille-seconds
             x=dt_conv.get_date_time(orbit_value)
             ax.axvline(x,color='k',linestyle='--')
             # ax.text(x, 1.2, run, transform=ax.transAxes, fontsize=10,
@@ -71,56 +73,86 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
 
 
     # plot_runNo(uHTR4)
-    # x,y = uHTR11.get_rate(uHTR11.BR)
+    # x,y,_ = uHTR11.get_rate(uHTR11.BR)
     # plt.plot(x[:N], y[:N],color='k',label="-Z BR")
 
     
-    # x,y = uHTR4.get_rate(uHTR4.BR)
+    # x,y,_ = uHTR4.get_rate(uHTR4.BR)
     # plt.plot(x[:N], y[:N],color='g',label="+Z BR")
 
-    x1,y1,binx_ =uHTR4.get_rate(uHTR4.SR,bins=binx,start_time=start_time,uHTR11=True)
-    plt.plot(x1[:N], y1[:N],color='r',label="+Z SR")
 
-    x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=binx,start_time=start_time,uHTR11=True)
-    plt.plot(x2[:N], y2[:N],color='k',label="-Z SR")
+    if not uHTR4.SR.empty: # basic checks to ensure data isn't empty
+        x1,y1,binx_ =uHTR4.get_rate(uHTR4.SR,bins=binx,start_time=start_time,uHTR11=False)
+        plt.plot(x1[:N], y1[:N],color='r',label="+Z SR")
+    if not uHTR11.SR.empty:
+        x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=binx,start_time=start_time,uHTR11=True)
+        plt.plot(x2[:N], y2[:N],color='k',label="-Z SR")
 
+    if not uHTR4.SR.empty or not uHTR11.SR.empty: # SR plots
+        plt.xlabel("Time Approximate ")
+        plt.ylabel("Event Rate")
+        plt.legend(loc=(1.1,0.8),frameon=1)
+        plt.yscale('log')
 
+        #ax2 = ax#.twinx()
+        # x1 = np.asarray(x1)
+        # x2 = np.asarray(x2)
+        # y1 = np.asarray(y1)
+        # y2 = np.asarray(y2)
 
+        # if x1.size < x2.size:
+        #     x2 = x2[:x1.size]
+        #     y2 = y2[:x1.size]
+        # elif x2.size < x1.size:
+        #     x1 = x1[:x2.size]
+        #     y1 = y1[:x2.size]
 
-
-    # plt.xlabel("Time [Start Not Accurate] ")
-    # plt.ylabel("Event Rate BIB [a.u]")
-    # # plt.yscale('log')
-    # plt.legend(loc=(1.1,0.8),frameon=1)
-    # plt.yscale('log')
-
-    ax2 = ax#.twinx()
-    x1 = np.asarray(x1)
-    x2 = np.asarray(x2)
-    y1 = np.asarray(y1)
-    y2 = np.asarray(y2)
-
-
-    if x1.size < x2.size:
-        x2 = x2[:x1.size]
-        y2 = y2[:x1.size]
-    elif x2.size < x1.size:
-        x1 = x1[:x2.size]
-        y1 = y1[:x2.size]
-
-    # ax2.plot(x1, y1/y2,color='g',label="+Z/-Z Ratio")
-    # ax2.plot(x2, y1/y2,color='b',label="+Z/-Z Ratio")
-    # ax2.plot(x2, y1,color='k',label="+Z Side")
-    # ax2.plot(x2, y1,color='r',label="-Z Side")
-
-
+        plt.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
+        plt.close()
     
-    ax2.legend(loc=(1.3,0.6),frameon=1)
-    # ax2.set_ylim(0,5)
-    ax2.set_ylabel("Events")
-    plt.yscale("log")
+    f,ax = plt.subplots()
+    f.autofmt_xdate()
+    xfmt = mdates.DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(xfmt)
 
+    if not uHTR4.CP.empty:
+        x3,y3,_ = uHTR4.get_rate(uHTR4.CP,bins=binx,start_time=start_time,uHTR11=False)
+        plt.plot(x3[:N], y3[:N],color='r',label="+Z CP")
+    if not uHTR11.CP.empty:
+        x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=binx,start_time=start_time,uHTR11=True)
+        plt.plot(x4[:N], y4[:N],color='k',label="-Z CP")
+    
+    if not uHTR4.CP.empty or not uHTR11.CP.empty: # CP plots
+        plt.xlabel("Time Approximate ")
+        plt.ylabel("Event Rate")
+        plt.legend(loc=(1.1,0.8),frameon=1)
+        plt.yscale('log')
 
+        # x3 = np.asarray(x3)
+        # x4 = np.asarray(x4)
+        # y3 = np.asarray(y3)
+        # y4 = np.asarray(y4)
+
+        # if x3.size < x4.size:
+        #     x4 = x4[:x3.size]
+        #     y4 = y4[:x3.size]
+        # elif x4.size < x3.size:
+        #     x3 = x3[:x4.size]
+        #     y3 = y3[:x4.size]
+        
+        plt.savefig(f"{uHTR4.figure_folder}/rates_CP.png",dpi=300)
+        plt.close()
+
+    # f,ax = plt.subplots()
+    # f.autofmt_xdate()
+    # xfmt = mdates.DateFormatter('%H:%M')
+    # ax.xaxis.set_major_formatter(xfmt)
+
+    # plt.plot(x2, y1/y2,color='b',label="+Z/-Z BHN Ratio")
+    # plt.plot(x4, y3/y4,color='r',label="+Z/-Z CP Ratio")
+    # plt.legend()
+    # plt.ylabel("Ratios +Z/-Z")
+   
     # N=-1
     # binx=300
     # # x,y = uHTR11.get_rate(uHTR11.SR)
@@ -134,9 +166,12 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
     # # plt.plot(x[:N], y[:N],color='b',label="+Z SR")
 
     # x,y = uHTR4.get_rate(uHTR4.BR,bins=binx)
+
+
     # ax2.plot(x[:N], y[:N],color='b',label="+Z BR")
     # ax2.set_ylabel("Event Rate Coll $\&$ Act [a.u]")
-    # ax2.legend(loc=(1.3,0.5),frameon=1)
-    # ax2.set_yscale('log')
-    plt.savefig(f"{uHTR4.figure_folder}/rates.png",dpi=300)
+    # plt.legend(loc=(1.3,0.5),frameon=1)
+    # plt.yscale('log')
+    # plt.savefig(f"{uHTR4.figure_folder}/rates.png",dpi=300)
+    # plt.close()
     

@@ -3,5 +3,5 @@
 Common Variables
 
 '''
-#folder were it will be saved...
+#folder where it will be saved...
 folder_name=""

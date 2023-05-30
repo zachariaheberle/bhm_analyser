@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from   scipy import stats
 from   copy  import deepcopy, copy
+import scienceplots
 
 
 
@@ -26,6 +27,6 @@ import tools.commonVars as commonVars
 # setting matplot style; if science style is not installed comment it out! 
 import matplotlib
 matplotlib.style.available
-matplotlib.style.use(['seaborn-darkgrid','science'])
+matplotlib.style.use(['seaborn-darkgrid', "science"])
 # plt.rcParams['figure.figsize'] = [4, 3]
 plt.rcParams['figure.dpi'] = 300

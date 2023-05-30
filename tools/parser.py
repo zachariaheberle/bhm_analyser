@@ -10,6 +10,9 @@ def convert_int(x,extract_pos=False): # splits a single string to int
         return [int(i) for i in list(filter(None,x.split(" ")))]
 
 def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain type of data, proceed with caution
+# funtion to unpack text file data.
+# returns np arrays with TDC, AMPL, CH, BX, Orbit, Run
+#   
     if (stop_event == -1): stop_flag = False #disable stop event
     else: stop_flag = True #enable stop event
     with open(file_name) as f: #loading file into memory
@@ -18,13 +21,13 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
     data = []
     l = lines # renaming so it is easier to type
     i=0
-    TDC = []
+    TDC = []  # Time of the pulse in the 40 MHz clock. 0 to 25 ns in steps of 0.5 ns.
     TDC2 = [] # if the threhold was crossed prior to recording
-    BX = []
-    AMPL = []
-    CH = []
-    ORBIT = []
-    RUN_NO = []
+    BX = []   #  Bunch crossing is ranges from zero to 3564.
+    AMPL = [] # Pulse height of signal.
+    CH = []   # channel number 1 to 20
+    ORBIT = []  # Orbit counter which tells you where in the fill (run?) the event occured.
+    RUN_NO = [] # Number of the data collection run.
     while(i < len(l)):
         if ("---------------------------------------------------------------------------" in l[i]):
             i = i + 1 #skip one line
