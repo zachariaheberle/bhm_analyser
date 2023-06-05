@@ -187,10 +187,12 @@ class bhm_analyser():
         '''
         if type(run_cut) == int: # checks for single value instead of range
             theCut = (self.run == run_cut)
+            
         elif custom_range: # choice values
             theCut = np.full(len(self.run), False)
             for condition in run_cut:
                 theCut = theCut | (self.run == condition)
+
         else: # range of values
             theCut = (self.run >= run_cut[0]) & (self.run <= run_cut[1])
         

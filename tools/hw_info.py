@@ -96,4 +96,3 @@ def get_uHTR11_CMAP():
             fibre +=1
     return CMAP
 
-

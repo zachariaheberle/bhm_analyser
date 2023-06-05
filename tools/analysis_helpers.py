@@ -134,8 +134,8 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
 
     run_handler(analysed_runs)
 
-    calib.ADC_CUTS = calib.ADC_CUTS_v2
-    calib.TDC_PEAKS = {key:6 for key in calib.TDC_PEAKS_v1} # this may need to be adjusted
+    calib.ADC_CUTS = calib.ADC_CUTS_v2 # this may need to be adjusted
+    calib.TDC_PEAKS = {key:6 for key in calib.TDC_PEAKS_v1} 
 
     _uHTR4 = deepcopy(uHTR4) # create copies so multiple analyses can be run without having to reload data
     _uHTR11 = deepcopy(uHTR11)
