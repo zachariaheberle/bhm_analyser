@@ -210,8 +210,8 @@ class bhm_analyser():
         '''
         Lego Plot of peak ampl vs tdc
         '''
-        xdata = self.tdc#[self.bx > 50]
-        ydata = self.peak_ampl#[self.bx > 50]
+        xdata = self.tdc#[self.ch_mapped == self.CMAP[ch]]
+        ydata = self.peak_ampl#[self.ch_mapped == self.CMAP[ch]]
         h, xbins, ybins = np.histogram2d(xdata,ydata, bins=(np.arange(-0.5,50,1),np.arange(0,180,1)))
         # if you want to create your 3d axes in the current figure (plt.gcf()):
 
@@ -231,17 +231,41 @@ class bhm_analyser():
             binx = np.arange(120,180,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
         if binx_tick == None:    
             binx_tick = np.arange(120,180,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
+        self.ADC_Cuts = {}
         for ch in self.CMAP.keys():
-                f,ax = plt.subplots()
-                # print(ch)
-                x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
-                _=plt.hist(x,bins=binx+0.5) 
-                plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
-                plt.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-                plt.xticks(binx_tick,rotation = 45)
-                plt.xlabel("ADC [a.u]")
-                plt.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
-                plt.close()
+            f,ax = plt.subplots()
+            # print(ch)
+            x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
+            counts, vals, _ = plt.hist(x,bins=binx+0.5) 
+            peak_index = np.argmax(counts)
+            area_ratio = 0
+            left_bound = right_bound = peak_index
+            total_counts = sum(counts)
+            if int(total_counts) == 0:
+                self.ADC_Cuts[ch] = 120 # if channel is empty, we don't want this to break, set cut to 120 (lowest value on ADC graphs)
+                continue
+            while area_ratio < .68:
+                if left_bound > 0:
+                    left_bound -= 1
+                if right_bound < len(counts):
+                    right_bound += 1
+                area_ratio = sum(counts[left_bound:right_bound + 1]) / total_counts # + 1 on right bound because of the way slicing works
+
+            self.ADC_Cuts[ch] = int(vals[left_bound])
+
+            plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
+            # the following lines are place holders
+            plt.axvline(vals[left_bound] - 0.5, color="magenta", linestyle="--")
+            #plt.axvline(vals[right_bound] + 1.5, color="magenta", linestyle="--")
+            plt.axvline(vals[peak_index] + 0.5, color="r", linestyle="--")
+            # end placeholders
+            plt.axvline(calib.ADC_CUTS[ch],color='k',linestyle='--')
+            plt.xticks(binx_tick,rotation = 45)
+            plt.xlabel("ADC [a.u]")
+            plt.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
+            plt.close()
+            # if self.ADC_Cuts[ch] != calib.ADC_CUTS[ch]:
+            #     print(f"For channel {ch} the left cut is at {self.ADC_Cuts[ch]} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
 
     def saveTDCplots(self,delay=10):
         '''
@@ -261,6 +285,8 @@ class bhm_analyser():
             plt.xlabel("TDC [a.u]")
             plt.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
             plt.close()
+            # if self.TDC_Peaks[ch] != calib.TDC_PEAKS[ch]:
+            #     print(f"For channel {ch} the peak is at {peak} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
 
 
     def convert2pandas(self):
@@ -554,13 +580,27 @@ class bhm_analyser():
         #plotting lego, ADC, and TDC plots
         if plot_lego:
             self.get_legoPlt()
+            
         if not reAdjust: self.saveADCplots() #for debugging
+
         self.saveTDCplots(delay=0) # this derives the MVP for the beam halo peaks
         #Readjusting the TDC Peaks to specific values # Run after saveTDCplots()
+        self.saveADCplots() # this derivates the 68% cuts from MVP for ADC plots
         if reAdjust:
-            for key in self.TDC_Peaks:
-                calib.TDC_PEAKS[key] = self.TDC_Peaks[key] 
-            self.saveADCplots() # Running again to derive the 
+            """
+            There is definitely a more efficient way of doing this, will do later
+            """
+            i = 0
+            while not (all([calib.TDC_PEAKS[key] == self.TDC_Peaks[key] for key in self.TDC_Peaks]) and all([calib.ADC_CUTS[key] == self.ADC_Cuts[key] for key in self.ADC_Cuts])) and i < 5:
+                # Loops over and over trying to get best possible adjustment, limited to 5 loops to avoid infinite looping
+                for key in self.TDC_Peaks:
+                    calib.TDC_PEAKS[key] = self.TDC_Peaks[key]
+                for key in self.ADC_Cuts:
+                    calib.ADC_CUTS[key] = self.ADC_Cuts[key]
+                
+                self.saveTDCplots(delay=0)
+                self.saveADCplots() # Running again to derive the 
+                i += 1
 
         if self.uHTR == '4':
             detector_side='P'

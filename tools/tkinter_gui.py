@@ -197,6 +197,7 @@ def gui():
         
         finally:
             enable_frame(MainPage)
+            ## raise_frame(Not_main)
             return
 
     # Root Window Properties
@@ -206,6 +207,7 @@ def gui():
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
+    ## commonVars.root = root
 
     # Font Stuff
     default_font = ("Segoe UI", 12)
@@ -218,6 +220,8 @@ def gui():
 
     # Frames to hold various gui elements
     MainPage = tk.Frame(root, width=700, height=600)#, bg="#00FF00")
+    ## Not_main = tk.Frame(root, width=700, height=600)
+    ## commonVars.Not_main = Not_main
 
     DataSelection = tk.Frame(MainPage)#, bg="#FF00FF")
     DataSelectionLabel = ttk.LabelFrame(DataSelection, text="BHM Data Folder Location")
@@ -227,6 +231,7 @@ def gui():
     RunSelection = tk.Frame(MainPage)#, bg="#FF0000")
 
     # Placing Frames within window
+    ## Not_main.grid(column=0, row=0, sticky=NSEW)
     MainPage.grid(column=0, row=0, sticky=NSEW)
     DataSelection.pack(side=TOP, fill=X, expand=False, anchor=CENTER)
     DataSelection.grid_columnconfigure(0, weight=1)
@@ -376,12 +381,12 @@ def gui():
     lego_check.pack(fill=X, padx=5, pady=10)
 
 
-    # Figure Selection
+    # Folder Selection
     FolderLabel = ttk.LabelFrame(MainPage, text="Figure Folder Name")
     folder_name_var = StringVar()
     folder_name = ttk.Entry(FolderLabel, textvariable=folder_name_var, font=default_font)
 
-    # Placing items in Figure selection frame
+    # Placing items in Folder selection frame
     FolderLabel.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
     FolderLabel.grid_columnconfigure(0, weight=1)
     FolderLabel.grid_rowconfigure(0, weight=1)
@@ -394,6 +399,8 @@ def gui():
     # Analysis Button
     analyse_button = ttk.Button(MainPage, text="Plot and Analyse Data", command=do_analysis, state="disabled")
     analyse_button.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
+
+    raise_frame(MainPage)
 
     root.mainloop()
 

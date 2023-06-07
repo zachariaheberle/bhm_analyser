@@ -5,7 +5,7 @@ Importing common libraries that are frequently used
 import numpy as np
 import pandas as pd
 import glob as glob
-import tables as tables
+#import tables as tables
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from   scipy import stats

@@ -5,6 +5,11 @@ import numpy as np
 import matplotlib.dates as mdates
 import tools.dt_conv as dt_conv
 
+# import tools.commonVars as commonVars
+# import tkinter
+# from matplotlib.backends.backend_tkagg import (
+#     FigureCanvasTkAgg, NavigationToolbar2Tk)
+
 
 def textbox(x,y,text,size=14,frameon=False):
     plt.gca().text(x, y, text, transform=plt.gca().transAxes, fontsize=size,
@@ -108,6 +113,10 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
         #     y1 = y1[:x2.size]
 
         plt.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
+        ## if commonVars.root:
+        ##     canvas = FigureCanvasTkAgg(f, commonVars.Not_main)
+        ##     canvas.draw()
+        ##     canvas.get_tk_widget().pack()
         plt.close()
     
     f,ax = plt.subplots()
