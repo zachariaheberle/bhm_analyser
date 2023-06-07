@@ -12,6 +12,7 @@ This repo provides a set of tools to parse the self-trigger tool data, and produ
 ---
 
 ## Procedure
+Run final_analysis.py OR
 Follow analysis_template.ipynb step by step.
 
 This framework requires the best estimate for the ADC, TDC cuts.  If the plots look incorrect, revisit the ADC & TDC cuts that are set. The TDC estimate needs to be within +/- 2.5ns of the peak
@@ -20,13 +21,13 @@ This framework requires the best estimate for the ADC, TDC cuts.  If the plots l
 
 ---
 ## Status
-This project is in its intial stage. If you find bugs, please reach out to rohithsaradhy@gmail.com or raise an issue
+This project is in its intial stage. If you find bugs, please reach out to rohithsaradhy@gmail.com, zachariah.eberle@gmail.com, or raise an issue
 The code needs special care with data that is acquired during specials scans. I suggest running the steps in bhm_analyser.analyse() individually to troubleshoot.
 
 ### To-Do
 - Run level plots
 - Correct orbit time to UTC [Talk to OMS system]
-- Error Handling for channels with no data
+- Error Handling for channels with no data (Done)
 - Automate derivation of ADC Peak without best estimate
 - Automate TDC Window [TDC Peaks are automatically derived]
 - XML configuration generator
