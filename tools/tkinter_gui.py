@@ -8,6 +8,10 @@ from threading import Thread
 import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
 import os
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+
 
 def gui():
     """
@@ -189,6 +193,8 @@ def gui():
         try:
             analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
+            draw_all()
+            fig_window.deiconify()
 
         except Exception as err:
             data_status_message.set("Something went wrong with plotting and analysis!")
@@ -197,8 +203,10 @@ def gui():
         
         finally:
             enable_frame(MainPage)
-            ## raise_frame(Not_main)
             return
+
+
+    #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
 
     # Root Window Properties
     root = tk.Tk()
@@ -207,7 +215,27 @@ def gui():
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
-    ## commonVars.root = root
+    commonVars.root = root # allows other scripts to access root
+
+    # Setting up global figures to attach plots to gui
+    commonVars.adc_fig = Figure(figsize=(6,70), dpi=100)
+    commonVars.adc_fig.subplots_adjust(left=0.06, bottom=0.01, right=0.964, top=0.996, wspace=0.242, hspace=0.282)
+    commonVars.tdc_fig = Figure(figsize=(6,70), dpi=100)
+    commonVars.tdc_fig.subplots_adjust(left=0.06, bottom=0.01, right=0.964, top=0.996, wspace=0.242, hspace=0.282)
+    commonVars.tdc_stability_fig = Figure(figsize=(7, 6.18), dpi=100)
+    commonVars.tdc_stability_fig.subplots_adjust(left=0.06, bottom=0.11, right=0.96, top=0.933, wspace=0.22, hspace=0.578)
+    commonVars.occupancy_fig = Figure(figsize=(7, 2.7), dpi=100)
+    commonVars.occupancy_fig.subplots_adjust(left=0.055, bottom=0.11, right=0.96, top=0.913)
+    commonVars.rate_fig = Figure(figsize=(7, 2.625), dpi=100)
+    commonVars.rate_fig.subplots_adjust(left=0.06, bottom=0.153, right=0.86, top=0.88, wspace=0.6)
+    commonVars.lego_fig = Figure(dpi=100)
+    commonVars.lego_fig.subplots_adjust(left=0.04, bottom=0.043, right=0.966, top=0.923, wspace=0.176)
+
+    # print(root.winfo_screenwidth())
+    # print(root.winfo_screenheight())
+    # print(root.winfo_fpixels('1i'))
+
+    #@@@@@@@@@@@@@@@@@ FONT SETUP @@@@@@@@@@@@@@@@@@@@@
 
     # Font Stuff
     default_font = ("Segoe UI", 12)
@@ -218,10 +246,10 @@ def gui():
     t = ttk.Style()
     t.configure("Treeview.Heading", font=default_font) # Treeview is also dumb, I don't understand why these things are necessary
 
+    #@@@@@@@@@@@@@@@@ MAIN WINDOW FRAME CREATION @@@@@@@@@@@@@@@@@@@
+
     # Frames to hold various gui elements
     MainPage = tk.Frame(root, width=700, height=600)#, bg="#00FF00")
-    ## Not_main = tk.Frame(root, width=700, height=600)
-    ## commonVars.Not_main = Not_main
 
     DataSelection = tk.Frame(MainPage)#, bg="#FF00FF")
     DataSelectionLabel = ttk.LabelFrame(DataSelection, text="BHM Data Folder Location")
@@ -231,7 +259,6 @@ def gui():
     RunSelection = tk.Frame(MainPage)#, bg="#FF0000")
 
     # Placing Frames within window
-    ## Not_main.grid(column=0, row=0, sticky=NSEW)
     MainPage.grid(column=0, row=0, sticky=NSEW)
     DataSelection.pack(side=TOP, fill=X, expand=False, anchor=CENTER)
     DataSelection.grid_columnconfigure(0, weight=1)
@@ -246,7 +273,10 @@ def gui():
     RunSelection.grid_columnconfigure(0, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(1, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(2, weight=1, uniform="RunSelection")
-    #RunSelection.grid_columnconfigure(2, weight=1)
+
+
+
+    #@@@@@@@@@@@@@@@@@ DATA SELECTION FRAME @@@@@@@@@@@@@@@@
 
     # Data Location
     try:
@@ -264,7 +294,7 @@ def gui():
     data_load_button = ttk.Button(DataSelection, text="Load Data", command=load_data)
 
     data_status_message = StringVar()
-    if len(data_folders_names) >= 1:
+    if len(data_folders_names) >= 1: # empty checks
         data_status_message.set("No data loaded")
     else:
         data_status_message.set("No data folders located, please ensure to place data in a subdirectory of this script labeled 'data'.")
@@ -277,6 +307,11 @@ def gui():
     data_selection_box.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
     data_load_button.grid(row=1, column=0, ipadx=5, ipady=5, padx=10, pady=5, sticky=EW)
     data_status.grid(row=2, column=0, ipadx=5, ipady=5, padx=10, pady=5, sticky=EW)
+
+
+    #@@@@@@@@@@@@@@@@@@@ RUN ANALYSIS FRAME @@@@@@@@@@@@@@@@@@@@@@
+
+    #@@@@@@@@@@@@@@@@@@@ RUN SELECTION SUBFRAME @@@@@@@@@@@@@@@@@@@@@@
 
     # Run Selector 0 = all runs, 1 = single run, 2 = custom
     run_sel_var = IntVar()
@@ -304,6 +339,11 @@ def gui():
 
     # I have to do an individual frame for each of the run selection options
     BlankFrame = tk.Frame(RunSelectionBox)#, bg="#123456")
+
+
+
+
+    #@@@@@@@@@@@@@@@@@@ RUN DISPLAY SUBFRAME @@@@@@@@@@@@@@@@@@@@
 
     # All runs display
     AllRuns = tk.Frame(RunSelectionBox)#, bg="#000000")
@@ -334,11 +374,17 @@ def gui():
     # Clear selection button
     clear_custom_sel = ttk.Button(CustomRun, text="Clear Selection", command=clear_selection)
 
+
+
+    #@@@@@@@@@@@@@@@@@@@@@@@ OPTIONAL PLOTS SUBFRAME @@@@@@@@@@@@@@@@@@@@@@@@@@
+
     # Optional Plots
     OptionalPlots = ttk.LabelFrame(RunSelection, text="Optional Plots")
     lego_check_var = BooleanVar()
     lego_check_var.set(0)
     lego_check = ttk.Checkbutton(OptionalPlots, text="Lego Plot", variable=lego_check_var, onvalue=1, offvalue=0)
+
+
 
     # Placing Items in Run Selection Frame
     RunSelectionLabel.grid(row=0, column=0, columnspan=3, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
@@ -381,6 +427,8 @@ def gui():
     lego_check.pack(fill=X, padx=5, pady=10)
 
 
+    #@@@@@@@@@@@@@@@@@ FOLDER SELECTION ENTRY @@@@@@@@@@@@@@@@@@@@@@
+
     # Folder Selection
     FolderLabel = ttk.LabelFrame(MainPage, text="Figure Folder Name")
     folder_name_var = StringVar()
@@ -396,11 +444,168 @@ def gui():
     disable_frame(RunSelection)
     disable_frame(FolderLabel)
 
+    #@@@@@@@@@@@@@@@@ ANALYSIS BUTTON @@@@@@@@@@@@@@@@@@@@@
+
     # Analysis Button
     analyse_button = ttk.Button(MainPage, text="Plot and Analyse Data", command=do_analysis, state="disabled")
     analyse_button.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
 
     raise_frame(MainPage)
 
-    root.mainloop()
+    #@@@@@@@@@@@@@@@@ END MAIN PAGE @@@@@@@@@@@@@@@@@@@@@
 
+
+
+    #@@@@@@@@@@@@@@@ BEGIN FIGURE WINDOW @@@@@@@@@@@@@@@@@@@
+
+    def draw_all():
+        for canvas in [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas]:
+            canvas.draw()
+    
+    def _configure_canvas(event, interior, interior_id, canvas):
+        """
+        Updates the inner frame's width to fill the canvas
+        """
+        if interior.winfo_reqwidth() != canvas.winfo_width():
+            canvas.itemconfigure(interior_id, width=canvas.winfo_width())
+
+    def _configure_interior(event, interior, canvas):
+        """ 
+        Updates the scrollbars to match the size of the inner frame
+        """
+        size = (interior.winfo_reqwidth(), interior.winfo_reqheight())
+        canvas.config(scrollregion=f"0 0 {size[0]} {size[1]}")
+        if interior.winfo_reqwidth() != canvas.winfo_width(): # Update the canvas's width to fit the interior frame
+            canvas.config(width=interior.winfo_reqwidth())
+    
+    def _on_mousescroll(event, canvas):
+        """
+        Allows using the scrollwheel when hovering over a figure
+        """
+        canvas.yview_scroll(int(-1*(event.delta/25)), "units")
+
+
+    #@@@@@@@@@@@@@@@ FIGURE WINDOW FRAME CREATION @@@@@@@@@@@@@@@@
+
+    # window for displaying figures
+    fig_window = tk.Toplevel(root)
+    fig_window.geometry("1280x720")
+    fig_window.resizable(True, True)
+    fig_window.title("Figure Window")
+    fig_window.columnconfigure(0, weight=1)
+    fig_window.rowconfigure(0, weight=1)
+
+    # Creating a tabbed index of the various graphs
+    FigurePage = ttk.Notebook(fig_window)
+
+    # Each frame will handle a different set of graphs
+    ADCPage = tk.Frame(FigurePage)
+    TDCPage = tk.Frame(FigurePage)
+    TDCStabilityPage = tk.Frame(FigurePage)
+    OccupancyPage = tk.Frame(FigurePage)
+    RatePage = tk.Frame(FigurePage)
+    LegoPage = tk.Frame(FigurePage)
+
+    # Adding each frame to notebook
+    FigurePage.add(ADCPage, text="ADC Peaks")
+    FigurePage.add(TDCPage, text="TDC Peaks")
+    FigurePage.add(TDCStabilityPage, text="TDC Stability")
+    FigurePage.add(OccupancyPage, text="Occupancy Plots")
+    FigurePage.add(RatePage, text="Rate Plots")
+    FigurePage.add(LegoPage, text="Lego Plots")
+
+    FigurePage.pack(side=TOP, ipadx=5, ipady=5, padx=5, pady=5, fill=BOTH, expand=True)
+
+
+
+    #@@@@@@@@@@@@@@@@@@@@ EMBEDDING MATPLOTLIB PLOTS IN TKINTER FRAMES @@@@@@@@@@@@@@@@@@@@@@
+
+    # ADC plots
+    ADCPlotFrame = tk.Frame(ADCPage)
+    ADCToolbarFrame = tk.Frame(ADCPage)
+    ADCPlotFrame.pack(side=TOP, fill=BOTH, expand=True)
+    ADCToolbarFrame.pack(side=BOTTOM, fill=X, expand=False)
+
+    adc_scrollbar = ttk.Scrollbar(ADCPlotFrame, orient=VERTICAL)
+    adc_scrollbar.pack(side=RIGHT, fill=Y, expand=False)
+    adc_scroll_canvas = tk.Canvas(ADCPlotFrame, bd=0, highlightthickness=0, yscrollcommand=adc_scrollbar.set)
+    adc_scroll_canvas.pack(side=LEFT, fill=BOTH, expand=True)
+    adc_scroll_canvas.bind('<Configure>', lambda event : _configure_canvas(event, adc_interior, adc_interior_id, adc_scroll_canvas))
+    adc_scroll_canvas.xview_moveto(0)
+    adc_scroll_canvas.yview_moveto(0)
+    adc_scrollbar.config(command=adc_scroll_canvas.yview)
+
+    adc_interior = tk.Frame(adc_scroll_canvas, bg="#FF0000")
+    adc_interior_id = adc_scroll_canvas.create_window(0, 0, window=adc_interior, anchor=NW)
+    adc_interior.bind('<Configure>', lambda event : _configure_interior(event, adc_interior, adc_scroll_canvas))
+
+    adc_canvas = FigureCanvasTkAgg(commonVars.adc_fig, adc_interior)
+    adc_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    adc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : _on_mousescroll(event, adc_scroll_canvas))
+    adc_toolbar = NavigationToolbar2Tk(adc_canvas, ADCToolbarFrame, pack_toolbar=False)
+    adc_toolbar.update()
+    adc_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    # TDC Plots
+    TDCPlotFrame = tk.Frame(TDCPage)
+    TDCToolbarFrame = tk.Frame(TDCPage)
+    TDCPlotFrame.pack(side=TOP, fill=BOTH, expand=True)
+    TDCToolbarFrame.pack(side=BOTTOM, fill=X, expand=False)
+
+    tdc_scrollbar = ttk.Scrollbar(TDCPlotFrame, orient=VERTICAL)
+    tdc_scrollbar.pack(side=RIGHT, fill=Y, expand=False)
+    tdc_scroll_canvas = tk.Canvas(TDCPlotFrame, bd=0, highlightthickness=0, yscrollcommand=tdc_scrollbar.set)
+    tdc_scroll_canvas.pack(side=LEFT, fill=BOTH, expand=True)
+    tdc_scroll_canvas.bind('<Configure>', lambda event : _configure_canvas(event, tdc_interior, tdc_interior_id, tdc_scroll_canvas))
+    tdc_scroll_canvas.xview_moveto(0)
+    tdc_scroll_canvas.yview_moveto(0)
+    tdc_scrollbar.config(command=tdc_scroll_canvas.yview)
+
+    tdc_interior = tk.Frame(tdc_scroll_canvas, bg="#FF0000")
+    tdc_interior_id = tdc_scroll_canvas.create_window(0, 0, window=tdc_interior, anchor=NW)
+    tdc_interior.bind('<Configure>', lambda event : _configure_interior(event, tdc_interior, tdc_scroll_canvas))
+
+    tdc_canvas = FigureCanvasTkAgg(commonVars.tdc_fig, tdc_interior)
+    tdc_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    tdc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : _on_mousescroll(event, tdc_scroll_canvas))
+    tdc1_toolbar = NavigationToolbar2Tk(tdc_canvas, TDCToolbarFrame, pack_toolbar=False)
+    tdc1_toolbar.update()
+    tdc1_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    # TDC Stability Plots
+    tdc_stability_canvas = FigureCanvasTkAgg(commonVars.tdc_stability_fig, TDCStabilityPage)
+    tdc_stability_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    tdc2_toolbar = NavigationToolbar2Tk(tdc_stability_canvas, TDCStabilityPage, pack_toolbar=False)
+    tdc2_toolbar.update()
+    tdc2_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    # Occupancy Plots
+    occupancy_canvas = FigureCanvasTkAgg(commonVars.occupancy_fig, OccupancyPage)
+    occupancy_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    occupancy_toolbar = NavigationToolbar2Tk(occupancy_canvas, OccupancyPage, pack_toolbar=False)
+    occupancy_toolbar.update()
+    occupancy_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    # Rate Plots
+    rate_canvas = FigureCanvasTkAgg(commonVars.rate_fig, RatePage)
+    rate_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    rate_toolbar = NavigationToolbar2Tk(rate_canvas, RatePage, pack_toolbar=False)
+    rate_toolbar.update()
+    rate_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    # Lego Plots
+    lego_canvas = FigureCanvasTkAgg(commonVars.lego_fig, LegoPage)
+    lego_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    lego_toolbar = NavigationToolbar2Tk(lego_canvas, LegoPage, pack_toolbar=False)
+    lego_toolbar.update()
+    lego_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    fig_window.withdraw()
+
+    root.mainloop()

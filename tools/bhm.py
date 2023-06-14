@@ -12,7 +12,6 @@ import tools.commonVars as commonVars
 
 
 
-
 import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import matplotlib.pyplot as plt
@@ -215,7 +214,9 @@ class bhm_analyser():
         h, xbins, ybins = np.histogram2d(xdata,ydata, bins=(np.arange(-0.5,50,1),np.arange(0,180,1)))
         # if you want to create your 3d axes in the current figure (plt.gcf()):
 
-        ax3d = Axes3D(fig=plt.gcf(), rect=None, azim=50, elev=30, proj_type='persp')
+        f = plt.figure()
+
+        ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
 
         # lego plot
         ax = plotting.lego(h, xbins, ybins, ax=ax3d)
@@ -224,6 +225,18 @@ class bhm_analyser():
         ax3d.set_zlabel("Events")
         ax3d.set_title(f"{self.beam_side[self.uHTR]}")
         plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
+
+        if commonVars.root:
+            if self.uHTR == "4":
+                ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
+            elif self.uHTR == "11":
+                ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
+            ax = plotting.lego(h, xbins, ybins, ax=ax3d)
+            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
+            ax3d.set_xlabel("TDC [a.u]")
+            ax3d.set_ylabel("Ampl [a.u]")
+            ax3d.set_zlabel("Events")
+
         plt.close()
 
     def saveADCplots(self,binx=None,binx_tick=None):
@@ -232,7 +245,7 @@ class bhm_analyser():
         if binx_tick == None:    
             binx_tick = np.arange(120,180,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
         self.ADC_Cuts = {}
-        for ch in self.CMAP.keys():
+        for i, ch in enumerate(self.CMAP.keys()):
             f,ax = plt.subplots()
             # print(ch)
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
@@ -257,12 +270,25 @@ class bhm_analyser():
             # the following lines are place holders
             plt.axvline(vals[left_bound] - 0.5, color="magenta", linestyle="--")
             #plt.axvline(vals[right_bound] + 1.5, color="magenta", linestyle="--")
-            plt.axvline(vals[peak_index] + 0.5, color="r", linestyle="--")
+            plt.axvline(vals[peak_index] + 0.5, color="k", linestyle="--")
             # end placeholders
-            plt.axvline(calib.ADC_CUTS[ch],color='k',linestyle='--')
+            plt.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
             plt.xticks(binx_tick,rotation = 45)
             plt.xlabel("ADC [a.u]")
             plt.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
+
+            if commonVars.root:
+                if self.uHTR == "4":
+                    ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
+                elif self.uHTR == "11":
+                    ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
+                ax.hist(x,bins=binx+0.5)
+                plotting.textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}", size=15, ax=ax)
+                ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
+                ax.set_xticks(binx_tick)
+                ax.set_xticklabels(labels=binx_tick, rotation=45)
+                ax.set_xlabel("ADC [a.u]")
+
             plt.close()
             # if self.ADC_Cuts[ch] != calib.ADC_CUTS[ch]:
             #     print(f"For channel {ch} the left cut is at {self.ADC_Cuts[ch]} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
@@ -272,8 +298,8 @@ class bhm_analyser():
             TDC distance of the peak from 0; This can be used if there is a activation peak that shadows the BH peak
         '''
         self.TDC_Peaks = {}
-        f,ax = plt.subplots()
-        for ch in self.CMAP.keys():
+        for i, ch in enumerate(self.CMAP.keys()):
+            f,ax = plt.subplots()
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
             counts,_,_ = plt.hist(x,bins=np.arange(-.5,50,1),histtype='step',color='r')
             plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15)
@@ -284,6 +310,17 @@ class bhm_analyser():
             self.TDC_Peaks[ch] = peak+delay
             plt.xlabel("TDC [a.u]")
             plt.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
+
+            if commonVars.root:
+                if self.uHTR == "4":
+                    ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
+                elif self.uHTR == "11":
+                    ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
+                ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
+                plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
+                ax.axvline(peak+delay,color='k',linestyle='--')
+                ax.set_xlabel("TDC [a.u]")
+
             plt.close()
             # if self.TDC_Peaks[ch] != calib.TDC_PEAKS[ch]:
             #     print(f"For channel {ch} the peak is at {peak} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
@@ -351,6 +388,7 @@ class bhm_analyser():
         '''
         # print(f"self.BR.bx: {self.BR.bx}")
         # print(f"self.SR.bx: {self.SR.bx}")
+        f, ax = plt.subplots()
         plt.hist(self.BR.bx,bins=np.arange(-0.5,3564,1),color='k',label = "Collision $\&$ Activation")
         plt.hist(self.SR.bx,bins=np.arange(-0.5,3564,1),color='r',label = "BIB")
         plt.yscale('log')
@@ -360,6 +398,21 @@ class bhm_analyser():
         plt.ylabel('Events/1')
         plt.legend(loc='best',frameon=1)
         plt.savefig(f"{self.figure_folder}/occupancy_uHTR{self.uHTR}.png",dpi=300)
+
+        if commonVars.root:
+            if self.uHTR == "4":
+                ax = commonVars.occupancy_fig.add_subplot(121)
+            elif self.uHTR == "11":
+                ax = commonVars.occupancy_fig.add_subplot(122)
+            ax.hist(self.BR.bx,bins=np.arange(-0.5,3564,1),color='k',label = "Collision $\&$ Activation")
+            ax.hist(self.SR.bx,bins=np.arange(-0.5,3564,1),color='r',label = "BIB")
+            ax.set_yscale('log')
+            plotting.textbox(0.0,1.05,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            ax.set_xlabel('BX ID')
+            ax.set_ylabel('Events/1')
+            ax.legend(loc='best',frameon=1)
+
         plt.close()
 
     #Data Quality Plots
@@ -397,10 +450,7 @@ class bhm_analyser():
                 _std_dev.append(0)
             else:
                 _mean.append(sr.tdc.mean())
-                # if ch != "MN05":
                 _mode.append(sr.tdc.mode()[0])
-                # else:
-                #     _mode.append(0)
                 _std_dev.append(sr.tdc.std())
 
             t_df.append(sr)
@@ -427,6 +477,21 @@ class bhm_analyser():
         plt.xlabel("Channels",fontsize=30)
         plt.ylim(0,15)
         plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
+
+        if commonVars.root:
+            if self.uHTR == "4":
+                ax = commonVars.tdc_stability_fig.add_subplot(223)
+            elif self.uHTR == "11":
+                ax = commonVars.tdc_stability_fig.add_subplot(224)
+            sns.violinplot(ax=ax, data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
+            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+            ax.set_ylabel("TDC [a.u]",fontsize=15)
+            ax.set_xlabel("Channels",fontsize=15)
+            ax.set_ylim(0,15)
+
         plt.close()
 
 
@@ -436,8 +501,8 @@ class bhm_analyser():
                     ,fmt='r.',ecolor='k',capsize=2
                     ,label="MPV of TDC"
                 )
-
-        _mode = t_df.tdc.mode()[0]
+        
+        _mode_val = t_df.tdc.mode()[0]
 
         if len(t_df.tdc) == 1: # ensure std() doesn't break due to only one entry existing
             _sig = 0
@@ -451,8 +516,8 @@ class bhm_analyser():
         # print(type(_sig))
         # print(f"_sig: {_sig}")
 
-        plt.axhline(_mode,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
-        plt.fill_between(channels, _mode+_sig, _mode-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
+        plt.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
+        plt.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
         plotting.textbox(0.0,1.11,'Preliminary',15)
         plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15)
         plt.xticks(rotation=45, ha='center',fontsize=5)
@@ -461,6 +526,24 @@ class bhm_analyser():
         plt.ylim(0,15)
         plt.legend(loc='upper right',frameon=True)
         plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
+
+        if commonVars.root:
+            if self.uHTR == "4":
+                ax = commonVars.tdc_stability_fig.add_subplot(221)
+            elif self.uHTR == "11":
+                ax = commonVars.tdc_stability_fig.add_subplot(222)
+            ax.errorbar(channels, _mode, yerr=_std_dev, fmt='r.', ecolor='k', capsize=2, label="MPV of TDC")
+            ax.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
+            ax.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
+            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+            ax.set_ylabel("TDC [a.u]",fontsize=15)
+            ax.set_xlabel("Channels",fontsize=15)
+            ax.set_ylim(0,15)
+            ax.legend(loc='upper right',frameon=True)
+
         plt.close()
         
         
@@ -585,20 +668,20 @@ class bhm_analyser():
 
         self.saveTDCplots(delay=0) # this derives the MVP for the beam halo peaks
         #Readjusting the TDC Peaks to specific values # Run after saveTDCplots()
-        self.saveADCplots() # this derivates the 68% cuts from MVP for ADC plots
+        ## self.saveADCplots() # this derivates the 68% cuts from MVP for ADC plots
         if reAdjust:
             """
             There is definitely a more efficient way of doing this, will do later
             """
             i = 0
-            while not (all([calib.TDC_PEAKS[key] == self.TDC_Peaks[key] for key in self.TDC_Peaks]) and all([calib.ADC_CUTS[key] == self.ADC_Cuts[key] for key in self.ADC_Cuts])) and i < 5:
+            while i == 0:#not (all([calib.TDC_PEAKS[key] == self.TDC_Peaks[key] for key in self.TDC_Peaks]) and all([calib.ADC_CUTS[key] == self.ADC_Cuts[key] for key in self.ADC_Cuts])) and i < 5:
                 # Loops over and over trying to get best possible adjustment, limited to 5 loops to avoid infinite looping
                 for key in self.TDC_Peaks:
                     calib.TDC_PEAKS[key] = self.TDC_Peaks[key]
-                for key in self.ADC_Cuts:
-                    calib.ADC_CUTS[key] = self.ADC_Cuts[key]
+                # for key in self.ADC_Cuts:
+                #     calib.ADC_CUTS[key] = self.ADC_Cuts[key] 
                 
-                self.saveTDCplots(delay=0)
+                #self.saveTDCplots(delay=0)
                 self.saveADCplots() # Running again to derive the 
                 i += 1
 

@@ -79,4 +79,5 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
 
 
             i = i+2 #skip lines
-    return np.asarray(CH),np.asarray(AMPL),np.asarray(TDC),np.asarray(TDC2),np.asarray(BX),np.asarray(ORBIT),np.asarray(RUN_NO)
+    return np.asarray(CH),np.asarray(AMPL),np.asarray(TDC),np.asarray(TDC2),np.asarray(BX),np.asarray(ORBIT, dtype=np.int64),np.asarray(RUN_NO)
+# Note: ORBIT must be kept as a int64, otherwise rate plots may fail from integer overflow, since the default is np.int32

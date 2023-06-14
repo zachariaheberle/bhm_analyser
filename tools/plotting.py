@@ -4,18 +4,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
 import tools.dt_conv as dt_conv
-
-# import tools.commonVars as commonVars
-# import tkinter
-# from matplotlib.backends.backend_tkagg import (
-#     FigureCanvasTkAgg, NavigationToolbar2Tk)
+import tools.commonVars as commonVars
 
 
-def textbox(x,y,text,size=14,frameon=False):
-    plt.gca().text(x, y, text, transform=plt.gca().transAxes, fontsize=size,
-        verticalalignment='top'
-#          , bbox=dict(facecolor='white', alpha=0.5)
-        )
+
+def textbox(x,y,text,size=14,frameon=False, ax=None):
+    if ax == None:
+        plt.gca().text(x, y, text, transform=plt.gca().transAxes, fontsize=size,
+            verticalalignment='top'
+    #          , bbox=dict(facecolor='white', alpha=0.5)
+            )
+        return
+    ax.text(x, y, text, transform=ax.transAxes, fontsize=size,
+            verticalalignment='top'
+    #          , bbox=dict(facecolor='white', alpha=0.5)
+            )
 
 
 from mpl_toolkits.mplot3d.axes3d import Axes3D
@@ -42,10 +45,11 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     top = h
     width = xbins[1]-xbins[0]
     depth = ybins[1]-ybins[0]
-    ax.bar3d(_xx.flatten(), _yy.flatten(), bottom.flatten(), width, depth, h.flatten(), shade=True,color='red')
+    mask = (h.flatten() == 0)
+    ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
     return ax  
 
-def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
+def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
     '''
     After analysis step has been completed, and the plots look reasonable, you can get the rate plot
     uHTR4  --> BHM Analyser object for uHTR4 
@@ -87,17 +91,17 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
 
 
     if not uHTR4.SR.empty: # basic checks to ensure data isn't empty
-        x1,y1,binx_ =uHTR4.get_rate(uHTR4.SR,bins=binx,start_time=start_time,uHTR11=False)
-        plt.plot(x1[:N], y1[:N],color='r',label="+Z SR")
+        x1,y1,binx_ = uHTR4.get_rate(uHTR4.SR,bins=binx,start_time=start_time,uHTR11=False)
+        ax.plot(x1[:N], y1[:N],color='r',label="+Z SR")
     if not uHTR11.SR.empty:
         x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=binx,start_time=start_time,uHTR11=True)
-        plt.plot(x2[:N], y2[:N],color='k',label="-Z SR")
+        ax.plot(x2[:N], y2[:N],color='k',label="-Z SR")
 
     if not uHTR4.SR.empty or not uHTR11.SR.empty: # SR plots
-        plt.xlabel("Time Approximate ")
-        plt.ylabel("Event Rate")
-        plt.legend(loc=(1.1,0.8),frameon=1)
-        plt.yscale('log')
+        ax.set_xlabel("Time Approximate ")
+        ax.set_ylabel("Event Rate")
+        ax.legend(loc=(1.1,0.8),frameon=1)
+        ax.set_yscale('log')
 
         #ax2 = ax#.twinx()
         # x1 = np.asarray(x1)
@@ -112,30 +116,43 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
         #     x1 = x1[:x2.size]
         #     y1 = y1[:x2.size]
 
-        plt.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
-        ## if commonVars.root:
-        ##     canvas = FigureCanvasTkAgg(f, commonVars.Not_main)
-        ##     canvas.draw()
-        ##     canvas.get_tk_widget().pack()
+        f.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
+
+
+        if commonVars.root: # I'm sure I can implement this better
+            ax = commonVars.rate_fig.add_subplot(121)
+            commonVars.rate_fig.autofmt_xdate()
+            xfmt = mdates.DateFormatter('%H:%M')
+            ax.xaxis.set_major_formatter(xfmt)
+            if not uHTR4.SR.empty:
+                ax.plot(x1[:N], y1[:N],color='r',label="+Z SR")
+            if not uHTR11.SR.empty:
+                ax.plot(x2[:N], y2[:N],color='k',label="-Z SR")
+            ax.set_xlabel("Time Approximate ")
+            ax.set_ylabel("Event Rate")
+            ax.legend(loc=(1.1,0.8),frameon=1)
+            ax.set_yscale('log')
+
         plt.close()
-    
+
     f,ax = plt.subplots()
     f.autofmt_xdate()
     xfmt = mdates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(xfmt)
 
+
     if not uHTR4.CP.empty:
         x3,y3,_ = uHTR4.get_rate(uHTR4.CP,bins=binx,start_time=start_time,uHTR11=False)
-        plt.plot(x3[:N], y3[:N],color='r',label="+Z CP")
+        ax.plot(x3[:N], y3[:N],color='r',label="+Z CP")
     if not uHTR11.CP.empty:
         x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=binx,start_time=start_time,uHTR11=True)
-        plt.plot(x4[:N], y4[:N],color='k',label="-Z CP")
+        ax.plot(x4[:N], y4[:N],color='k',label="-Z CP")
     
     if not uHTR4.CP.empty or not uHTR11.CP.empty: # CP plots
-        plt.xlabel("Time Approximate ")
-        plt.ylabel("Event Rate")
-        plt.legend(loc=(1.1,0.8),frameon=1)
-        plt.yscale('log')
+        ax.set_xlabel("Time Approximate ")
+        ax.set_ylabel("Event Rate")
+        ax.legend(loc=(1.1,0.8),frameon=1)
+        ax.set_yscale('log')
 
         # x3 = np.asarray(x3)
         # x4 = np.asarray(x4)
@@ -149,7 +166,23 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
         #     x3 = x3[:x4.size]
         #     y3 = y3[:x4.size]
         
-        plt.savefig(f"{uHTR4.figure_folder}/rates_CP.png",dpi=300)
+
+        f.savefig(f"{uHTR4.figure_folder}/rates_CP.png",dpi=300)
+
+        if commonVars.root: # There's a better way to do this
+            ax = commonVars.rate_fig.add_subplot(122)
+            commonVars.rate_fig.autofmt_xdate()
+            xfmt = mdates.DateFormatter('%H:%M')
+            ax.xaxis.set_major_formatter(xfmt)
+            if not uHTR4.CP.empty:
+                ax.plot(x3[:N], y3[:N],color='r',label="+Z CP")
+            if not uHTR11.CP.empty:
+                ax.plot(x4[:N], y4[:N],color='k',label="-Z CP")
+            ax.set_xlabel("Time Approximate ")
+            ax.set_ylabel("Event Rate")
+            ax.legend(loc=(1.1,0.8),frameon=1)
+            ax.set_yscale('log')
+
         plt.close()
 
     # f,ax = plt.subplots()
@@ -183,4 +216,3 @@ def rate_plots(uHTR4,uHTR11,binx=300,N=-1,start_time=0,):
     # plt.yscale('log')
     # plt.savefig(f"{uHTR4.figure_folder}/rates.png",dpi=300)
     # plt.close()
-    

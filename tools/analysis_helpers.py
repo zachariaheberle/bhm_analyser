@@ -144,4 +144,7 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
     _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
     _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
 
-    plotting.rate_plots(_uHTR4, _uHTR11, start_time=0) # What do I do about start time?
+    plotting.rate_plots(_uHTR4, _uHTR11, start_time=0)
+
+    del _uHTR4 # removing temp variables
+    del _uHTR11
