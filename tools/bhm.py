@@ -612,10 +612,17 @@ class bhm_analyser():
 
 
 
-    def get_rate(self,df,start_time=0,bins=None,uHTR11=False):
+    def get_rate(self,df,start_time=0,bins=None,uHTR11=False, ch=None):
         '''
         start_time --> Offset for the run (time in UTC millisecond)
         '''
+        if not ch: # ch value given in human readable format (MN05, PN08, etc.) or number (40, 41, 42, etc.)
+            if type(ch) == str:
+                df = df.query("ch_name == ch")
+            elif type(ch) == np.int32:
+                df = df.query("ch_mapped == ch")
+            else:
+                raise TypeError
         df = df.sort_values("orbit")
         x = start_time+(df.orbit.values-df.orbit.values[0])*3564*25*10**-6## miliseconds 
         if bins==None:
