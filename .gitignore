@@ -4,3 +4,8 @@ tmp_data/
 *.xml
 *.txt
 20*.ipynb
+*.bat
+stuff.md
+test.py
+error.log
+_old/
