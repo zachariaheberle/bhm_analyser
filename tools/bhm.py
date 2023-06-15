@@ -616,7 +616,7 @@ class bhm_analyser():
         '''
         start_time --> Offset for the run (time in UTC millisecond)
         '''
-        if not ch: # ch value given in human readable format (MN05, PN08, etc.) or number (40, 41, 42, etc.)
+        if ch: # ch value given in human readable format (MN05, PN08, etc.) or number (40, 41, 42, etc.)
             if type(ch) == str:
                 df = df.query("ch_name == ch")
             elif type(ch) == np.int32:
