@@ -343,10 +343,12 @@ class bhm_analyser():
         self.df['peak_ampl']    =self.peak_ampl
         pass
 
-    def get_SR_BR_CP(self):
+    def get_SR_BR_AR_CP(self):
         '''
         BR --> Bkg Region (Collisions & Activation)
         SR --> Signal Region i.e, BIB region
+        AR --> Activation Region (Bkg Regiion minus Collisions)
+        CP --> Collision Products
         applys the cuts and splits the data into CR & SR
         '''
 
@@ -356,7 +358,8 @@ class bhm_analyser():
         self.SR = []
         self.BR = []
         self.CP = []
-
+        self.AR = []
+        
         #width of the TDC window
         tdc_window = 1 # +/- 1
         col_prod = "(tdc > 28) & (tdc < 34) & (peak_ampl > 80) & (peak_ampl < 140)"
@@ -364,20 +367,17 @@ class bhm_analyser():
         for ch in self.CMAP.keys():
             ch_num = self.CMAP[ch]
             sr = self.df.query(f"(ch=={ch_num})& (tdc >= {calib.TDC_PEAKS[ch]-tdc_window})&(tdc <= {calib.TDC_PEAKS[ch]+tdc_window}) &(peak_ampl >= {calib.ADC_CUTS[ch]})")
-            cr = self.df.query(f"(ch=={ch_num})&((tdc < {calib.TDC_PEAKS[ch]-tdc_window})|(tdc > {calib.TDC_PEAKS[ch]+tdc_window}))&(peak_ampl < {calib.ADC_CUTS[ch]})")
+            br = self.df.query(f"(ch=={ch_num})&((tdc < {calib.TDC_PEAKS[ch]-tdc_window})|(tdc > {calib.TDC_PEAKS[ch]+tdc_window}))&(peak_ampl < {calib.ADC_CUTS[ch]})")
             cp = self.df.query(f"(ch=={ch_num}) & ({col_prod})")
+            ar = self.df.query(f"(ch=={ch_num})&((tdc < {calib.TDC_PEAKS[ch]-tdc_window})|(tdc > {calib.TDC_PEAKS[ch]+tdc_window}))&(peak_ampl < {calib.ADC_CUTS[ch]}) & ~({col_prod})")
             self.SR.append(sr)
-            self.BR.append(cr)
+            self.BR.append(br)
             self.CP.append(cp)
+            self.AR.append(ar)
         self.SR = pd.concat(self.SR)
         self.BR = pd.concat(self.BR)
         self.CP = pd.concat(self.CP)
-        # print("SR Dataframe:")
-        # print(self.SR)
-        # print("BR Dataframe:")
-        # print(self.BR)
-        # print("CP Dataframe:")
-        # print(self.CP)
+        self.AR = pd.concat(self.AR)
         pass
 
 
@@ -703,7 +703,7 @@ class bhm_analyser():
         os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
         os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
 
-        self.get_SR_BR_CP()# separates the data into signal & background region
+        self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
         self.plot_OccupancySRBR()# plots the occupancy
         if not self.SR.empty:
             self.tdc_stability()
