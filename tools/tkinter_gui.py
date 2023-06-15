@@ -192,9 +192,10 @@ def gui():
         """
         try:
             analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
-            data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
+            data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
             fig_window.deiconify()
+            data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
 
         except Exception as err:
             data_status_message.set("Something went wrong with plotting and analysis!")
@@ -535,7 +536,7 @@ def gui():
     adc_scroll_canvas.yview_moveto(0)
     adc_scrollbar.config(command=adc_scroll_canvas.yview)
 
-    adc_interior = tk.Frame(adc_scroll_canvas, bg="#FF0000")
+    adc_interior = tk.Frame(adc_scroll_canvas)
     adc_interior_id = adc_scroll_canvas.create_window(0, 0, window=adc_interior, anchor=NW)
     adc_interior.bind('<Configure>', lambda event : _configure_interior(event, adc_interior, adc_scroll_canvas))
 
@@ -562,7 +563,7 @@ def gui():
     tdc_scroll_canvas.yview_moveto(0)
     tdc_scrollbar.config(command=tdc_scroll_canvas.yview)
 
-    tdc_interior = tk.Frame(tdc_scroll_canvas, bg="#FF0000")
+    tdc_interior = tk.Frame(tdc_scroll_canvas)
     tdc_interior_id = tdc_scroll_canvas.create_window(0, 0, window=tdc_interior, anchor=NW)
     tdc_interior.bind('<Configure>', lambda event : _configure_interior(event, tdc_interior, tdc_scroll_canvas))
 
