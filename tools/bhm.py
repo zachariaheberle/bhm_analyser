@@ -254,17 +254,17 @@ class bhm_analyser():
             area_ratio = 0
             left_bound = right_bound = peak_index
             total_counts = sum(counts)
-            if int(total_counts) == 0:
-                self.ADC_Cuts[ch] = 120 # if channel is empty, we don't want this to break, set cut to 120 (lowest value on ADC graphs)
-                continue
-            while area_ratio < .68:
+            while area_ratio < .68 and len(x) != 0:
                 if left_bound > 0:
                     left_bound -= 1
                 if right_bound < len(counts):
                     right_bound += 1
                 area_ratio = sum(counts[left_bound:right_bound + 1]) / total_counts # + 1 on right bound because of the way slicing works
 
-            self.ADC_Cuts[ch] = int(vals[left_bound])
+            if int(total_counts) == 0:
+                self.ADC_Cuts[ch] = 120 # if channel is empty, we don't want this to break, set cut to 120 (lowest value on ADC graphs)
+            else:
+                self.ADC_Cuts[ch] = int(vals[left_bound])
 
             plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
             # the following lines are place holders
@@ -463,6 +463,7 @@ class bhm_analyser():
 
 
         t_df = pd.concat(t_df)
+        #print(t_df)
 
         # print(f"sr: {sr}")
         # print(f"t_df:\n{t_df}")
