@@ -224,6 +224,8 @@ class bhm_analyser():
         ax3d.set_ylabel("Ampl [a.u]")
         ax3d.set_zlabel("Events")
         ax3d.set_title(f"{self.beam_side[self.uHTR]}")
+        ax3d.set_xlim3d(left=0, right=50)
+        ax3d.set_ylim3d(bottom=0, top=180)
         plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
 
         if commonVars.root:
@@ -236,6 +238,8 @@ class bhm_analyser():
             ax3d.set_xlabel("TDC [a.u]")
             ax3d.set_ylabel("Ampl [a.u]")
             ax3d.set_zlabel("Events")
+            ax3d.set_xlim3d(left=0, right=50)
+            ax3d.set_ylim3d(bottom=0, top=180)
 
         plt.close()
 
