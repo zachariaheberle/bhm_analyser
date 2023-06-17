@@ -445,9 +445,14 @@ class bhm_analyser():
             # print(f"sr.tdc.mode()[0]: {sr.tdc.mode()[0]}")
             channels.append(ch)
             if sr.empty:
-                _mean.append(0)
-                _mode.append(0)
-                _std_dev.append(0)
+                # Changed from appending 0 to NaN so no data point is drawn
+                _mean.append(float("NaN"))
+                _mode.append(float("NaN"))
+                _std_dev.append(float("NaN"))
+                # Adds a filler line to sr so that when graphing violin plots, the x labels properly line up when dealing with empty data
+                # Passing NaN ensures no other calculations using t_df are changed
+                filler_data = {col_name : [float("NaN")] if col_name != "ch_name" else [ch] for col_name in ("bx", "tdc", "tdc_2", "ch", "ch_name", "orbit", "run", "peak_ampl")}
+                sr = pd.DataFrame(data=filler_data)
             else:
                 _mean.append(sr.tdc.mean())
                 _mode.append(sr.tdc.mode()[0])
