@@ -82,6 +82,7 @@ def gui():
         disable_frame(DataSelectionLabel)
         data_load_button.state(["disabled"])
         analyse_button.state(["disabled"])
+        show_figures_button.state(["disabled"])
 
         data_status_message.set("Loading uHTR Data, Please Wait...")
         loading_thread = Thread(target=load_data_thread, args=[data_folder_str])
@@ -191,6 +192,7 @@ def gui():
         Data analysis thread, sets up folder and cuts and analyses the data
         """
         try:
+            erase_all_figures()
             analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
@@ -211,7 +213,7 @@ def gui():
 
     # Root Window Properties
     root = tk.Tk()
-    root.geometry("700x600")
+    root.geometry("700x640")
     root.resizable(True, True)
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
@@ -231,6 +233,8 @@ def gui():
     commonVars.rate_fig.subplots_adjust(left=0.06, bottom=0.153, right=0.86, top=0.88, wspace=0.6)
     commonVars.lego_fig = Figure(dpi=100)
     commonVars.lego_fig.subplots_adjust(left=0.04, bottom=0.043, right=0.966, top=0.923, wspace=0.176)
+
+    figure_list = [commonVars.adc_fig, commonVars.tdc_fig, commonVars.tdc_stability_fig, commonVars.occupancy_fig, commonVars.rate_fig, commonVars.lego_fig]
 
     # print(root.winfo_screenwidth())
     # print(root.winfo_screenheight())
@@ -451,6 +455,10 @@ def gui():
     analyse_button = ttk.Button(MainPage, text="Plot and Analyse Data", command=do_analysis, state="disabled")
     analyse_button.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
 
+    # Figure window button
+    show_figures_button = ttk.Button(MainPage, text="Open Figure Window", command=lambda : fig_window.deiconify(), state="disabled")
+    show_figures_button.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
+
     raise_frame(MainPage)
 
     #@@@@@@@@@@@@@@@@ END MAIN PAGE @@@@@@@@@@@@@@@@@@@@@
@@ -462,6 +470,15 @@ def gui():
     def draw_all():
         for canvas in [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas]:
             canvas.draw()
+    
+    def erase_all_figures():
+        """
+        Removes all drawn axes from figures if they exist. We use this so that if multiple
+        data sets are analysed, then figures don't corrupt each other.
+        """
+        for fig in figure_list:
+            for ax in fig.axes:
+                ax.remove()
     
     def _configure_canvas(event, interior, interior_id, canvas):
         """
@@ -495,6 +512,9 @@ def gui():
     fig_window.title("Figure Window")
     fig_window.columnconfigure(0, weight=1)
     fig_window.rowconfigure(0, weight=1)
+
+    # Ensures closing the window doesn't destroy it completely
+    fig_window.protocol("WM_DELETE_WINDOW", lambda : fig_window.withdraw())
 
     # Creating a tabbed index of the various graphs
     FigurePage = ttk.Notebook(fig_window)
