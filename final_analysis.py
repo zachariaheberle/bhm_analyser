@@ -113,7 +113,7 @@ def nogui_analysis():
                 
                 if run_cut == None:
                     figure_folder = f"{data_folder}_all_runs"
-                elif type(run_cut) == list:
+                elif isinstance(run_cut, list):
                     figure_folder = f"{data_folder}_custom_runs"
                 else:
                     figure_folder = f"{data_folder}_run_{run_cut}"
@@ -176,7 +176,7 @@ def nogui_analysis():
 
     if run_selection == "all":
         run_cut = None
-    elif type(run_selection) == list:
+    elif isinstance(run_selection, list):
         custom_range = True
 
     plot_lego = lego_prompt() # Optional plot

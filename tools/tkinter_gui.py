@@ -166,7 +166,7 @@ def gui():
         if figure_folder == "": # default folder name behavior
             if run_cut == None:
                 figure_folder = f"{loaded_data_folder_str}_all_runs"
-            elif type(run_cut) == list:
+            elif isinstance(run_cut, list):
                 figure_folder = f"{loaded_data_folder_str}_custom_runs"
             else:
                 figure_folder = f"{loaded_data_folder_str}_run_{run_cut}"

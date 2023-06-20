@@ -127,7 +127,7 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
 
     if run_cut == None:
         analysed_runs = find_unique_runs(uHTR4, uHTR11)
-    elif type(run_cut) == int:
+    elif isinstance(run_cut, int):
         analysed_runs = [run_cut]
     else:
         analysed_runs = run_cut

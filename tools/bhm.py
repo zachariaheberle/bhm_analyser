@@ -184,7 +184,7 @@ class bhm_analyser():
         OR if fed an integer, it will choose that run only
         OR you can feed an array of runs to choose from if range is set to false
         '''
-        if type(run_cut) == int: # checks for single value instead of range
+        if isinstance(run_cut, (int, np.integer)): # checks for single value instead of range
             theCut = (self.run == run_cut)
             
         elif custom_range: # choice values
@@ -627,9 +627,9 @@ class bhm_analyser():
         start_time --> Offset for the run (time in UTC millisecond)
         '''
         if ch: # ch value given in human readable format (MN05, PN08, etc.) or number (40, 41, 42, etc.)
-            if type(ch) == str:
+            if isinstance(ch, str):
                 df = df.query("ch_name == ch")
-            elif type(ch) == np.int32:
+            elif isinstance(ch, (int, np.integer)):
                 df = df.query("ch_mapped == ch")
             else:
                 raise TypeError
