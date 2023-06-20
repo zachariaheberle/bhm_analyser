@@ -220,6 +220,12 @@ def gui():
     root.rowconfigure(0, weight=1)
     commonVars.root = root # allows other scripts to access root
 
+    # Check for CMS icon file
+    try:
+        root.iconbitmap("img/cms.ico")
+    except TclError:
+        messagebox.showinfo("Notice", "cms.ico was not found in the img subdirectory, using default icon...")
+
     # Setting up global figures to attach plots to gui
     commonVars.adc_fig = Figure(figsize=(6,70), dpi=100)
     commonVars.adc_fig.subplots_adjust(left=0.06, bottom=0.01, right=0.964, top=0.996, wspace=0.242, hspace=0.282)
