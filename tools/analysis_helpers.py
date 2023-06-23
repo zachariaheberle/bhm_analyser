@@ -148,7 +148,7 @@ def load_uHTR_data(data_folder_str):
 
         return uHTR4, uHTR11, loaded_runs
 
-def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False):
+def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, username=None, password=None):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
@@ -176,7 +176,12 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
     _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
     _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
 
-    plotting.rate_plots(_uHTR4, _uHTR11, start_time=0)
+    if username and password:
+        start_time = get_start_time(username, password, min(analysed_runs))
+    else:
+        start_time = 0
+
+    plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
 
     del _uHTR4 # removing temp variables
     del _uHTR11
