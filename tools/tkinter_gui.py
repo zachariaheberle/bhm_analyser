@@ -193,7 +193,13 @@ def gui():
         """
         try:
             erase_all_figures()
-            analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
+            if user_consent:
+                username, password = user_pass_entry("CERN")
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, username=username, password=password)
+                del username, password
+            else:
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
             fig_window.deiconify()
@@ -698,6 +704,9 @@ def gui():
         pass_entry.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
         user_pass_button.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
         user_pass_cancel.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+
+        root.wait_window(entry_window)
+        return _username, _password
         
     #user_pass_entry("CERN")
     root.mainloop()

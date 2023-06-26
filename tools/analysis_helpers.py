@@ -66,7 +66,7 @@ def get_start_time(username, password, run):
                     sftp.mkdir("bhm_tmp")
                     sftp.chdir("bhm_tmp")
 
-                sftp.put("./get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
+                sftp.put("./tools/get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
 
             stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
             readout = int(stdout.read().decode())
@@ -180,6 +180,8 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
         start_time = get_start_time(username, password, min(analysed_runs))
     else:
         start_time = 0
+
+    print(start_time)
 
     plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
 
