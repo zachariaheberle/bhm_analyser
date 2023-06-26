@@ -646,16 +646,13 @@ def gui():
             _username = username.get()
             _password = password.get()
             if _username == "" or _password == "":
-                del _username, _password
                 messagebox.showinfo("Info", f"Please enter your {username_type} username and password")
             else:
-                del username, password
                 entry_window.destroy()
         
         def ignore_user_pass():
             global _username, _password
             _username = _password = None
-            del username, password
             entry_window.destroy()
 
         entry_window = tk.Toplevel(root)
