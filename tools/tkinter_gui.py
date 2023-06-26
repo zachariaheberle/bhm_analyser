@@ -635,4 +635,72 @@ def gui():
 
     fig_window.withdraw()
 
+#@@@@@@@@@@@@@@@@@@ USER/PASS ENTRY WINDOW @@@@@@@@@@@@@@@@@@@@@@@@
+
+    def user_pass_entry(username_type):
+        """
+        Creates a popup window to allow users to input a username and password
+        """
+        def get_user_pass(event=None):
+            global _username, _password
+            _username = username.get()
+            _password = password.get()
+            if _username == "" or _password == "":
+                del _username, _password
+                messagebox.showinfo("Info", f"Please enter your {username_type} username and password")
+            else:
+                del username, password
+                entry_window.destroy()
+        
+        def ignore_user_pass():
+            global _username, _password
+            _username = _password = None
+            del username, password
+            entry_window.destroy()
+
+        entry_window = tk.Toplevel(root)
+        entry_window.geometry("400x175")
+        entry_window.resizable(False, False)
+        entry_window.title("Please Enter Your Credentials")
+        entry_window.columnconfigure(0, weight=1)
+        entry_window.rowconfigure(0, weight=1)
+        entry_window.bind("<Return>", lambda event : get_user_pass(event))
+
+        # Base Frame
+        EntryPage = tk.Frame(entry_window)
+        EntryPage.grid(row=0, column=0)
+        EntryPage.grid_rowconfigure(0, weight=1)
+        EntryPage.grid_rowconfigure(1, weight=1)
+        EntryPage.grid_columnconfigure(0, weight=1, uniform="entry")
+        EntryPage.grid_columnconfigure(1, weight=2, uniform="entry")
+
+        # Username Label
+        user_label = ttk.Label(EntryPage, text=f"{username_type} Username:")
+
+        # Password Label
+        pass_label = ttk.Label(EntryPage, text="Password:")
+
+        # Username Entry
+        username = StringVar()
+        user_entry = ttk.Entry(EntryPage, textvariable=username, font=default_font)
+
+        # Password Entry
+        password = StringVar()
+        pass_entry = ttk.Entry(EntryPage, textvariable=password, show="*", font=default_font)
+
+        # Enter Button
+        user_pass_button = ttk.Button(EntryPage, text="Enter", command=get_user_pass)
+
+        # Cancel Button
+        user_pass_cancel = ttk.Button(EntryPage, text="Cancel", command=ignore_user_pass)
+
+        # Packing everything into the frame
+        user_label.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=E)
+        pass_label.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=E)
+        user_entry.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+        pass_entry.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+        user_pass_button.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+        user_pass_cancel.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+        
+    #user_pass_entry("CERN")
     root.mainloop()
