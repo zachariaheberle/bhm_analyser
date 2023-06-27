@@ -49,27 +49,48 @@ def get_start_time(username, password, run):
     must have access to lxplus and cmsusr. 
     """
     with SSHClient() as ssh: # lxplus connection
-        ssh.set_missing_host_key_policy(AutoAddPolicy())
-        ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
-        print("Connection to lxplus OK...")
-        ssh_transport = ssh.get_transport()
-        ssh_channel = ssh_transport.open_channel("direct-tcpip", ("cmsusr.cern.ch", 22), ("lxplus.cern.ch", 22))
+
+        try:
+            ssh.set_missing_host_key_policy(AutoAddPolicy())
+            ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
+        except Exception as err:
+            raise type(err)("Something went wrong with connection to LXPLUS!", *err.args)
+            
+        try:
+            ssh_transport = ssh.get_transport()
+            ssh_channel = ssh_transport.open_channel("direct-tcpip", ("cmsusr.cern.ch", 22), ("lxplus.cern.ch", 22))
+        except Exception as err:
+            raise type(err)("Something went wrong with ssh tunnel between LXPLUS and CMS!", *err.args)
+        
         with SSHClient() as ssh2: # cmsusr connection
-            ssh2.set_missing_host_key_policy(AutoAddPolicy())
-            ssh2.connect("cmsusr.cern.ch", username=username, password=password, sock=ssh_channel) # ssh username@cmsusr.cern.ch from lxplus
-            print("Connection to cmsusr OK...")
+            
+            try:
+                ssh2.set_missing_host_key_policy(AutoAddPolicy())
+                ssh2.connect("cmsusr.cern.ch", username=username, password=password, sock=ssh_channel) # ssh username@cmsusr.cern.ch from lxplus
+            except Exception as err:
+                raise type(err)("Something went wrong with connection to CMS from LXPLUS!", *err.args)
 
-            with ssh2.open_sftp() as sftp: # adding temporary directory to add script to
-                try:
-                    sftp.chdir("bhm_tmp")
-                except IOError:
-                    sftp.mkdir("bhm_tmp")
-                    sftp.chdir("bhm_tmp")
+            try:
+                with ssh2.open_sftp() as sftp: # adding temporary directory to add script to
+                    try:
+                        sftp.chdir("bhm_tmp")
+                    except IOError:
+                        sftp.mkdir("bhm_tmp")
+                        sftp.chdir("bhm_tmp")
 
-                sftp.put("./tools/get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
+                    sftp.put("./tools/get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
+            except Exception as err:
+                raise type(err)("Something went wrong with copying get_run_time.py to CMS!", *err.args)
 
-            stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
-            readout = int(stdout.read().decode())
+            try:
+                stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
+                readout = stdout.read().decode()
+            except Exception as err:
+                raise type(err)("Something went wrong when running get_run_time.py!", *err.args)
+            try:
+                readout = int(readout)
+            except ValueError:
+                pass
 
     del stdin, stdout, stderr, ssh, ssh2, ssh_transport, ssh_channel # clean up
     return readout
@@ -148,7 +169,7 @@ def load_uHTR_data(data_folder_str):
 
         return uHTR4, uHTR11, loaded_runs
 
-def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, username=None, password=None):
+def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, start_time=0):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
@@ -175,13 +196,6 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
 
     _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
     _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
-
-    if username and password:
-        start_time = get_start_time(username, password, min(analysed_runs))
-    else:
-        start_time = 0
-
-    print(start_time)
 
     plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
 

@@ -23,8 +23,10 @@ if __name__ == "__main__":
         start_UTC_ms = query_run(min_run)[0]
         print(start_UTC_ms)
     except IndexError:
-        print("Error: No run argument given")
+        print("Error: No run argument given.")
     except ValueError:
-        print("Error: Invalid run number given (not an integer)")
+        print("Error: Invalid run number given (not an integer).")
     except TypeError:
         print("Error: Run number doesn't exist!")
+    except:
+        print("Error: An unknown error occured!")

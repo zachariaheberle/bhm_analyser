@@ -195,9 +195,8 @@ def gui():
             erase_all_figures()
             user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
             if user_consent:
-                username, password = user_pass_entry("CERN")
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, username=username, password=password)
-                del username, password
+                start_time = user_pass_entry("CERN", run_cut)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, start_time=start_time)
             else:
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
@@ -641,33 +640,88 @@ def gui():
 
     fig_window.withdraw()
 
+
+
+
 #@@@@@@@@@@@@@@@@@@ USER/PASS ENTRY WINDOW @@@@@@@@@@@@@@@@@@@@@@@@
 
-    def user_pass_entry(username_type):
+    def user_pass_entry(username_type, run_cut):
         """
         Creates a popup window to allow users to input a username and password
         """
-        def get_user_pass(event=None):
-            global _username, _password
+        def get_run_info(event=None):
+            """
+            Grabs the username and password from the entry box and grabs the run time data from OMS
+            and launches a thread to get run time info.
+            """
+            toggle_input("disabled")
             _username = username.get()
             _password = password.get()
+            run_info_thread = Thread(target=get_run_info_thread, args=[_username, _password])
+            run_info_thread.start()
+            
+        def get_run_info_thread(_username, _password):
+            """
+            Connects to CMS through an ssh tunnel through LXPLUS in order to grab run time info from OMS.
+            """
+            destroy = False
             if _username == "" or _password == "":
                 messagebox.showinfo("Info", f"Please enter your {username_type} username and password")
+                toggle_input("!disabled")
             else:
+                run = get_min_run(run_cut)
+                try:
+                    readout = analysis_helpers.get_start_time(_username, _password, run)
+                    if isinstance(readout, int):
+                        start_time.set(readout)
+                        destroy = True
+                    else:
+                        messagebox.showwarning("Warning", f"{readout} Defaulting to start time of zero.")
+                        start_time.set(0)
+                        destroy = True
+                except Exception as err:
+                    if "Authentication failed." in err.args:
+                        messagebox.showwarning("Invalid Credentials", "Invalid username and/or password.")
+                        toggle_input("!disabled")
+                    else:
+                        messagebox.showwarning("Warning", f"{err.args[0]} Defaulting to start time of zero. Errors have been written to error.log")
+                        analysis_helpers.error_handler(err)
+                        start_time.set(0)
+                        destroy = True
+
+            if destroy:
                 entry_window.destroy()
+            return
         
         def ignore_user_pass():
-            global _username, _password
-            _username = _password = None
             entry_window.destroy()
+        
+        def get_min_run(run_cut):
+            if run_cut == None:
+                min_run = min(loaded_runs)
+            elif isinstance(run_cut, int):
+                min_run = run_cut
+            else:
+                min_run = min(run_cut)
+            return min_run
+        
+        def toggle_input(state):
+            if state == "!disabled":
+                entry_window.bind("<Return>", lambda event : get_run_info(event))
+            elif state == "disabled":
+                entry_window.unbind("<Return>")
+            user_pass_button.state([state])
+            user_pass_cancel.state([state])
+            entry_window.lift()
 
+        # Creating the entry window
         entry_window = tk.Toplevel(root)
         entry_window.geometry("400x175")
         entry_window.resizable(False, False)
         entry_window.title("Please Enter Your Credentials")
         entry_window.columnconfigure(0, weight=1)
         entry_window.rowconfigure(0, weight=1)
-        entry_window.bind("<Return>", lambda event : get_user_pass(event))
+        entry_window.bind("<Return>", lambda event : get_run_info(event))
 
         # Base Frame
         EntryPage = tk.Frame(entry_window)
@@ -684,15 +738,15 @@ def gui():
         pass_label = ttk.Label(EntryPage, text="Password:")
 
         # Username Entry
-        username = StringVar()
+        username = StringVar(entry_window)
         user_entry = ttk.Entry(EntryPage, textvariable=username, font=default_font)
 
         # Password Entry
-        password = StringVar()
+        password = StringVar(entry_window)
         pass_entry = ttk.Entry(EntryPage, textvariable=password, show="*", font=default_font)
 
         # Enter Button
-        user_pass_button = ttk.Button(EntryPage, text="Enter", command=get_user_pass)
+        user_pass_button = ttk.Button(EntryPage, text="Enter", command=get_run_info)
 
         # Cancel Button
         user_pass_cancel = ttk.Button(EntryPage, text="Cancel", command=ignore_user_pass)
@@ -705,8 +759,10 @@ def gui():
         user_pass_button.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
         user_pass_cancel.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
 
+
+        start_time = IntVar()
         root.wait_window(entry_window)
-        return _username, _password
+        return start_time.get()
         
     #user_pass_entry("CERN")
     root.mainloop()
