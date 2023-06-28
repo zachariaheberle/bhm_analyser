@@ -517,6 +517,10 @@ def gui():
             self.config(validate="key", validatecommand=vcmd, invalidcommand=ivcmd)
         
         def on_return(self, event):
+            """
+            Changes the values of the tkinter treeview when hitting enter or
+            closing entry box by unfocusing the window.
+            """
             if self.get() == "":
                 self.bell()
                 return
@@ -526,22 +530,35 @@ def gui():
             self.destroy()
         
         def validate(self, value):
+            """
+            Checks if the next user input is an integer
+            """
             if value.isdigit():
                 return True
             else:
                 return False
         
         def on_invalid(self):
+            """
+            Makes a noise when the user tries to type in a non-integer value into the entry window
+            """
             self.bell()
             
 
     def _on_double_click(event):
+        """
+        Event handler for when the user double clicks to edut a tkinter treeview.
+        Destroys any entry windows if there are any before trying to edit any others.
+        """
         for child in event.widget.winfo_children():
             child.destroy()
         edit_entries(event.widget, event.x, event.y)
 
 
     def edit_entries(tree, event_x, event_y):
+        """
+        Pulls up a popup entry box for the user to change entry values of a tkinter treeview
+        """
         try:
             selected_item = tree.selection()[0]
         except IndexError:
