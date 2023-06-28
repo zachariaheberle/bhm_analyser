@@ -565,27 +565,20 @@ def gui():
             pass
         else:
             x, y, width, height = tree.bbox(selected_item)
-            relx = x / width
 
-            detector_column_width = tree.column("detector")["width"]
-            tdc_column_width = tree.column("tdc_peak")["width"]
-            adc_column_width = tree.column("adc_cut")["width"]
+            total_column_width = 0
+            for i, column in enumerate(tree["columns"]):
+                column_width = tree.column(column)["width"]
+                total_column_width += column_width
+                if event_x < total_column_width and i == 0:
+                    return
+                elif event_x < total_column_width:
+                    relx = (total_column_width - column_width) / width
+                    break
 
-            if event_x < detector_column_width:
-                return
-            elif event_x < detector_column_width + tdc_column_width:
-                column_width = tdc_column_width
-                columnid = 1
-                relx += detector_column_width / width
-                
-            else:
-                column_width = adc_column_width
-                columnid = 2
-                relx += (detector_column_width + tdc_column_width) / width
-            
             relwidth = column_width / width
 
-            popup = EntryPopup(data_cuts_tree, selected_item, columnid, font=default_font)
+            popup = EntryPopup(data_cuts_tree, selected_item, i, font=default_font)
             popup.place(relx=relx, y=y, anchor=NW, relwidth=relwidth, height=height)
 
 
