@@ -7,6 +7,8 @@ from tkinter import messagebox
 from threading import Thread
 import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
+import tools.hw_info as hw_info
+import tools.calibration as calib
 import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -132,8 +134,12 @@ def gui():
         individual_run_display_box["values"] = list(loaded_runs)
         custom_run_var.set(list(loaded_runs))
     
-    def clear_selection():
-        custom_run_display_box.selection_clear(0, "end")
+    def clear_selection(widget):
+        if isinstance(widget, tk.Listbox):
+            widget.selection_clear(0, "end")
+        elif isinstance(widget, ttk.Treeview):
+            for sel in widget.selection():
+                widget.selection_remove(sel)
     
     def do_analysis():
         """
@@ -218,7 +224,7 @@ def gui():
 
     # Root Window Properties
     root = tk.Tk()
-    root.geometry("700x640")
+    root.geometry("700x665")
     root.resizable(True, True)
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
@@ -265,7 +271,13 @@ def gui():
     #@@@@@@@@@@@@@@@@ MAIN WINDOW FRAME CREATION @@@@@@@@@@@@@@@@@@@
 
     # Frames to hold various gui elements
-    MainPage = tk.Frame(root, width=700, height=600)#, bg="#00FF00")
+    BasePage = ttk.Notebook(root)
+    MainPage = tk.Frame(BasePage, width=700, height=600)#, bg="#00FF00")
+    OptionsPage = tk.Frame(BasePage, width=700, height=600)
+
+    # Adding frames to BasePage
+    BasePage.add(MainPage, text="Analysis")
+    BasePage.add(OptionsPage, text="Advanced Options")
 
     DataSelection = tk.Frame(MainPage)#, bg="#FF00FF")
     DataSelectionLabel = ttk.LabelFrame(DataSelection, text="BHM Data Folder Location")
@@ -275,7 +287,7 @@ def gui():
     RunSelection = tk.Frame(MainPage)#, bg="#FF0000")
 
     # Placing Frames within window
-    MainPage.grid(column=0, row=0, sticky=NSEW)
+    BasePage.grid(row=0, column=0, sticky=NSEW)
     DataSelection.pack(side=TOP, fill=X, expand=False, anchor=CENTER)
     DataSelection.grid_columnconfigure(0, weight=1)
     DataSelectionLabel.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
@@ -289,6 +301,8 @@ def gui():
     RunSelection.grid_columnconfigure(0, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(1, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(2, weight=1, uniform="RunSelection")
+
+    #@@@@@@@@@@@@@@@@@ BEGIN MAIN PAGE @@@@@@@@@@@@@@@@@@@@
 
 
 
@@ -388,7 +402,7 @@ def gui():
     custom_run_display_box['yscrollcommand'] = custom_scrollbar.set
 
     # Clear selection button
-    clear_custom_sel = ttk.Button(CustomRun, text="Clear Selection", command=clear_selection)
+    clear_custom_sel = ttk.Button(CustomRun, text="Clear Selection", command=lambda : clear_selection(custom_run_display_box))
 
 
 
@@ -473,6 +487,105 @@ def gui():
     raise_frame(MainPage)
 
     #@@@@@@@@@@@@@@@@ END MAIN PAGE @@@@@@@@@@@@@@@@@@@@@
+
+
+
+
+    #@@@@@@@@@@@@@@@ BEGIN OPTIONS PAGE @@@@@@@@@@@@@@@@@@
+
+    class EntryPopup(ttk.Entry):
+        """
+        tk.Treeview isn't inherently editable, this subclass of entry is meant to
+        create a popup box so the user can edit the values in the tree.
+        """
+
+        def __init__(self, parent, item, columnid, **kwargs):
+            super().__init__(parent, **kwargs)
+            self.parent = parent
+            self.item = item
+            self.columnid = columnid
+
+            self.insert(0, parent.item(self.item)["values"][columnid])
+            self.focus_force()
+
+            self.bind("<Return>", self.on_return)
+            self.bind("<Escape>", lambda event : self.destroy())
+            self.bind("<FocusOut>", self.on_return)
+
+            vcmd = (self.register(self.validate), "%S") # valid command
+            ivcmd = (self.register(self.on_invalid),) # invalid command
+            self.config(validate="key", validatecommand=vcmd, invalidcommand=ivcmd)
+        
+        def on_return(self, event):
+            if self.get() == "":
+                self.bell()
+                return
+            values = self.parent.item(self.item)["values"]
+            values[self.columnid] = self.get()
+            self.parent.item(self.item, values=values)
+            self.destroy()
+        
+        def validate(self, value):
+            if value.isdigit():
+                return True
+            else:
+                return False
+        
+        def on_invalid(self):
+            self.bell()
+            
+
+    def _on_double_click(event):
+        for child in event.widget.winfo_children():
+            child.destroy()
+        edit_entries(event.widget, event.x, event.y)
+
+
+    def edit_entries(tree, event_x, event_y):
+        try:
+            selected_item = tree.selection()[0]
+        except IndexError:
+            pass
+        else:
+            x, y, width, height = tree.bbox(selected_item)
+            relx = x / width
+
+            detector_column_width = tree.column("detector")["width"]
+            tdc_column_width = tree.column("tdc_peak")["width"]
+            adc_column_width = tree.column("adc_cut")["width"]
+
+            if event_x < detector_column_width:
+                return
+            elif event_x < detector_column_width + tdc_column_width:
+                column_width = tdc_column_width
+                columnid = 1
+                relx += detector_column_width / width
+                
+            else:
+                column_width = adc_column_width
+                columnid = 2
+                relx += (detector_column_width + tdc_column_width) / width
+            
+            relwidth = column_width / width
+
+            popup = EntryPopup(data_cuts_tree, selected_item, columnid, font=default_font)
+            popup.place(relx=relx, y=y, anchor=NW, relwidth=relwidth, height=height)
+
+
+    # Treeview of all detectors and their default ADC cuts and TDC peaks
+    data_cuts_tree = ttk.Treeview(OptionsPage, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
+    data_cuts_tree.heading("detector", text="Detector")
+    data_cuts_tree.heading("tdc_peak", text="TDC Peak")
+    data_cuts_tree.heading("adc_cut", text="ADC Cut")
+    for ch_name in hw_info.get_uHTR4_CMAP():
+        data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
+    for ch_name in hw_info.get_uHTR11_CMAP():
+        data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
+    data_cuts_tree.bind("<Double-Button-1>", _on_double_click)
+    data_cuts_tree.bind("<FocusOut>", lambda event : clear_selection(data_cuts_tree))
+    
+    data_cuts_tree.pack()
+
 
 
 
