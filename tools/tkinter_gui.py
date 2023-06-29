@@ -589,15 +589,35 @@ def gui():
         else:
             widget.state(["disabled"])
     
+    def load_data_cuts():
+        pass
+
+    def save_data_cuts():
+        pass
+    
+
+
+    #@@@@@@@@@@@@@@@@@@ DATA CUTS FRAME @@@@@@@@@@@@@@@@@@@@
+
+    # Label frame for custom data run cut options
+    DataCutsLabel = ttk.LabelFrame(OptionsPage, text="Custom Data Cuts")
 
     # Enable custom cuts check button
-    custom_cuts_check_var = BooleanVar()
-    custom_cuts_check_var.set(0)
-    custom_cuts_check = ttk.Checkbutton(OptionsPage, text="Enable custom data cuts", variable=custom_cuts_check_var, command=lambda : toggle_widget(data_cuts_tree, custom_cuts_check_var))
+    data_cuts_check_var = BooleanVar()
+    data_cuts_check_var.set(0)
+    data_cuts_check = ttk.Checkbutton(DataCutsLabel, text="Enable custom data cuts", variable=data_cuts_check_var, command=lambda : toggle_widget(data_cuts_tree, data_cuts_check_var))
 
+    # Placing items into frame
+    DataCutsLabel.pack(side=TOP)
+    data_cuts_check.pack(side=TOP, anchor=W, ipadx=5, ipady=5, padx=5, pady=5)
+
+    #@@@@@@@@@@@@@@@@@@@@ DATA CUTS TREEVIEW SUBFRAME @@@@@@@@@@@@@@@@@@@@
+
+    # Frame to hold treeview and its scrollbar
+    DataCutsFrame = tk.Frame(DataCutsLabel)
 
     # Treeview of all detectors and their default ADC cuts and TDC peaks
-    data_cuts_tree = ttk.Treeview(OptionsPage, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
+    data_cuts_tree = ttk.Treeview(DataCutsFrame, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
     data_cuts_tree.heading("detector", text="Detector")
     data_cuts_tree.heading("tdc_peak", text="TDC Peak")
     data_cuts_tree.heading("adc_cut", text="ADC Cut")
@@ -611,9 +631,32 @@ def gui():
     data_cuts_tree.bind("<Double-Button-1>", _on_double_click)
     data_cuts_tree.bind("<FocusOut>", lambda event : clear_selection(data_cuts_tree))
     data_cuts_tree.state(["disabled"])
+
+    # Scrollbar for data cuts treeview
+    data_cuts_scrollbar = ttk.Scrollbar(DataCutsFrame, orient=VERTICAL, command=data_cuts_tree.yview)
+    data_cuts_tree['yscrollcommand'] =data_cuts_scrollbar.set
+
+    # Placing everything into subframe
+    DataCutsFrame.pack(side=LEFT)
+    data_cuts_scrollbar.pack(side=RIGHT, fill=Y)
+    data_cuts_tree.pack(side=LEFT, fill=BOTH, ipadx=0, ipady=0, padx=5, pady=5)
+
+    #@@@@@@@@@@@@@@@@@ LOAD/SAVE SUBFRAME @@@@@@@@@@@@@@@@@@@@@@@@
+
+    SaveLoadFrame = tk.Frame(DataCutsLabel)
+
+    # Save button to save cuts to use at a later date
+    save_data_cuts_button = ttk.Button(SaveLoadFrame, text="Save Data Cuts", command=save_data_cuts)
+
+    # Load button to load in custom cut data
+    load_data_cuts_button = ttk.Button(SaveLoadFrame, text="Load Data Cuts", command=load_data_cuts)
+
+
+    # Placing everything into their frames
+    SaveLoadFrame.pack(side=RIGHT, fill=Y)
+    save_data_cuts_button.pack(side=TOP, anchor=N, ipadx=0, ipady=0, padx=5, pady=5)
+    load_data_cuts_button.pack(side=TOP, anchor=N, ipadx=0, ipady=0, padx=5, pady=5)
     
-    custom_cuts_check.pack()
-    data_cuts_tree.pack()
 
 
 
