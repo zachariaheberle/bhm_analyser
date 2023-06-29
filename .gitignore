@@ -10,3 +10,4 @@ test.py
 error.log
 _old/
 *.pyc
+*.json

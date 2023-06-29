@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
-from tkinter.filedialog import asksaveasfile
+from tkinter.filedialog import asksaveasfile, askopenfile
 from threading import Thread
 import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
@@ -592,7 +592,12 @@ def gui():
             widget.state(["disabled"])
     
     def load_data_cuts():
-        pass
+        filetypes = [("JSON Files", "*.json")]
+        with askopenfile(filetypes=filetypes, defaultextension=filetypes) as fp:
+            json_object = json.load(fp)
+            for json_list, item in zip(json_object.items(), data_cuts_tree.get_children()):
+                values = (json_list[0], json_list[1]["TDC Peak"], json_list[1]["ADC Cut"])
+                data_cuts_tree.item(item, values=values)
 
     def save_data_cuts():
         filetypes = [("JSON Files", "*.json")]
