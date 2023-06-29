@@ -259,8 +259,7 @@ def gui():
     s = ttk.Style()
     s.configure(".", font=default_font) # Applies default font to all widgets, can be manually changed for an individual widget later
     root.option_add('*TCombobox*Listbox.font', default_font) # combobox is dumb, this line is necessary to make drop down list have font applied
-    t = ttk.Style()
-    t.configure("Treeview.Heading", font=default_font) # Treeview is also dumb, I don't understand why these things are necessary
+    s.configure("Treeview.Heading", font=default_font) # Treeview is also dumb, I don't understand why these things are necessary
 
     #@@@@@@@@@@@@@@@@ MAIN WINDOW FRAME CREATION @@@@@@@@@@@@@@@@@@@
 
