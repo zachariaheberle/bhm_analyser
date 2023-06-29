@@ -80,6 +80,7 @@ def gui():
         
         disable_frame(RunSelection)
         disable_frame(DataSelectionLabel)
+        disable_frame(FolderLabel)
         data_load_button.state(["disabled"])
         analyse_button.state(["disabled"])
         show_figures_button.state(["disabled"])
