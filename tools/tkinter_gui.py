@@ -552,6 +552,8 @@ def gui():
         """
         for child in event.widget.winfo_children():
             child.destroy()
+        if "disabled" in event.widget.state():
+            return
         edit_entries(event.widget, event.x, event.y)
 
 
