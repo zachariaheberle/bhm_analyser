@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter.filedialog import asksaveasfile
 from threading import Thread
 import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
@@ -13,6 +14,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import json
 
 
 def gui():
@@ -593,7 +595,14 @@ def gui():
         pass
 
     def save_data_cuts():
-        pass
+        filetypes = [("JSON Files", "*.json")]
+        with asksaveasfile(filetypes=filetypes, defaultextension=filetypes, confirmoverwrite=True) as fp:
+            json_dict = {data_cuts_tree.item(item_id)["values"][0] : 
+                        {"TDC Peak" : data_cuts_tree.item(item_id)["values"][1], 
+                        "ADC Cut" : data_cuts_tree.item(item_id)["values"][2]} 
+                        for item_id in data_cuts_tree.get_children()}
+            json_object = json.dumps(json_dict, indent=4)
+            fp.write(json_object)
     
 
 
@@ -610,6 +619,8 @@ def gui():
     # Placing items into frame
     DataCutsLabel.pack(side=TOP)
     data_cuts_check.pack(side=TOP, anchor=W, ipadx=5, ipady=5, padx=5, pady=5)
+
+
 
     #@@@@@@@@@@@@@@@@@@@@ DATA CUTS TREEVIEW SUBFRAME @@@@@@@@@@@@@@@@@@@@
 
