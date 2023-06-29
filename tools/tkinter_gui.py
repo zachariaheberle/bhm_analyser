@@ -593,22 +593,32 @@ def gui():
     
     def load_data_cuts():
         filetypes = [("JSON Files", "*.json")]
-        with askopenfile(filetypes=filetypes, defaultextension=filetypes) as fp:
-            json_object = json.load(fp)
-            for json_list, item in zip(json_object.items(), data_cuts_tree.get_children()):
-                values = (json_list[0], json_list[1]["TDC Peak"], json_list[1]["ADC Cut"])
-                data_cuts_tree.item(item, values=values)
+        try:
+            with askopenfile(filetypes=filetypes, defaultextension=filetypes) as fp:
+                json_object = json.load(fp)
+                for json_list, item in zip(json_object.items(), data_cuts_tree.get_children()):
+                    values = (json_list[0], json_list[1]["TDC Peak"], json_list[1]["ADC Cut"])
+                    data_cuts_tree.item(item, values=values)
+        except AttributeError as err:
+            if str(err) == "__enter__":
+                return
+            raise err
 
     def save_data_cuts():
         filetypes = [("JSON Files", "*.json")]
-        with asksaveasfile(filetypes=filetypes, defaultextension=filetypes, confirmoverwrite=True) as fp:
-            json_dict = {data_cuts_tree.item(item_id)["values"][0] : 
-                        {"TDC Peak" : data_cuts_tree.item(item_id)["values"][1], 
-                        "ADC Cut" : data_cuts_tree.item(item_id)["values"][2]} 
-                        for item_id in data_cuts_tree.get_children()}
-            json_object = json.dumps(json_dict, indent=4)
-            fp.write(json_object)
-    
+        try:
+            with asksaveasfile(filetypes=filetypes, defaultextension=filetypes, confirmoverwrite=True) as fp:
+                json_dict = {data_cuts_tree.item(item_id)["values"][0] : 
+                            {"TDC Peak" : data_cuts_tree.item(item_id)["values"][1], 
+                            "ADC Cut" : data_cuts_tree.item(item_id)["values"][2]} 
+                            for item_id in data_cuts_tree.get_children()}
+                json_object = json.dumps(json_dict, indent=4)
+                fp.write(json_object)
+        except AttributeError as err:
+            if str(err) == "__enter__":
+                return
+            raise err
+        
 
 
     #@@@@@@@@@@@@@@@@@@ DATA CUTS FRAME @@@@@@@@@@@@@@@@@@@@
