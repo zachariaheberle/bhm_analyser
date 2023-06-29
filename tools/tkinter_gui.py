@@ -599,6 +599,9 @@ def gui():
     data_cuts_tree.heading("detector", text="Detector")
     data_cuts_tree.heading("tdc_peak", text="TDC Peak")
     data_cuts_tree.heading("adc_cut", text="ADC Cut")
+    data_cuts_tree.column("detector", minwidth=100, width=100, anchor=CENTER)
+    data_cuts_tree.column("tdc_peak", minwidth=100, width=100, anchor=CENTER)
+    data_cuts_tree.column("adc_cut", minwidth=100, width=100, anchor=CENTER)
     for ch_name in hw_info.get_uHTR4_CMAP():
         data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
     for ch_name in hw_info.get_uHTR11_CMAP():
