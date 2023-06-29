@@ -580,6 +580,18 @@ def gui():
 
             popup = EntryPopup(data_cuts_tree, selected_item, i, font=default_font)
             popup.place(relx=relx, y=y, anchor=NW, relwidth=relwidth, height=height)
+    
+    def toggle_widget(widget, bool_var):
+        if bool_var.get():
+            widget.state(["!disabled"])
+        else:
+            widget.state(["disabled"])
+    
+
+    # Enable custom cuts check button
+    custom_cuts_check_var = BooleanVar()
+    custom_cuts_check_var.set(0)
+    custom_cuts_check = ttk.Checkbutton(OptionsPage, text="Enable custom data cuts", variable=custom_cuts_check_var, command=lambda : toggle_widget(data_cuts_tree, custom_cuts_check_var))
 
 
     # Treeview of all detectors and their default ADC cuts and TDC peaks
@@ -593,7 +605,9 @@ def gui():
         data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
     data_cuts_tree.bind("<Double-Button-1>", _on_double_click)
     data_cuts_tree.bind("<FocusOut>", lambda event : clear_selection(data_cuts_tree))
+    data_cuts_tree.state(["disabled"])
     
+    custom_cuts_check.pack()
     data_cuts_tree.pack()
 
 
