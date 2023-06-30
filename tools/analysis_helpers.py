@@ -188,11 +188,8 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
     run_handler(analysed_runs)
 
     if manual_calib:
-        print("we doin a manual calibration")
         calib.ADC_CUTS = {detector : int(cuts["ADC Cut"]) for detector, cuts in manual_calib.items()}
         calib.TDC_PEAKS = {detector : int(cuts["TDC Peak"]) for detector, cuts in manual_calib.items()}
-        print(calib.ADC_CUTS)
-        print(calib.TDC_PEAKS)
     else:
         calib.ADC_CUTS = calib.ADC_CUTS_v2
         calib.TDC_PEAKS = calib.TDC_PEAKS_v2
