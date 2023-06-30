@@ -597,12 +597,18 @@ def gui():
             with askopenfile(filetypes=filetypes, defaultextension=filetypes) as fp:
                 json_object = json.load(fp)
                 for json_list, item in zip(json_object.items(), data_cuts_tree.get_children()):
-                    values = (json_list[0], json_list[1]["TDC Peak"], json_list[1]["ADC Cut"])
-                    data_cuts_tree.item(item, values=values)
+                    # Check if json is correctly formatted
+                    if json_list[0] in hw_info.get_uHTR4_CMAP() or json_list[0] in hw_info.get_uHTR11_CMAP() and list(json_list[1].keys()) == ["TDC Peak", "ADC Cut"]:
+                        values = (json_list[0], json_list[1]["TDC Peak"], json_list[1]["ADC Cut"])
+                        data_cuts_tree.item(item, values=values)
+                    else:
+                        raise KeyError("Invalid data structure")
         except AttributeError as err:
-            if str(err) == "__enter__":
+            if str(err) == "__enter__": # occurs if the user cancels or closes the file select
                 return
             raise err
+        except json.decoder.JSONDecodeError or KeyError as err: # occurs if file isn't properly formatted as a .json
+            messagebox.showerror("Error", f"Failed to parse {fp.name}: {err.args[0]}")
 
     def save_data_cuts():
         filetypes = [("JSON Files", "*.json")]
@@ -615,7 +621,7 @@ def gui():
                 json_object = json.dumps(json_dict, indent=4)
                 fp.write(json_object)
         except AttributeError as err:
-            if str(err) == "__enter__":
+            if str(err) == "__enter__": # occurs if the user cancels or closes the file select
                 return
             raise err
         
