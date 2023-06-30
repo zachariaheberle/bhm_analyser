@@ -187,15 +187,23 @@ def gui():
             messagebox.showwarning("Folder Name Invalid", "Please ensure folder names are alphanumeric with underscores as the only special character.")
             return
         
+        if data_cuts_check_var.get():
+            manual_calib = {data_cuts_tree.item(item_id)["values"][0] : 
+                            {"TDC Peak" : data_cuts_tree.item(item_id)["values"][1], 
+                            "ADC Cut" : data_cuts_tree.item(item_id)["values"][2]} 
+                            for item_id in data_cuts_tree.get_children()}
+        else:
+            manual_calib = None
+        
         data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
         
         disable_frame(MainPage)
         data_status.state(["!disabled"])
 
-        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego))
+        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, manual_calib))
         analysis_thread.start()
 
-    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego):
+    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, manual_calib):
         """
         Data analysis thread, sets up folder and cuts and analyses the data
         """
@@ -204,9 +212,9 @@ def gui():
             user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
             if user_consent:
                 start_time = user_pass_entry("CERN", run_cut)
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, start_time=start_time)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, start_time=start_time, manual_calib=manual_calib)
             else:
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, manual_calib=manual_calib)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
             fig_window.deiconify()
