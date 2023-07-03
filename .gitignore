@@ -9,5 +9,5 @@ stuff.md
 test.py
 error.log
 _old/
-*.pyc
+tools/__pycache__/*.pyc
 *.json
