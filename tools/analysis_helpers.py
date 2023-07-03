@@ -11,6 +11,7 @@ import pandas as pd
 from copy import deepcopy
 import traceback
 from paramiko import SSHClient, AutoAddPolicy
+import time
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -53,6 +54,9 @@ def get_start_time(username, password, run):
         try:
             ssh.set_missing_host_key_policy(AutoAddPolicy())
             ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
+            if commonVars.root:
+                commonVars.connection_label_var.set("Connection to LXPLUS OK!\nConnecting to CMSUSR...")
+                commonVars.connection_progress["value"] = 20
         except Exception as err:
             raise type(err)("Something went wrong with connection to LXPLUS!", *err.args)
             
@@ -67,10 +71,17 @@ def get_start_time(username, password, run):
             try:
                 ssh2.set_missing_host_key_policy(AutoAddPolicy())
                 ssh2.connect("cmsusr.cern.ch", username=username, password=password, sock=ssh_channel) # ssh username@cmsusr.cern.ch from lxplus
+                if commonVars.root:
+                    commonVars.connection_label_var.set("Connection to CMSUSR OK!")
+                    commonVars.connection_progress["value"] = 40
+                    time.sleep(0.3) # Just so the user can see the message for a brief moment
             except Exception as err:
                 raise type(err)("Something went wrong with connection to CMS from LXPLUS!", *err.args)
 
             try:
+                if commonVars.root:
+                    commonVars.connection_label_var.set("Copying over files...")
+                    commonVars.connection_progress["value"] = 60
                 with ssh2.open_sftp() as sftp: # adding temporary directory to add script to
                     try:
                         sftp.chdir("bhm_tmp")
@@ -83,6 +94,9 @@ def get_start_time(username, password, run):
                 raise type(err)("Something went wrong with copying get_run_time.py to CMS!", *err.args)
 
             try:
+                if commonVars.root:
+                    commonVars.connection_label_var.set("Getting run time data...")
+                    commonVars.connection_progress["value"] = 80
                 stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
                 readout = stdout.read().decode()
             except Exception as err:
@@ -93,6 +107,10 @@ def get_start_time(username, password, run):
                 pass
 
     del stdin, stdout, stderr, ssh, ssh2, ssh_transport, ssh_channel # clean up
+    if commonVars.root:
+        commonVars.connection_label_var.set("Done!")
+        commonVars.connection_progress["value"] = 100
+        time.sleep(0.1) # Just so the user can see the message for but a moment
     return readout
 
 def error_handler(err):

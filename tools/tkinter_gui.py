@@ -708,10 +708,12 @@ def gui():
         def toggle_input(state):
             if state == "!disabled":
                 entry_window.bind("<Return>", lambda event : get_run_info(event))
+                enable_frame(EntryPage)
+                raise_frame(EntryPage)
             elif state == "disabled":
                 entry_window.unbind("<Return>")
-            user_pass_button.state([state])
-            user_pass_cancel.state([state])
+                disable_frame(EntryPage)
+                raise_frame(ProgressPage)
             entry_window.lift()
 
         # Creating the entry window
@@ -723,9 +725,12 @@ def gui():
         entry_window.rowconfigure(0, weight=1)
         entry_window.bind("<Return>", lambda event : get_run_info(event))
 
-        # Base Frame
+
+
+        #@@@@@@@@@@@@@@@@@@@@@ BASE FRAME @@@@@@@@@@@@@@@@@@@@@@@
+
         EntryPage = tk.Frame(entry_window)
-        EntryPage.grid(row=0, column=0)
+        EntryPage.grid(row=0, column=0, sticky=NSEW)
         EntryPage.grid_rowconfigure(0, weight=1)
         EntryPage.grid_rowconfigure(1, weight=1)
         EntryPage.grid_columnconfigure(0, weight=1, uniform="entry")
@@ -759,7 +764,31 @@ def gui():
         user_pass_button.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
         user_pass_cancel.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
 
+        #@@@@@@@@@@@@@@@@@@@@@@@ PROGRESS BAR FRAME @@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+        ProgressPage = tk.Frame(entry_window)
+        ProgressPage.grid(row=0, column=0, sticky=NSEW)
+
+        # Connection Progress Bar
+        connection_progress = ttk.Progressbar(ProgressPage, orient="horizontal", mode="determinate")
+        commonVars.connection_progress = connection_progress # Allow progress to be set from analysis_helpers.get_start_time()
+
+        # Progress Bar Label
+        connection_label_var = StringVar()
+        connection_label_var.set("Connecting to LXPLUS...")
+        commonVars.connection_label_var = connection_label_var # Allow progress to be set from analysis_helpers.get_start_time()
+        connection_label = ttk.Label(ProgressPage, textvariable=connection_label_var)
+
+        # Cancel Button
+        progress_cancel = ttk.Button(ProgressPage, text="Cancel", command=ignore_user_pass)
+
+        # Packing everything into the frame
+        connection_progress.place(x=200, y=45, width=390, height=30, anchor=CENTER)
+        connection_label.place(x=200, y=82, anchor=CENTER)
+        progress_cancel.pack(side=BOTTOM, anchor=S, ipadx=5, ipady=5, padx=5, pady=5)
+
+
+        raise_frame(EntryPage)
         start_time = IntVar()
         root.wait_window(entry_window)
         return start_time.get()
