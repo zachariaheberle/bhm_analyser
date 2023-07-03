@@ -593,13 +593,20 @@ def gui():
             popup = EntryPopup(data_cuts_tree, selected_item, i, font=default_font)
             popup.place(relx=relx, y=y, anchor=NW, relwidth=relwidth, height=height)
     
-    def toggle_widget(widget, bool_var):
-        if bool_var.get():
-            widget.state(["!disabled"])
-        else:
-            widget.state(["disabled"])
+    def toggle_widgets(widgets, bool_var):
+        """
+        Given a list of widgets, toggles the state of those widgets based on bool_var's state
+        """
+        for widget in widgets:
+            if bool_var.get():
+                widget.state(["!disabled"])
+            else:
+                widget.state(["disabled"])
     
     def load_data_cuts():
+        """
+        Loads in custom ADC/TDC cuts from a specifically formatted .json file
+        """
         filetypes = [("JSON Files", "*.json")]
         try:
             with askopenfile(filetypes=filetypes, defaultextension=filetypes) as fp:
@@ -619,6 +626,9 @@ def gui():
             messagebox.showerror("Error", f"Failed to parse {fp.name}: {err.args[0]}")
 
     def save_data_cuts():
+        """
+        Saves the values the user input into the data cuts treeview for custom data cuts into a .json file
+        """
         filetypes = [("JSON Files", "*.json")]
         try:
             with asksaveasfile(filetypes=filetypes, defaultextension=filetypes, confirmoverwrite=True) as fp:
@@ -643,7 +653,8 @@ def gui():
     # Enable custom cuts check button
     data_cuts_check_var = BooleanVar()
     data_cuts_check_var.set(0)
-    data_cuts_check = ttk.Checkbutton(DataCutsLabel, text="Enable custom data cuts", variable=data_cuts_check_var, command=lambda : toggle_widget(data_cuts_tree, data_cuts_check_var))
+    data_cuts_check = ttk.Checkbutton(DataCutsLabel, text="Enable custom data cuts", variable=data_cuts_check_var, 
+                        command=lambda : toggle_widgets([data_cuts_tree, save_data_cuts_button, load_data_cuts_button], data_cuts_check_var))
 
     # Placing items into frame
     DataCutsLabel.pack(side=TOP)
@@ -686,10 +697,10 @@ def gui():
     SaveLoadFrame = tk.Frame(DataCutsLabel)
 
     # Save button to save cuts to use at a later date
-    save_data_cuts_button = ttk.Button(SaveLoadFrame, text="Save Data Cuts", command=save_data_cuts)
+    save_data_cuts_button = ttk.Button(SaveLoadFrame, text="Save Data Cuts", state="disabled", command=save_data_cuts)
 
     # Load button to load in custom cut data
-    load_data_cuts_button = ttk.Button(SaveLoadFrame, text="Load Data Cuts", command=load_data_cuts)
+    load_data_cuts_button = ttk.Button(SaveLoadFrame, text="Load Data Cuts", state="disabled", command=load_data_cuts)
 
 
     # Placing everything into their frames
