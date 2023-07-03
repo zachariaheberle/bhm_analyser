@@ -4,13 +4,17 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter.filedialog import asksaveasfile, askopenfile
 from threading import Thread
 import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
+import tools.hw_info as hw_info
+import tools.calibration as calib
 import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import json
 
 
 def gui():
@@ -133,8 +137,12 @@ def gui():
         individual_run_display_box["values"] = list(loaded_runs)
         custom_run_var.set(list(loaded_runs))
     
-    def clear_selection():
-        custom_run_display_box.selection_clear(0, "end")
+    def clear_selection(widget):
+        if isinstance(widget, tk.Listbox):
+            widget.selection_clear(0, "end")
+        elif isinstance(widget, ttk.Treeview):
+            for sel in widget.selection():
+                widget.selection_remove(sel)
     
     def do_analysis():
         """
@@ -180,15 +188,23 @@ def gui():
             messagebox.showwarning("Folder Name Invalid", "Please ensure folder names are alphanumeric with underscores as the only special character.")
             return
         
+        if data_cuts_check_var.get():
+            manual_calib = {data_cuts_tree.item(item_id)["values"][0] : 
+                            {"TDC Peak" : data_cuts_tree.item(item_id)["values"][1], 
+                            "ADC Cut" : data_cuts_tree.item(item_id)["values"][2]} 
+                            for item_id in data_cuts_tree.get_children()}
+        else:
+            manual_calib = None
+        
         data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
         
         disable_frame(MainPage)
         data_status.state(["!disabled"])
 
-        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego))
+        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, manual_calib))
         analysis_thread.start()
 
-    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego):
+    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, manual_calib):
         """
         Data analysis thread, sets up folder and cuts and analyses the data
         """
@@ -197,9 +213,9 @@ def gui():
             user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
             if user_consent:
                 start_time = user_pass_entry("CERN", run_cut)
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, start_time=start_time)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, start_time=start_time, manual_calib=manual_calib)
             else:
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, manual_calib=manual_calib)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
             fig_window.deiconify()
@@ -219,7 +235,7 @@ def gui():
 
     # Root Window Properties
     root = tk.Tk()
-    root.geometry("700x640")
+    root.geometry("700x665")
     root.resizable(True, True)
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
@@ -265,7 +281,13 @@ def gui():
     #@@@@@@@@@@@@@@@@ MAIN WINDOW FRAME CREATION @@@@@@@@@@@@@@@@@@@
 
     # Frames to hold various gui elements
-    MainPage = tk.Frame(root, width=700, height=600)#, bg="#00FF00")
+    BasePage = ttk.Notebook(root)
+    MainPage = tk.Frame(BasePage, width=700, height=600)#, bg="#00FF00")
+    OptionsPage = tk.Frame(BasePage, width=700, height=600)
+
+    # Adding frames to BasePage
+    BasePage.add(MainPage, text="Analysis")
+    BasePage.add(OptionsPage, text="Advanced Options")
 
     DataSelection = tk.Frame(MainPage)#, bg="#FF00FF")
     DataSelectionLabel = ttk.LabelFrame(DataSelection, text="BHM Data Folder Location")
@@ -275,7 +297,7 @@ def gui():
     RunSelection = tk.Frame(MainPage)#, bg="#FF0000")
 
     # Placing Frames within window
-    MainPage.grid(column=0, row=0, sticky=NSEW)
+    BasePage.grid(row=0, column=0, sticky=NSEW)
     DataSelection.pack(side=TOP, fill=X, expand=False, anchor=CENTER)
     DataSelection.grid_columnconfigure(0, weight=1)
     DataSelectionLabel.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
@@ -289,6 +311,8 @@ def gui():
     RunSelection.grid_columnconfigure(0, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(1, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(2, weight=1, uniform="RunSelection")
+
+    #@@@@@@@@@@@@@@@@@ BEGIN MAIN PAGE @@@@@@@@@@@@@@@@@@@@
 
 
 
@@ -388,7 +412,7 @@ def gui():
     custom_run_display_box['yscrollcommand'] = custom_scrollbar.set
 
     # Clear selection button
-    clear_custom_sel = ttk.Button(CustomRun, text="Clear Selection", command=clear_selection)
+    clear_custom_sel = ttk.Button(CustomRun, text="Clear Selection", command=lambda : clear_selection(custom_run_display_box))
 
 
 
@@ -473,6 +497,218 @@ def gui():
     raise_frame(MainPage)
 
     #@@@@@@@@@@@@@@@@ END MAIN PAGE @@@@@@@@@@@@@@@@@@@@@
+
+
+
+
+    #@@@@@@@@@@@@@@@ BEGIN OPTIONS PAGE @@@@@@@@@@@@@@@@@@
+
+    class EntryPopup(ttk.Entry):
+        """
+        tk.Treeview isn't inherently editable, this subclass of entry is meant to
+        create a popup box so the user can edit the values in the tree.
+        """
+
+        def __init__(self, parent, item, columnid, **kwargs):
+            super().__init__(parent, **kwargs)
+            self.parent = parent
+            self.item = item
+            self.columnid = columnid
+
+            self.insert(0, parent.item(self.item)["values"][columnid])
+            self.focus_force()
+
+            self.bind("<Return>", self.on_return)
+            self.bind("<Escape>", lambda event : self.destroy())
+            self.bind("<FocusOut>", self.on_return)
+
+            vcmd = (self.register(self.validate), "%S") # valid command
+            ivcmd = (self.register(self.on_invalid),) # invalid command
+            self.config(validate="key", validatecommand=vcmd, invalidcommand=ivcmd)
+        
+        def on_return(self, event):
+            """
+            Changes the values of the tkinter treeview when hitting enter or
+            closing entry box by unfocusing the window.
+            """
+            if self.get() == "":
+                self.bell()
+                return
+            values = self.parent.item(self.item)["values"]
+            values[self.columnid] = self.get()
+            self.parent.item(self.item, values=values)
+            self.destroy()
+        
+        def validate(self, value):
+            """
+            Checks if the next user input is an integer
+            """
+            if value.isdigit():
+                return True
+            else:
+                return False
+        
+        def on_invalid(self):
+            """
+            Makes a noise when the user tries to type in a non-integer value into the entry window
+            """
+            self.bell()
+            
+
+    def _on_double_click(event):
+        """
+        Event handler for when the user double clicks to edut a tkinter treeview.
+        Destroys any entry windows if there are any before trying to edit any others.
+        """
+        for child in event.widget.winfo_children():
+            child.destroy()
+        if "disabled" in event.widget.state():
+            return
+        edit_entries(event.widget, event.x, event.y)
+
+
+    def edit_entries(tree, event_x, event_y):
+        """
+        Pulls up a popup entry box for the user to change entry values of a tkinter treeview
+        """
+        try:
+            selected_item = tree.selection()[0]
+        except IndexError:
+            pass
+        else:
+            x, y, width, height = tree.bbox(selected_item)
+
+            total_column_width = 0
+            for i, column in enumerate(tree["columns"]):
+                column_width = tree.column(column)["width"]
+                total_column_width += column_width
+                if event_x < total_column_width and i == 0:
+                    return
+                elif event_x < total_column_width:
+                    relx = (total_column_width - column_width) / width
+                    break
+
+            relwidth = column_width / width
+
+            popup = EntryPopup(data_cuts_tree, selected_item, i, font=default_font)
+            popup.place(relx=relx, y=y, anchor=NW, relwidth=relwidth, height=height)
+    
+    def toggle_widgets(widgets, bool_var):
+        """
+        Given a list of widgets, toggles the state of those widgets based on bool_var's state
+        """
+        for widget in widgets:
+            if bool_var.get():
+                widget.state(["!disabled"])
+            else:
+                widget.state(["disabled"])
+    
+    def load_data_cuts():
+        """
+        Loads in custom ADC/TDC cuts from a specifically formatted .json file
+        """
+        filetypes = [("JSON Files", "*.json")]
+        try:
+            with askopenfile(filetypes=filetypes, defaultextension=filetypes) as fp:
+                json_object = json.load(fp)
+                for json_list, item in zip(json_object.items(), data_cuts_tree.get_children()):
+                    # Check if json is correctly formatted
+                    if json_list[0] in hw_info.get_uHTR4_CMAP() or json_list[0] in hw_info.get_uHTR11_CMAP() and list(json_list[1].keys()) == ["TDC Peak", "ADC Cut"]:
+                        values = (json_list[0], json_list[1]["TDC Peak"], json_list[1]["ADC Cut"])
+                        data_cuts_tree.item(item, values=values)
+                    else:
+                        raise KeyError("Invalid data structure")
+        except AttributeError as err:
+            if str(err) == "__enter__": # occurs if the user cancels or closes the file select
+                return
+            raise err
+        except json.decoder.JSONDecodeError or KeyError as err: # occurs if file isn't properly formatted as a .json
+            messagebox.showerror("Error", f"Failed to parse {fp.name}: {err.args[0]}")
+
+    def save_data_cuts():
+        """
+        Saves the values the user input into the data cuts treeview for custom data cuts into a .json file
+        """
+        filetypes = [("JSON Files", "*.json")]
+        try:
+            with asksaveasfile(filetypes=filetypes, defaultextension=filetypes, confirmoverwrite=True) as fp:
+                json_dict = {data_cuts_tree.item(item_id)["values"][0] : 
+                            {"TDC Peak" : data_cuts_tree.item(item_id)["values"][1], 
+                            "ADC Cut" : data_cuts_tree.item(item_id)["values"][2]} 
+                            for item_id in data_cuts_tree.get_children()}
+                json_object = json.dumps(json_dict, indent=4)
+                fp.write(json_object)
+        except AttributeError as err:
+            if str(err) == "__enter__": # occurs if the user cancels or closes the file select
+                return
+            raise err
+        
+
+
+    #@@@@@@@@@@@@@@@@@@ DATA CUTS FRAME @@@@@@@@@@@@@@@@@@@@
+
+    # Label frame for custom data run cut options
+    DataCutsLabel = ttk.LabelFrame(OptionsPage, text="Custom Data Cuts")
+
+    # Enable custom cuts check button
+    data_cuts_check_var = BooleanVar()
+    data_cuts_check_var.set(0)
+    data_cuts_check = ttk.Checkbutton(DataCutsLabel, text="Enable custom data cuts", variable=data_cuts_check_var, 
+                        command=lambda : toggle_widgets([data_cuts_tree, save_data_cuts_button, load_data_cuts_button], data_cuts_check_var))
+
+    # Placing items into frame
+    DataCutsLabel.pack(side=TOP)
+    data_cuts_check.pack(side=TOP, anchor=W, ipadx=5, ipady=5, padx=5, pady=5)
+
+
+
+    #@@@@@@@@@@@@@@@@@@@@ DATA CUTS TREEVIEW SUBFRAME @@@@@@@@@@@@@@@@@@@@
+
+    # Frame to hold treeview and its scrollbar
+    DataCutsFrame = tk.Frame(DataCutsLabel)
+
+    # Treeview of all detectors and their default ADC cuts and TDC peaks
+    data_cuts_tree = ttk.Treeview(DataCutsFrame, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
+    data_cuts_tree.heading("detector", text="Detector")
+    data_cuts_tree.heading("tdc_peak", text="TDC Peak")
+    data_cuts_tree.heading("adc_cut", text="ADC Cut")
+    data_cuts_tree.column("detector", minwidth=100, width=100, anchor=CENTER)
+    data_cuts_tree.column("tdc_peak", minwidth=100, width=100, anchor=CENTER)
+    data_cuts_tree.column("adc_cut", minwidth=100, width=100, anchor=CENTER)
+    for ch_name in hw_info.get_uHTR4_CMAP():
+        data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
+    for ch_name in hw_info.get_uHTR11_CMAP():
+        data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
+    data_cuts_tree.bind("<Double-Button-1>", _on_double_click)
+    data_cuts_tree.bind("<FocusOut>", lambda event : clear_selection(data_cuts_tree))
+    data_cuts_tree.state(["disabled"])
+
+    # Scrollbar for data cuts treeview
+    data_cuts_scrollbar = ttk.Scrollbar(DataCutsFrame, orient=VERTICAL, command=data_cuts_tree.yview)
+    data_cuts_tree['yscrollcommand'] =data_cuts_scrollbar.set
+
+    # Placing everything into subframe
+    DataCutsFrame.pack(side=LEFT)
+    data_cuts_scrollbar.pack(side=RIGHT, fill=Y)
+    data_cuts_tree.pack(side=LEFT, fill=BOTH, ipadx=0, ipady=0, padx=5, pady=5)
+
+    #@@@@@@@@@@@@@@@@@ LOAD/SAVE SUBFRAME @@@@@@@@@@@@@@@@@@@@@@@@
+
+    SaveLoadFrame = tk.Frame(DataCutsLabel)
+
+    # Save button to save cuts to use at a later date
+    save_data_cuts_button = ttk.Button(SaveLoadFrame, text="Save Data Cuts", state="disabled", command=save_data_cuts)
+
+    # Load button to load in custom cut data
+    load_data_cuts_button = ttk.Button(SaveLoadFrame, text="Load Data Cuts", state="disabled", command=load_data_cuts)
+
+
+    # Placing everything into their frames
+    SaveLoadFrame.pack(side=RIGHT, fill=Y)
+    save_data_cuts_button.pack(side=TOP, anchor=N, ipadx=0, ipady=0, padx=5, pady=5)
+    load_data_cuts_button.pack(side=TOP, anchor=N, ipadx=0, ipady=0, padx=5, pady=5)
+    
+
 
 
 

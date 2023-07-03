@@ -187,7 +187,7 @@ def load_uHTR_data(data_folder_str):
 
         return uHTR4, uHTR11, loaded_runs
 
-def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, start_time=0):
+def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, start_time=0, manual_calib=None):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
@@ -205,15 +205,22 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
 
     run_handler(analysed_runs)
 
-    calib.ADC_CUTS = calib.ADC_CUTS_v2
-    #calib.TDC_PEAKS = {key:6 for key in calib.TDC_PEAKS_v1} 
-    calib.TDC_PEAKS = calib.TDC_PEAKS_v2
+    if manual_calib:
+        calib.ADC_CUTS = {detector : int(cuts["ADC Cut"]) for detector, cuts in manual_calib.items()}
+        calib.TDC_PEAKS = {detector : int(cuts["TDC Peak"]) for detector, cuts in manual_calib.items()}
+    else:
+        calib.ADC_CUTS = calib.ADC_CUTS_v2
+        calib.TDC_PEAKS = calib.TDC_PEAKS_v2
 
     _uHTR4 = deepcopy(uHTR4) # create copies so multiple analyses can be run without having to reload data
     _uHTR11 = deepcopy(uHTR11)
 
-    _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
-    _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+    if manual_calib:
+        _uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+        _uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+    else:
+        _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+        _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
 
     plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
 
