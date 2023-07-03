@@ -555,7 +555,28 @@ class bhm_analyser():
             ax.legend(loc='upper right',frameon=True)
 
         plt.close()
-        
+
+    def plot_channel_events(self):
+        """
+        Checks the events per channel to ensure angular and HV consistency
+        """
+        if "df" not in self.__dict__.keys():
+            print("df not found: Calling convert2pandas()")
+            self.convert2pandas()
+
+        f, ax = plt.subplots()
+        df = self.df
+        channels = [ch for ch in self.CMAP.keys()]
+        events = [len(df.query(f"ch_name=='{ch_name}'")) for ch_name in channels]
+        ax.bar(channels, events, width=0.9, align="center")
+        plotting.textbox(0.0,1.11,'Preliminary', 15, ax=ax)
+        plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
+        ax.set_xticks(np.arange(20))
+        ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
+        ax.set_xlabel("Channels", fontsize=15)
+        ax.set_ylabel("Events/1", fontsize=15)
+        plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
+        plt.close()
         
 
     def computeCorrection(self,alignment_target,currentConfig):
@@ -715,6 +736,7 @@ class bhm_analyser():
 
         self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
         self.plot_OccupancySRBR()# plots the occupancy
+        #self.plot_channel_events()
         if not self.SR.empty:
             self.tdc_stability()
         else:
