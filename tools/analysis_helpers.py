@@ -55,7 +55,7 @@ def get_start_time(username, password, run):
             ssh.set_missing_host_key_policy(AutoAddPolicy())
             ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
             if commonVars.root:
-                commonVars.connection_label_var.set("Connection to LXPLUS OK!\nConnecting to CMSUSR...")
+                commonVars.connection_label_var.set("Connecting to CMSUSR...")
                 commonVars.connection_progress["value"] = 20
         except Exception as err:
             raise type(err)("Something went wrong with connection to LXPLUS!", *err.args)
