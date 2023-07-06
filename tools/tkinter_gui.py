@@ -151,6 +151,7 @@ def gui():
         run_type = run_sel_var.get()
         custom_run = [int(custom_run_var.get()[i]) for i in custom_run_display_box.curselection()]
         plot_lego = bool(lego_check_var.get())
+        plot_ch_events = bool(channel_event_check_var.get())
         figure_folder = folder_name_var.get()
         loaded_data_folder_str = loaded_data_folder.get()
         custom_range = False
@@ -201,10 +202,10 @@ def gui():
         disable_frame(MainPage)
         data_status.state(["!disabled"])
 
-        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, manual_calib))
+        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib))
         analysis_thread.start()
 
-    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, manual_calib):
+    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib):
         """
         Data analysis thread, sets up folder and cuts and analyses the data
         """
@@ -213,9 +214,9 @@ def gui():
             user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
             if user_consent:
                 start_time = user_pass_entry("CERN", run_cut)
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, start_time=start_time, manual_calib=manual_calib)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
             else:
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, manual_calib=manual_calib)
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, manual_calib=manual_calib)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
             fig_window.deiconify()
@@ -420,9 +421,14 @@ def gui():
 
     # Optional Plots
     OptionalPlots = ttk.LabelFrame(RunSelection, text="Optional Plots")
+
     lego_check_var = BooleanVar()
     lego_check_var.set(0)
     lego_check = ttk.Checkbutton(OptionalPlots, text="Lego Plot", variable=lego_check_var, onvalue=1, offvalue=0)
+
+    channel_event_check_var = BooleanVar()
+    channel_event_check_var.set(0)
+    channel_event_check = ttk.Checkbutton(OptionalPlots, text="Channel Event Plot", variable=channel_event_check_var, onvalue=1, offvalue=0)
 
 
 
@@ -465,6 +471,7 @@ def gui():
 
     OptionalPlots.grid(row=1, column=2, ipadx=5, ipady=5, padx=5, pady=5, sticky=NSEW)
     lego_check.pack(fill=X, padx=5, pady=10)
+    channel_event_check.pack(fill=X, padx=5, pady=10)
 
 
     #@@@@@@@@@@@@@@@@@ FOLDER SELECTION ENTRY @@@@@@@@@@@@@@@@@@@@@@

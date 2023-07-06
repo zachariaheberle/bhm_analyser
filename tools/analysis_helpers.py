@@ -187,7 +187,7 @@ def load_uHTR_data(data_folder_str):
 
         return uHTR4, uHTR11, loaded_runs
 
-def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, start_time=0, manual_calib=None):
+def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
@@ -216,11 +216,11 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
     _uHTR11 = deepcopy(uHTR11)
 
     if manual_calib:
-        _uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
-        _uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+        _uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        _uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
     else:
-        _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
-        _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego)
+        _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
 
     plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
 

@@ -677,7 +677,7 @@ class bhm_analyser():
         self.convert2pandas()
         print(f"print values for uHTR{self.uHTR}:\n{self.df}")
 
-    def analyse(self, reAdjust=True, run_cut=None, custom_range=False, plot_lego=False):
+    def analyse(self, reAdjust=True, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False):
         '''
         Runs the steps in sequence
         Make sure you set the correct ADC Cuts & TDC Cuts in calib.ADC_CUTS & calib.TDC_PEAKS
@@ -736,7 +736,8 @@ class bhm_analyser():
 
         self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
         self.plot_OccupancySRBR()# plots the occupancy
-        #self.plot_channel_events()
+        if plot_ch_events:
+           self.plot_channel_events()
         if not self.SR.empty:
             self.tdc_stability()
         else:
