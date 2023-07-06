@@ -576,6 +576,20 @@ class bhm_analyser():
         ax.set_xlabel("Channels", fontsize=15)
         ax.set_ylabel("Events/1", fontsize=15)
         plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
+
+        if commonVars.root:
+            if self.uHTR == "4":
+                ax = commonVars.ch_events_fig.add_subplot(121)
+            elif self.uHTR == "11":
+                ax = commonVars.ch_events_fig.add_subplot(122)
+            ax.bar(channels, events, width=0.9, align="center")
+            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
+            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
+            ax.set_xlabel("Channels", fontsize=15)
+            ax.set_ylabel("Events/1", fontsize=15)
+            
         plt.close()
         
 

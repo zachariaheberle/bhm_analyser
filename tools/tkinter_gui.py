@@ -262,8 +262,16 @@ def gui():
     commonVars.rate_fig.subplots_adjust(left=0.06, bottom=0.153, right=0.86, top=0.88, wspace=0.6)
     commonVars.lego_fig = Figure(dpi=100)
     commonVars.lego_fig.subplots_adjust(left=0.04, bottom=0.043, right=0.966, top=0.923, wspace=0.176)
+    commonVars.ch_events_fig = Figure(dpi=100)
+    commonVars.ch_events_fig.subplots_adjust(left=0.075, bottom=0.11, right=0.975, top=0.91)
 
-    figure_list = [commonVars.adc_fig, commonVars.tdc_fig, commonVars.tdc_stability_fig, commonVars.occupancy_fig, commonVars.rate_fig, commonVars.lego_fig]
+    figure_list = [commonVars.adc_fig, 
+                   commonVars.tdc_fig, 
+                   commonVars.tdc_stability_fig, 
+                   commonVars.occupancy_fig, 
+                   commonVars.rate_fig, 
+                   commonVars.lego_fig,
+                   commonVars.ch_events_fig]
 
     # print(root.winfo_screenwidth())
     # print(root.winfo_screenheight())
@@ -722,7 +730,7 @@ def gui():
     #@@@@@@@@@@@@@@@ BEGIN FIGURE WINDOW @@@@@@@@@@@@@@@@@@@
 
     def draw_all():
-        for canvas in [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas]:
+        for canvas in canvas_list:
             canvas.draw()
     
     def erase_all_figures():
@@ -780,6 +788,7 @@ def gui():
     OccupancyPage = tk.Frame(FigurePage)
     RatePage = tk.Frame(FigurePage)
     LegoPage = tk.Frame(FigurePage)
+    ChannelEventsPage = tk.Frame(FigurePage)
 
     # Adding each frame to notebook
     FigurePage.add(ADCPage, text="ADC Peaks")
@@ -788,6 +797,7 @@ def gui():
     FigurePage.add(OccupancyPage, text="Occupancy Plots")
     FigurePage.add(RatePage, text="Rate Plots")
     FigurePage.add(LegoPage, text="Lego Plots")
+    FigurePage.add(ChannelEventsPage, text="Channel Event Plots")
 
     FigurePage.pack(side=TOP, ipadx=5, ipady=5, padx=5, pady=5, fill=BOTH, expand=True)
 
@@ -880,6 +890,15 @@ def gui():
     lego_toolbar.update()
     lego_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
+
+    # Channel Event Plots
+    ch_events_canvas = FigureCanvasTkAgg(commonVars.ch_events_fig, ChannelEventsPage)
+    ch_events_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    ch_events_toolbar = NavigationToolbar2Tk(ch_events_canvas, ChannelEventsPage, pack_toolbar=False)
+    ch_events_toolbar.update()
+    ch_events_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+    canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas, ch_events_canvas]
 
     fig_window.withdraw()
 
