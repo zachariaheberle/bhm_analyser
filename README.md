@@ -12,8 +12,7 @@ This repo provides a set of tools to parse the self-trigger tool data, and produ
 ---
 
 ## Procedure
-Run final_analysis.py OR
-Follow analysis_template.ipynb step by step.
+Run final_analysis.py in a conda environment with the required modules listed below. By default, the program will look for uHTR data folders in a subdirectory of the script titled "data". Make sure to create and place any data there for the program to work.
 
 This framework requires the best estimate for the ADC, TDC cuts.  If the plots look incorrect, revisit the ADC & TDC cuts that are set. The TDC estimate needs to be within +/- 2.5ns of the peak
 - Timing of the Beam Halo Events could change for various reasons
@@ -26,20 +25,21 @@ The code needs special care with data that is acquired during specials scans. I 
 
 ### To-Do
 - Run level plots
-- Correct orbit time to UTC [Talk to OMS system]
+- Correct orbit time to UTC [Talk to OMS system] (Done)
 - Error Handling for channels with no data (Done)
 - Automate derivation of ADC Peak without best estimate
 - Automate TDC Window [TDC Peaks are automatically derived]
-- XML configuration generator
-- Hardcoded value of MN05 needs to be removed. General method to remove list of channels needs to be implemented.
+- XML configuration generator (Done in JSON, not XML)
+- Hardcoded value of MN05 needs to be removed. General method to remove list of channels needs to be implemented. (Done)
 ---
 
 
 ## Python Packages Required
 ```bash
-pandas                     1.4.0
-numpy                      1.21.5
-matplotlib                 3.5.1
-scienceplots               1.0.8
-scipy                      1.8.0
+pandas                     1.5.1
+numpy                      1.24.4
+matplotlib                 3.5.3
+scienceplots               2.0.1
+scipy                      1.9.1
+seaborn                    0.12.2
 ```
