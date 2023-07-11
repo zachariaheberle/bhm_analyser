@@ -10,7 +10,7 @@ import tools.commonVars as commonVars
 import pandas as pd
 from copy import deepcopy
 import traceback
-from paramiko import SSHClient, AutoAddPolicy
+#from paramiko import SSHClient, AutoAddPolicy
 import time
 
 """
@@ -44,74 +44,74 @@ def find_data():
     
     return data_folders, data_folders_names, data_folders_dict
 
-def get_start_time(username, password, run):
-    """
-    Uses a double ssh to get start time for rate plots through the OMS API,
-    must have access to lxplus and cmsusr. 
-    """
-    with SSHClient() as ssh: # lxplus connection
+# def get_start_time(username, password, run):
+#     """
+#     Uses a double ssh to get start time for rate plots through the OMS API,
+#     must have access to lxplus and cmsusr. 
+#     """
+#     with SSHClient() as ssh: # lxplus connection
 
-        try:
-            ssh.set_missing_host_key_policy(AutoAddPolicy())
-            ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
-            if commonVars.root:
-                commonVars.connection_label_var.set("Connecting to CMSUSR...")
-                commonVars.connection_progress["value"] = 20
-        except Exception as err:
-            raise type(err)("Something went wrong with connection to LXPLUS!", *err.args)
+#         try:
+#             ssh.set_missing_host_key_policy(AutoAddPolicy())
+#             ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
+#             if commonVars.root:
+#                 commonVars.connection_label_var.set("Connecting to CMSUSR...")
+#                 commonVars.connection_progress["value"] = 20
+#         except Exception as err:
+#             raise type(err)("Something went wrong with connection to LXPLUS!", *err.args)
             
-        try:
-            ssh_transport = ssh.get_transport()
-            ssh_channel = ssh_transport.open_channel("direct-tcpip", ("cmsusr.cern.ch", 22), ("lxplus.cern.ch", 22))
-        except Exception as err:
-            raise type(err)("Something went wrong with ssh tunnel between LXPLUS and CMS!", *err.args)
+#         try:
+#             ssh_transport = ssh.get_transport()
+#             ssh_channel = ssh_transport.open_channel("direct-tcpip", ("cmsusr.cern.ch", 22), ("lxplus.cern.ch", 22))
+#         except Exception as err:
+#             raise type(err)("Something went wrong with ssh tunnel between LXPLUS and CMS!", *err.args)
         
-        with SSHClient() as ssh2: # cmsusr connection
+#         with SSHClient() as ssh2: # cmsusr connection
             
-            try:
-                ssh2.set_missing_host_key_policy(AutoAddPolicy())
-                ssh2.connect("cmsusr.cern.ch", username=username, password=password, sock=ssh_channel) # ssh username@cmsusr.cern.ch from lxplus
-                if commonVars.root:
-                    commonVars.connection_label_var.set("Connection to CMSUSR OK!")
-                    commonVars.connection_progress["value"] = 40
-                    time.sleep(0.3) # Just so the user can see the message for a brief moment
-            except Exception as err:
-                raise type(err)("Something went wrong with connection to CMS from LXPLUS!", *err.args)
+#             try:
+#                 ssh2.set_missing_host_key_policy(AutoAddPolicy())
+#                 ssh2.connect("cmsusr.cern.ch", username=username, password=password, sock=ssh_channel) # ssh username@cmsusr.cern.ch from lxplus
+#                 if commonVars.root:
+#                     commonVars.connection_label_var.set("Connection to CMSUSR OK!")
+#                     commonVars.connection_progress["value"] = 40
+#                     time.sleep(0.3) # Just so the user can see the message for a brief moment
+#             except Exception as err:
+#                 raise type(err)("Something went wrong with connection to CMS from LXPLUS!", *err.args)
 
-            try:
-                if commonVars.root:
-                    commonVars.connection_label_var.set("Copying over files...")
-                    commonVars.connection_progress["value"] = 60
-                with ssh2.open_sftp() as sftp: # adding temporary directory to add script to
-                    try:
-                        sftp.chdir("bhm_tmp")
-                    except IOError:
-                        sftp.mkdir("bhm_tmp")
-                        sftp.chdir("bhm_tmp")
+#             try:
+#                 if commonVars.root:
+#                     commonVars.connection_label_var.set("Copying over files...")
+#                     commonVars.connection_progress["value"] = 60
+#                 with ssh2.open_sftp() as sftp: # adding temporary directory to add script to
+#                     try:
+#                         sftp.chdir("bhm_tmp")
+#                     except IOError:
+#                         sftp.mkdir("bhm_tmp")
+#                         sftp.chdir("bhm_tmp")
 
-                    sftp.put("./tools/get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
-            except Exception as err:
-                raise type(err)("Something went wrong with copying get_run_time.py to CMS!", *err.args)
+#                     sftp.put("./tools/get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
+#             except Exception as err:
+#                 raise type(err)("Something went wrong with copying get_run_time.py to CMS!", *err.args)
 
-            try:
-                if commonVars.root:
-                    commonVars.connection_label_var.set("Getting run time data...")
-                    commonVars.connection_progress["value"] = 80
-                stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
-                readout = stdout.read().decode()
-            except Exception as err:
-                raise type(err)("Something went wrong when running get_run_time.py!", *err.args)
-            try:
-                readout = int(readout)
-            except ValueError:
-                pass
+#             try:
+#                 if commonVars.root:
+#                     commonVars.connection_label_var.set("Getting run time data...")
+#                     commonVars.connection_progress["value"] = 80
+#                 stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
+#                 readout = stdout.read().decode()
+#             except Exception as err:
+#                 raise type(err)("Something went wrong when running get_run_time.py!", *err.args)
+#             try:
+#                 readout = int(readout)
+#             except ValueError:
+#                 pass
 
-    del stdin, stdout, stderr, ssh, ssh2, ssh_transport, ssh_channel # clean up
-    if commonVars.root:
-        commonVars.connection_label_var.set("Done!")
-        commonVars.connection_progress["value"] = 100
-        time.sleep(0.1) # Just so the user can see the message for but a moment
-    return readout
+#     del stdin, stdout, stderr, ssh, ssh2, ssh_transport, ssh_channel # clean up
+#     if commonVars.root:
+#         commonVars.connection_label_var.set("Done!")
+#         commonVars.connection_progress["value"] = 100
+#         time.sleep(0.1) # Just so the user can see the message for but a moment
+#     return readout
 
 def error_handler(err):
     """

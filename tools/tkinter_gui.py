@@ -211,7 +211,7 @@ def gui():
         """
         try:
             erase_all_figures()
-            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
+            user_consent = False#messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
             if user_consent:
                 start_time = user_pass_entry("CERN", run_cut)
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
