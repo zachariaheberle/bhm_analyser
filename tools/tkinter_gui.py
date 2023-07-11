@@ -5,6 +5,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter.filedialog import asksaveasfile, askopenfile
+from PIL import Image, ImageTk
 from threading import Thread
 import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
@@ -245,9 +246,15 @@ def gui():
 
     # Check for CMS icon file
     try:
-        root.iconbitmap("img/cms.ico")
-    except TclError:
-        messagebox.showinfo("Notice", "cms.ico was not found in the img subdirectory, using default icon...")
+        img_list = []
+        for size in [8, 16, 32, 64, 128, 256, 512]:
+            img = ImageTk.PhotoImage(Image.open(f"img/cms_logo/cms{size}.png"))
+            img_list.append(img)
+        root.wm_iconphoto(True, *img_list)
+    except FileNotFoundError:
+        messagebox.showinfo("Notice", "CMS icons were not found in the img subdirectory, using default icon...")
+    except:
+        messagebox.showinfo("Notice", "Something went wrong loading CMS icons, using default icon...")
 
     # Setting up global figures to attach plots to gui
     commonVars.adc_fig = Figure(figsize=(6,70), dpi=100)
