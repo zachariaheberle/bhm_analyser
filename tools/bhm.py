@@ -7,6 +7,7 @@ import tools.plotting as plotting
 import tools.dt_conv as dt_conv
 import tools.calibration as calib
 import tools.commonVars as commonVars
+from tools.profiler import Profiler
 
 
 
@@ -91,7 +92,10 @@ class bhm_analyser():
         self.ch_mapped= ch.T[0]*10 + ch.T[1] #Quick Channel Mapping
         pass
 
-    def removeNC(self):
+    def removeNC(self, profile=True):
+        if profile:
+            p = Profiler(name=f"uHTR{self.uHTR} removeNC", parent=commonVars.profilers["load_uHTR_data"])
+            p.start()
         '''
         remove non connected channels
         '''
@@ -113,10 +117,15 @@ class bhm_analyser():
             self.CMAP = hw_info.get_uHTR11_CMAP()
         else:
             print("Wrong Format for uHTR!!!")
+        if profile:
+            p.stop()
 
         #Remove TDC value of 62!!!
-    
-    def remove62(self):
+
+    def remove62(self, profile=True):
+        if profile:
+            p = Profiler(name=f"uHTR{self.uHTR} remove62", parent=commonVars.profilers["load_uHTR_data"])
+            p.start()
         '''
         remove if the TDC has a 62 flag
         '''
@@ -129,8 +138,13 @@ class bhm_analyser():
         self.orbit        = self.orbit[theCut]
         self.run          = self.run[theCut]
         self.peak_ampl    = self.peak_ampl[theCut]
+        if profile:
+            p.stop()
 
-    def remove25glich(self):
+    def remove25glich(self, profile=True):
+        if profile:
+            p = Profiler(name=f"uHTR{self.uHTR} remove25glitch", parent=commonVars.profilers["load_uHTR_data"])
+            p.start()
         """
         Removes all 25 tdc entries with 188 ampl peaks and also counts how many items were removed
         """
@@ -148,8 +162,13 @@ class bhm_analyser():
         self.peak_ampl    = self.peak_ampl[theCut]
 
         self.cut_124_0 = total_cuts
+        if profile:
+            p.stop()
 
-    def remove124amp0tdc(self):
+    def remove124amp0tdc(self, profile=True):
+        if profile:
+            p = Profiler(name=f"uHTR{self.uHTR} remove124amp0tdc", parent=commonVars.profilers["load_uHTR_data"])
+            p.start()
         """
         Removes all 0 tdc 124 ampl peak entries and also counts how many items were removed
         """
@@ -167,6 +186,8 @@ class bhm_analyser():
         self.peak_ampl    = self.peak_ampl[theCut]
 
         self.cut_25 = total_cuts
+        if profile:
+            p.stop()
 
     def clean_data(self):
         """
@@ -179,6 +200,8 @@ class bhm_analyser():
         self.remove124amp0tdc()
 
     def select_runs(self, run_cut, custom_range=False):
+        p = Profiler(name=f"{self.uHTR} select_runs", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         '''
         run_cut [inclusive] --> give the lower and upper bound of the runs you are interested in if range = true
         OR if fed an integer, it will choose that run only
@@ -203,9 +226,11 @@ class bhm_analyser():
         self.orbit        = self.orbit[theCut]
         self.run          = self.run[theCut]
         self.peak_ampl    = self.peak_ampl[theCut]
-
+        p.stop()
 
     def get_legoPlt(self):
+        p = Profiler(name=f"uHTR{self.uHTR} Lego Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         '''
         Lego Plot of peak ampl vs tdc
         '''
@@ -216,6 +241,9 @@ class bhm_analyser():
 
         f = plt.figure()
 
+        main_draw = Profiler(name="Main Draw", parent=commonVars.profilers[f"uHTR{commonVars.current_uHTR} Lego Plots"])
+        gui_draw = Profiler(name="GUI Draw", parent=commonVars.profilers[f"uHTR{commonVars.current_uHTR} Lego Plots"])
+        main_draw.start()
         ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
 
         # lego plot
@@ -227,8 +255,10 @@ class bhm_analyser():
         ax3d.set_xlim3d(left=0, right=50)
         ax3d.set_ylim3d(bottom=0, top=180)
         plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
+        main_draw.stop()
 
         if commonVars.root:
+            gui_draw.start()
             if self.uHTR == "4":
                 ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
             elif self.uHTR == "11":
@@ -240,16 +270,24 @@ class bhm_analyser():
             ax3d.set_zlabel("Events")
             ax3d.set_xlim3d(left=0, right=50)
             ax3d.set_ylim3d(bottom=0, top=180)
-
+            gui_draw.stop()
         plt.close()
+        p.stop()
 
     def saveADCplots(self,binx=None,binx_tick=None):
+        p = Profiler(name=f"uHTR{self.uHTR} ADC Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         if binx == None:
             binx = np.arange(120,180,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
         if binx_tick == None:    
             binx_tick = np.arange(120,180,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
         self.ADC_Cuts = {}
         for i, ch in enumerate(self.CMAP.keys()):
+            total_draw = Profiler(name=f"ADC {ch} Total Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} ADC Plots"])
+            main_draw = Profiler(name=f"ADC {ch} Main Draw", parent=commonVars.profilers[f"ADC {ch} Total Draw"])
+            gui_draw = Profiler(name=f"ADC {ch} GUI Draw", parent=commonVars.profilers[f"ADC {ch} Total Draw"])
+            total_draw.start()
+            main_draw.start()
             f,ax = plt.subplots()
             # print(ch)
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
@@ -280,8 +318,10 @@ class bhm_analyser():
             plt.xticks(binx_tick,rotation = 45)
             plt.xlabel("ADC [a.u]")
             plt.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
+            main_draw.stop()
 
             if commonVars.root:
+                gui_draw.start()
                 if self.uHTR == "4":
                     ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
                 elif self.uHTR == "11":
@@ -292,17 +332,27 @@ class bhm_analyser():
                 ax.set_xticks(binx_tick)
                 ax.set_xticklabels(labels=binx_tick, rotation=45)
                 ax.set_xlabel("ADC [a.u]")
+                gui_draw.stop()
+            total_draw.stop()
 
             plt.close()
             # if self.ADC_Cuts[ch] != calib.ADC_CUTS[ch]:
             #     print(f"For channel {ch} the left cut is at {self.ADC_Cuts[ch]} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
+        p.stop()
 
     def saveTDCplots(self,delay=10):
+        p = Profiler(name=f"uHTR{self.uHTR} TDC Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         '''
             TDC distance of the peak from 0; This can be used if there is a activation peak that shadows the BH peak
         '''
         self.TDC_Peaks = {}
         for i, ch in enumerate(self.CMAP.keys()):
+            total_draw = Profiler(name=f"TDC {ch} Total Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Plots"])
+            main_draw = Profiler(name=f"TDC {ch} Main Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
+            gui_draw = Profiler(name=f"TDC {ch} GUI Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
+            total_draw.start()
+            main_draw.start()
             f,ax = plt.subplots()
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
             counts,_,_ = plt.hist(x,bins=np.arange(-.5,50,1),histtype='step',color='r')
@@ -314,8 +364,10 @@ class bhm_analyser():
             self.TDC_Peaks[ch] = peak+delay
             plt.xlabel("TDC [a.u]")
             plt.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
+            main_draw.stop()
 
             if commonVars.root:
+                gui_draw.start()
                 if self.uHTR == "4":
                     ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
                 elif self.uHTR == "11":
@@ -324,10 +376,13 @@ class bhm_analyser():
                 plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
                 ax.axvline(peak+delay,color='k',linestyle='--')
                 ax.set_xlabel("TDC [a.u]")
+                gui_draw.stop()
+            total_draw.stop()
 
             plt.close()
             # if self.TDC_Peaks[ch] != calib.TDC_PEAKS[ch]:
             #     print(f"For channel {ch} the peak is at {peak} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
+        p.stop()
 
 
     def convert2pandas(self):
@@ -348,6 +403,8 @@ class bhm_analyser():
         pass
 
     def get_SR_BR_AR_CP(self):
+        p = Profiler(name=f"uHTR{self.uHTR} get_SR_BR_AR_CP", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         '''
         BR --> Bkg Region (Collisions & Activation)
         SR --> Signal Region i.e, BIB region
@@ -382,16 +439,21 @@ class bhm_analyser():
         self.BR = pd.concat(self.BR)
         self.CP = pd.concat(self.CP)
         self.AR = pd.concat(self.AR)
+        p.stop()
         pass
-
-
+        
     def plot_OccupancySRBR(self):
+        p = Profiler(name=f"uHTR{self.uHTR} Occupancy Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         '''
         plot occupancy histogram (Events in BX)
         Collision & Activation against  BIB
         '''
         # print(f"self.BR.bx: {self.BR.bx}")
         # print(f"self.SR.bx: {self.SR.bx}")
+        main_draw = Profiler(name="Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
+        gui_draw = Profiler(name="GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
+        main_draw.start()
         f, ax = plt.subplots()
         plt.hist(self.BR.bx,bins=np.arange(-0.5,3564,1),color='k',label = "Collision $\&$ Activation")
         plt.hist(self.SR.bx,bins=np.arange(-0.5,3564,1),color='r',label = "BIB")
@@ -402,8 +464,10 @@ class bhm_analyser():
         plt.ylabel('Events/1')
         plt.legend(loc='best',frameon=1)
         plt.savefig(f"{self.figure_folder}/occupancy_uHTR{self.uHTR}.png",dpi=300)
+        main_draw.stop()
 
         if commonVars.root:
+            gui_draw.start()
             if self.uHTR == "4":
                 ax = commonVars.occupancy_fig.add_subplot(121)
             elif self.uHTR == "11":
@@ -416,11 +480,16 @@ class bhm_analyser():
             ax.set_xlabel('BX ID')
             ax.set_ylabel('Events/1')
             ax.legend(loc='best',frameon=1)
+            gui_draw.stop()
 
         plt.close()
+        p.stop()
 
     #Data Quality Plots
+
     def tdc_stability(self):
+        p = Profiler(name=f"uHTR{self.uHTR} TDC Stability Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         '''
         Plots the stability, and calculates the MVP of the TDC
 
@@ -477,6 +546,9 @@ class bhm_analyser():
         # print(f"sr: {sr}")
         # print(f"t_df:\n{t_df}")
 
+        violin_main_draw = Profiler(name="Violin Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+        violin_gui_draw = Profiler(name="Violin GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+        violin_main_draw.start() 
         #Violin Plot
         f,ax = plt.subplots(figsize=(8,6))
         sns.violinplot(data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
@@ -487,8 +559,10 @@ class bhm_analyser():
         plt.xlabel("Channels",fontsize=30)
         plt.ylim(0,15)
         plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
+        violin_main_draw.stop()
 
         if commonVars.root:
+            violin_gui_draw.start()
             if self.uHTR == "4":
                 ax = commonVars.tdc_stability_fig.add_subplot(223)
             elif self.uHTR == "11":
@@ -501,11 +575,15 @@ class bhm_analyser():
             ax.set_ylabel("TDC [a.u]",fontsize=15)
             ax.set_xlabel("Channels",fontsize=15)
             ax.set_ylim(0,15)
+            violin_gui_draw.stop()
 
         plt.close()
 
 
         #MVP Vanilla Stability Plots
+        vanilla_main_draw = Profiler(name="Vanilla Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+        vanilla_gui_draw = Profiler(name="Vanilla GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+        vanilla_main_draw.start()
         f,ax = plt.subplots()
         ax.errorbar(channels, _mode,yerr=_std_dev
                     ,fmt='r.',ecolor='k',capsize=2
@@ -536,8 +614,10 @@ class bhm_analyser():
         plt.ylim(0,15)
         plt.legend(loc='upper right',frameon=True)
         plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
+        vanilla_main_draw.stop()
 
         if commonVars.root:
+            vanilla_gui_draw.start()
             if self.uHTR == "4":
                 ax = commonVars.tdc_stability_fig.add_subplot(221)
             elif self.uHTR == "11":
@@ -553,10 +633,14 @@ class bhm_analyser():
             ax.set_xlabel("Channels",fontsize=15)
             ax.set_ylim(0,15)
             ax.legend(loc='upper right',frameon=True)
+            vanilla_gui_draw.stop()
 
         plt.close()
+        p.stop()
 
     def plot_channel_events(self):
+        p = Profiler(name=f"uHTR{self.uHTR} Channel Event Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        p.start()
         """
         Checks the events per channel to ensure angular and HV consistency
         """
@@ -564,6 +648,9 @@ class bhm_analyser():
             print("df not found: Calling convert2pandas()")
             self.convert2pandas()
 
+        main_draw = Profiler(name="Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Channel Event Plots"])
+        gui_draw = Profiler(name="GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Channel Event Plots"])
+        main_draw.start()
         f, ax = plt.subplots()
         df = self.df
         channels = [ch for ch in self.CMAP.keys()]
@@ -576,8 +663,10 @@ class bhm_analyser():
         ax.set_xlabel("Channels", fontsize=15)
         ax.set_ylabel("Events/1", fontsize=15)
         plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
+        main_draw.stop()
 
         if commonVars.root:
+            gui_draw.start()
             if self.uHTR == "4":
                 ax = commonVars.ch_events_fig.add_subplot(121)
             elif self.uHTR == "11":
@@ -589,8 +678,10 @@ class bhm_analyser():
             ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
             ax.set_xlabel("Channels", fontsize=15)
             ax.set_ylabel("Events/1", fontsize=15)
+            gui_draw.stop()
             
         plt.close()
+        p.stop()
         
 
     def computeCorrection(self,alignment_target,currentConfig):
@@ -692,15 +783,17 @@ class bhm_analyser():
         print(f"print values for uHTR{self.uHTR}:\n{self.df}")
 
     def analyse(self, reAdjust=True, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False):
+        p = Profiler(name=f"uHTR{self.uHTR}", parent=commonVars.profilers["Main Analysis"])
+        p.start()
         '''
         Runs the steps in sequence
         Make sure you set the correct ADC Cuts & TDC Cuts in calib.ADC_CUTS & calib.TDC_PEAKS
         '''
         #cleaning up data
-        self.removeNC()
-        self.remove62()
-        self.remove25glich()
-        self.remove124amp0tdc()
+        self.removeNC(profile=False)
+        self.remove62(profile=False)
+        self.remove25glich(profile=False)
+        self.remove124amp0tdc(profile=False)
 
         # select runs if applicable
         if run_cut:
@@ -743,10 +836,13 @@ class bhm_analyser():
             detector_side='M'
 
         # combine all the plots into pdfs
+        image_magick = Profiler(name=f"uHTR{self.uHTR} ImageMagick", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+        image_magick.start()
         os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}F*.png  {self.figure_folder}/adc_{detector_side}F.pdf")
         os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
         os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
         os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
+        image_magick.stop()
 
         self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
         self.plot_OccupancySRBR()# plots the occupancy
@@ -756,6 +852,7 @@ class bhm_analyser():
             self.tdc_stability()
         else:
             print("Signal region is empty, ignoring tdc stability plots...")
+        p.stop()
 
 
         

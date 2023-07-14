@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.dates as mdates
 import tools.dt_conv as dt_conv
 import tools.commonVars as commonVars
+from tools.profiler import Profiler
 
 
 
@@ -50,6 +51,8 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     return ax  
 
 def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
+    p = Profiler(name="rate_plots", parent=commonVars.profilers["Main Analysis"])
+    p.start()
     '''
     After analysis step has been completed, and the plots look reasonable, you can get the rate plot
     uHTR4  --> BHM Analyser object for uHTR4 
@@ -216,3 +219,4 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
     # plt.yscale('log')
     # plt.savefig(f"{uHTR4.figure_folder}/rates.png",dpi=300)
     # plt.close()
+    p.stop()

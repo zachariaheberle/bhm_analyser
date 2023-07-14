@@ -21,6 +21,7 @@ import tools.plotting as plotting
 import tools.dt_conv as dt_conv
 from   tools.bhm import bhm_analyser
 import tools.calibration as calib
+from tools.profiler import Profiler
 from   scipy.signal import find_peaks as fp
 import tools.commonVars as commonVars
 

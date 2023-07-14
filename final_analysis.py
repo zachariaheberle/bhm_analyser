@@ -217,4 +217,6 @@ if __name__ == "__main__":
         (None, None, None, None),
         ('Save', 'Save the figure', 'filesave', 'save_figure'),
         )
+        with open(commonVars.DUMP_FILE, "w") as fp:
+            fp.write("") #clears the data dump file
         gui.gui()

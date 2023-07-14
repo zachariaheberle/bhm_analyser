@@ -16,13 +16,17 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import json
+from tools.profiler import Profiler
 
+DUMP_FILE = commonVars.DUMP_FILE
 
 def gui():
     """
     Responsible for the entirety of the GUI of the analysis program. Handles
     visuals and all user inputs.
     """
+    gui_startup = Profiler("GUI Startup Time")
+    gui_startup.start()
 
     loaded_runs = list(range(300)) # Placeholder variable
 
@@ -72,8 +76,10 @@ def gui():
                     child.configure(state="normal")
             else:
                 enable_frame(child)
-    
+
     def load_data():
+        p = Profiler("load_data")
+        p.start()
         """
         Begins the process of loading in the uHTR data, calls a seperate thread
         to avoid issue with tkinter mainloop
@@ -93,8 +99,11 @@ def gui():
         data_status_message.set("Loading uHTR Data, Please Wait...")
         loading_thread = Thread(target=load_data_thread, args=[data_folder_str])
         loading_thread.start()
+        p.stop()
     
     def load_data_thread(data_folder_str):
+        p = Profiler(name="uHTR Loader")
+        p.start()
         """
         Loads in data from the specified folder
         """
@@ -107,8 +116,10 @@ def gui():
         except FileNotFoundError:
             data_status_message.set(f"uHTR files not found in {data_folder_str}. Please ensure the data files are present.")
         
-        except:
+        except Exception as err:
+            analysis_helpers.error_handler(err)
             data_status_message.set("Something went wrong loading uHTR data!")
+            messagebox.showerror("Error", "Something went wrong loading uHTR data! Traceback information has been written to error.log")
         
         else:
             #print(f"unique runs: {list(set(uHTR4.run).symmetric_difference(set(uHTR11.run)))}")
@@ -124,10 +135,12 @@ def gui():
         finally:
             enable_frame(DataSelectionLabel)
             data_load_button.state(["!disabled"])
-
+            p.stop()
         return
 
     def update_runs(loaded_runs):
+        p = Profiler(name="update_runs", parent=commonVars.profilers["uHTR Loader"])
+        p.start()
         """
         Updates all widgets that display what runs are currently present in the data
         """
@@ -137,6 +150,7 @@ def gui():
             show_all_runs.insert("", END, values=run)
         individual_run_display_box["values"] = list(loaded_runs)
         custom_run_var.set(list(loaded_runs))
+        p.stop()
     
     def clear_selection(widget):
         if isinstance(widget, tk.Listbox):
@@ -146,6 +160,8 @@ def gui():
                 widget.selection_remove(sel)
     
     def do_analysis():
+        p = Profiler("do_analysis")
+        p.start()
         """
         Function responsible for triggering data analysis and plot production from tools
         """
@@ -205,8 +221,11 @@ def gui():
 
         analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib))
         analysis_thread.start()
+        p.stop()
 
     def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib):
+        p = Profiler("Analysis Thread")
+        p.start()
         """
         Data analysis thread, sets up folder and cuts and analyses the data
         """
@@ -230,6 +249,10 @@ def gui():
         
         finally:
             enable_frame(MainPage)
+            p.stop()
+            for profiler in commonVars.profilers.values():
+                if profiler.parent == None:
+                    profiler.dump(DUMP_FILE)
             return
 
 
@@ -737,10 +760,15 @@ def gui():
     #@@@@@@@@@@@@@@@ BEGIN FIGURE WINDOW @@@@@@@@@@@@@@@@@@@
 
     def draw_all():
+        p = Profiler(name="draw_all", parent=commonVars.profilers["Analysis Thread"])
+        p.start()
         for canvas in canvas_list:
             canvas.draw()
+        p.stop()
     
     def erase_all_figures():
+        p = Profiler(name="erase_all_figures", parent=commonVars.profilers["Analysis Thread"])
+        p.start()
         """
         Removes all drawn axes from figures if they exist. We use this so that if multiple
         data sets are analysed, then figures don't corrupt each other.
@@ -748,6 +776,7 @@ def gui():
         for fig in figure_list:
             for ax in fig.axes:
                 ax.remove()
+        p.stop()
     
     def _configure_canvas(event, interior, interior_id, canvas):
         """
@@ -1063,4 +1092,7 @@ def gui():
         return start_time.get()
         
     #user_pass_entry("CERN")
+
+    gui_startup.stop()
+    gui_startup.dump(DUMP_FILE)
     root.mainloop()

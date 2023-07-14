@@ -7,6 +7,7 @@ import tools.parser as parser
 import tools.calibration as calib
 import tools.plotting as plotting
 import tools.commonVars as commonVars
+from tools.profiler import Profiler
 import pandas as pd
 from copy import deepcopy
 import traceback
@@ -23,6 +24,7 @@ def find_folder_name(file_path):
     Seperates out the final folder name from its entire file path name
     """
     return file_path.split("/")[-1].split("\\")[-1] # Jank workaround for windows and linux support
+
 
 def find_unique_runs(uHTR4, uHTR11):
     """
@@ -136,9 +138,11 @@ def run_handler(runs):
                 fp.write("{:^8} ".format(run))
             else:
                 fp.write("{:^8}\n".format(run))
-        
 
+        
 def load_uHTR_data(data_folder_str):
+        p = Profiler(name="load_uHTR_data", parent=commonVars.profilers["uHTR Loader"])
+        p.start()
         """
         Loads in uHTR data from the specified folder path.
         """
@@ -184,10 +188,12 @@ def load_uHTR_data(data_folder_str):
         uHTR11.clean_data()
         
         loaded_runs = find_unique_runs(uHTR4, uHTR11)
-
+        p.stop()
         return uHTR4, uHTR11, loaded_runs
 
 def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None):
+    p = Profiler(name="Main Analysis", parent=commonVars.profilers["Analysis Thread"])
+    p.start()
     """
     Performs the data analysis given the current run selection and other plotting options
     """
@@ -216,13 +222,18 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
     _uHTR11 = deepcopy(uHTR11)
 
     if manual_calib:
+        commonVars.current_uHTR = 4
         _uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.current_uHTR = 11
         _uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
     else:
+        commonVars.current_uHTR = 4
         _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.current_uHTR = 11
         _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
 
     plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
 
     del _uHTR4 # removing temp variables
     del _uHTR11
+    p.stop()
