@@ -215,9 +215,8 @@ class bhm_analyser():
         # if you want to create your 3d axes in the current figure (plt.gcf()):
 
         f = plt.figure()
-        
-        ax3d = f.add_subplot(111, projection='3d', azim=50, elev=30, proj_type='persp')
-        #ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
+
+        ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
 
         # lego plot
         ax = plotting.lego(h, xbins, ybins, ax=ax3d)
@@ -716,7 +715,7 @@ class bhm_analyser():
         #plotting lego, ADC, and TDC plots
         if plot_lego:
             self.get_legoPlt()
-
+            
         if not reAdjust: self.saveADCplots() #for debugging
 
         self.saveTDCplots(delay=0) # this derives the MVP for the beam halo peaks
