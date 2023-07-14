@@ -5,7 +5,9 @@ Run this file as main to perform data analysis on BHM data.
 
 Note: BHM data MUST be kept in a subdirectory titled 'data'
 """
-
+from tools.profiler import Profiler
+p = Profiler("final_analysis.py Startup")
+p.start()
 from tools.libs import * # Importing all necessary libraries
 from tools.analysis_helpers import *
 import os
@@ -217,6 +219,8 @@ if __name__ == "__main__":
         (None, None, None, None),
         ('Save', 'Save the figure', 'filesave', 'save_figure'),
         )
+        p.stop()
         with open(commonVars.DUMP_FILE, "w") as fp:
             fp.write("") #clears the data dump file
+        p.dump(commonVars.DUMP_FILE)
         gui.gui()

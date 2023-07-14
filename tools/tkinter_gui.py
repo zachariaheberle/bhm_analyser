@@ -253,6 +253,7 @@ def gui():
             for profiler in commonVars.profilers.values():
                 if profiler.parent == None:
                     profiler.dump(DUMP_FILE)
+            print("TIME INFO DUMP SUCCESSFUL")
             return
 
 
