@@ -31,13 +31,12 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
       
     if ax==None:
         fig = plt.gcf() # get current axes
-#         ax = fig.add_subplot(111,projection='3d')
-        ax = Axes3D(fig, rect=None, azim=-60, elev=30, proj_type='persp')
-    # look for this key in the axes properies
-    # -> not-so-elegant check
-    
-    if ax.properties().get('xlim3d',None) == None :
-        print('Error, ax is not 3d')
+        ax = fig.add_subplot(111, azim=-60, elev=30, projection='3d')
+        #ax = Axes3D(fig, rect=None, azim=-60, elev=30, proj_type='persp')
+
+    # Check if ax is 3d
+    if ax.name != "3d":
+        print("Error, ax is not 3d")
         return None
     
     _xx, _yy = np.meshgrid(xbins[:-1], ybins[:-1],indexing='ij')
