@@ -36,7 +36,7 @@ class Profiler():
         self.start_output = datetime.now().isoformat(timespec="milliseconds", sep=" ") + ":" + " "*(self.level+1)*4 + f"Running {self.name}...\n"
         print(self.start_output, end="")
         with open(LOG_DUMP_FILE, "a") as fp:
-            fp.write(self.start_output + "\n")
+            fp.write(self.start_output)
         self.start_time = time.time()
     
     def stop(self):
@@ -46,7 +46,7 @@ class Profiler():
         self.stop_output = datetime.now().isoformat(timespec="milliseconds", sep=" ") + ":" + " "*(self.level+1)*4 + f"Completed {self.name}!\n"
         print(self.stop_output, end="")
         with open(LOG_DUMP_FILE, "a") as fp:
-            fp.write(self.stop_output + "\n")
+            fp.write(self.stop_output)
         self.total_time = self.stop_time - self.start_time
         with open(TIME_DUMP_FILE, "a") as fp:
             adjust = (self.l_adjust - self.level*4)
