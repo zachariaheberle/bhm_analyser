@@ -10,7 +10,8 @@ folder_name=""
 root = None
 
 # Where to put time information
-DUMP_FILE = "./time_info.txt"
+TIME_DUMP_FILE = "./time_info.txt"
+LOG_DUMP_FILE = "./log_info.txt"
 
 # Global tracker of all available profilers
 profilers = {}

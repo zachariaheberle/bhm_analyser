@@ -220,7 +220,9 @@ if __name__ == "__main__":
         ('Save', 'Save the figure', 'filesave', 'save_figure'),
         )
         p.stop()
-        with open(commonVars.DUMP_FILE, "w") as fp:
-            fp.write("") #clears the data dump file
-        p.dump(commonVars.DUMP_FILE)
+        with open(commonVars.TIME_DUMP_FILE, "w") as fp:
+            fp.write("") #clears the time data dump file
+        with open(commonVars.LOG_DUMP_FILE, "w") as fp:
+            fp.write("") #clear the log data dump file
+
         gui.gui()

@@ -18,7 +18,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import json
 from tools.profiler import Profiler
 
-DUMP_FILE = commonVars.DUMP_FILE
+TIME_DUMP_FILE = commonVars.TIME_DUMP_FILE
+LOG_DUMP_FILE = commonVars.LOG_DUMP_FILE
 
 def gui():
     """
@@ -29,6 +30,10 @@ def gui():
     gui_startup.start()
 
     loaded_runs = list(range(300)) # Placeholder variable
+
+    def window_loaded(event):
+        window_startup.stop()
+        root.unbind("<Visibility>")
 
     def change_run_display_box(display_box_id):
         """
@@ -250,10 +255,19 @@ def gui():
         finally:
             enable_frame(MainPage)
             p.stop()
+            time_output = ""
+            log_output = ""
             for profiler in commonVars.profilers.values():
                 if profiler.parent == None:
-                    profiler.dump(DUMP_FILE)
-            print("TIME INFO DUMP SUCCESSFUL")
+                    time_output += profiler._format_time_print()
+                    log_output += profiler._format_log_print()
+                    print(log_output)
+            with open(TIME_DUMP_FILE, "w") as fp:
+                fp.write(time_output)
+                print("TIME INFO DUMP SUCCESSFUL!")
+            with open(LOG_DUMP_FILE, "w") as fp:
+                fp.write(log_output)
+                print("LOG INFO DUMP SUCCESSFUL!")
             return
 
 
@@ -266,6 +280,7 @@ def gui():
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
+    root.bind("<Visibility>", window_loaded)
     commonVars.root = root # allows other scripts to access root
 
     # Check for CMS icon file
@@ -1095,5 +1110,6 @@ def gui():
     #user_pass_entry("CERN")
 
     gui_startup.stop()
-    gui_startup.dump(DUMP_FILE)
+    window_startup = Profiler("Window Startup")
+    window_startup.start()
     root.mainloop()
