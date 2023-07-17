@@ -13,6 +13,8 @@ from tools.analysis_helpers import *
 import os
 matplotlib.use('agg')
 from matplotlib import backend_bases
+import faulthandler
+import sys
 
 
 def nogui_analysis():
@@ -219,6 +221,7 @@ if __name__ == "__main__":
         (None, None, None, None),
         ('Save', 'Save the figure', 'filesave', 'save_figure'),
         )
+        faulthandler.enable(file=sys.stderr, all_threads=True)
         p.stop()
         with open(commonVars.TIME_DUMP_FILE, "w") as fp:
             fp.write("") #clears the time data dump file
