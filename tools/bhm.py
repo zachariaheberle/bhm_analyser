@@ -241,8 +241,8 @@ class bhm_analyser():
 
         f = plt.figure()
 
-        main_draw = Profiler(name="Main Draw", parent=commonVars.profilers[f"uHTR{commonVars.current_uHTR} Lego Plots"])
-        gui_draw = Profiler(name="GUI Draw", parent=commonVars.profilers[f"uHTR{commonVars.current_uHTR} Lego Plots"])
+        main_draw = Profiler(name="Lego Main Draw", parent=commonVars.profilers[f"uHTR{commonVars.current_uHTR} Lego Plots"])
+        gui_draw = Profiler(name="Lego GUI Draw", parent=commonVars.profilers[f"uHTR{commonVars.current_uHTR} Lego Plots"])
         main_draw.start()
         ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
 
@@ -451,8 +451,8 @@ class bhm_analyser():
         '''
         # print(f"self.BR.bx: {self.BR.bx}")
         # print(f"self.SR.bx: {self.SR.bx}")
-        main_draw = Profiler(name="Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
-        gui_draw = Profiler(name="GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
+        main_draw = Profiler(name="Occupancy Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
+        gui_draw = Profiler(name="Occupancy GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
         main_draw.start()
         f, ax = plt.subplots()
         plt.hist(self.BR.bx,bins=np.arange(-0.5,3564,1),color='k',label = "Collision $\&$ Activation")
@@ -648,8 +648,8 @@ class bhm_analyser():
             print("df not found: Calling convert2pandas()")
             self.convert2pandas()
 
-        main_draw = Profiler(name="Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Channel Event Plots"])
-        gui_draw = Profiler(name="GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Channel Event Plots"])
+        main_draw = Profiler(name="Ch Events Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Channel Event Plots"])
+        gui_draw = Profiler(name="Ch Events GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Channel Event Plots"])
         main_draw.start()
         f, ax = plt.subplots()
         df = self.df

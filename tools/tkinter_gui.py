@@ -261,7 +261,6 @@ def gui():
                 if profiler.parent == None:
                     time_output += profiler._format_time_print()
                     log_output += profiler._format_log_print()
-                    print(log_output)
             with open(TIME_DUMP_FILE, "w") as fp:
                 fp.write(time_output)
                 print("TIME INFO DUMP SUCCESSFUL!")
@@ -778,8 +777,11 @@ def gui():
     def draw_all():
         p = Profiler(name="draw_all", parent=commonVars.profilers["Analysis Thread"])
         p.start()
-        for canvas in canvas_list:
+        for canvas, name in zip(canvas_list, canvas_list_names):
+            p2 = Profiler(name=name, parent=commonVars.profilers["draw_all"])
+            p2.start()
             canvas.draw()
+            p2.stop()
         p.stop()
     
     def erase_all_figures():
@@ -951,6 +953,7 @@ def gui():
     ch_events_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
     canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas, ch_events_canvas]
+    canvas_list_names = ["adc_canvas", "tdc_canvas", "tdc_stability_canvas", "occupancy_canvas", "rate_canvas", "lego_canvas", "ch_events_canvas"]
 
     fig_window.withdraw()
 
