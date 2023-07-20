@@ -780,7 +780,7 @@ def gui():
         for canvas, name in zip(canvas_list, canvas_list_names):
             p2 = Profiler(name=name, parent=commonVars.profilers["draw_all"])
             p2.start()
-            canvas.draw()
+            canvas.draw_idle()
             p2.stop()
         p.stop()
     
