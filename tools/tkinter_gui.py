@@ -738,7 +738,7 @@ def gui():
 
     def draw_all():
         for canvas in canvas_list:
-            canvas.draw()
+            canvas.draw_idle()
     
     def erase_all_figures():
         """
