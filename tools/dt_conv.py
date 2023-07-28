@@ -23,3 +23,12 @@ def get_date_time(utc_code):
     tz_UTC = "UTC"
     t = tz_from_utc_ms_ts(utc_code,pytz.timezone(tz_UTC))
     return t
+
+def utc_to_string(utc_code):
+    """
+    Converts UTC time into string of format day month, year
+    """
+    print(utc_code)
+    t = get_date_time(utc_code)
+    return t.strftime("%d %B, %Y")
+

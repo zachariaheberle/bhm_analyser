@@ -105,6 +105,8 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
         ax.set_ylabel("Event Rate")
         ax.legend(loc=(1.1,0.8),frameon=1)
         ax.set_yscale('log')
+        if start_time != 0:
+            textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
         #ax2 = ax#.twinx()
         # x1 = np.asarray(x1)
@@ -135,6 +137,8 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
             ax.set_ylabel("Event Rate")
             ax.legend(loc=(1.1,0.8),frameon=1)
             ax.set_yscale('log')
+            if start_time != 0:
+                textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
 
         plt.close()
 
@@ -156,6 +160,8 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
         ax.set_ylabel("Event Rate")
         ax.legend(loc=(1.1,0.8),frameon=1)
         ax.set_yscale('log')
+        if start_time != 0:
+            textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
         # x3 = np.asarray(x3)
         # x4 = np.asarray(x4)
@@ -185,6 +191,8 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
             ax.set_ylabel("Event Rate")
             ax.legend(loc=(1.1,0.8),frameon=1)
             ax.set_yscale('log')
+            if start_time != 0:
+                textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
 
         plt.close()
 
