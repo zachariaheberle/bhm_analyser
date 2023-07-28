@@ -675,7 +675,7 @@ class bhm_analyser():
             plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
             plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
             ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
+            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=8)
             ax.set_xlabel("Channels", fontsize=15)
             ax.set_ylabel("Events/1", fontsize=15)
             gui_draw.stop()
