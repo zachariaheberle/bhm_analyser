@@ -13,6 +13,7 @@ from copy import deepcopy
 import traceback
 #from paramiko import SSHClient, AutoAddPolicy
 import time
+from datetime import datetime
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -121,8 +122,9 @@ def error_handler(err):
     that I will inevitably have to debug
     """
     with open("error.log", "a") as fp:
+        fp.write(f"[{datetime.now().isoformat(timespec='milliseconds', sep=' ')}]: ")
         fp.write(str(err).upper() + "\n")
-        fp.write(traceback.format_exc() + "\n\n")
+        fp.write(traceback.format_exc() + "\n\n\n")
 
 def run_handler(runs):
     """
