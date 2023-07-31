@@ -565,16 +565,23 @@ class bhm_analyser():
             self.convert2pandas()
 
         f, ax = plt.subplots()
-        df = self.df
+        SR = self.SR
+        BR = self.BR
         channels = [ch for ch in self.CMAP.keys()]
-        events = [len(df.query(f"ch_name=='{ch_name}'")) for ch_name in channels]
-        ax.bar(channels, events, width=0.9, align="center")
+        SR_events = [len(SR.query(f"ch_name=='{ch_name}'")) for ch_name in channels]
+        BR_events = [len(BR.query(f"ch_name=='{ch_name}'")) for ch_name in channels]
+        channel_vals = np.arange(len(channels))
+        width=0.9
+        ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
+        ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
         plotting.textbox(0.0,1.11,'Preliminary', 15, ax=ax)
         plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
         ax.set_xticks(np.arange(20))
         ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
         ax.set_xlabel("Channels", fontsize=15)
         ax.set_ylabel("Events/1", fontsize=15)
+        ax.set_yscale("log")
+        ax.legend(loc='upper right', frameon=True)
         plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
 
         if commonVars.root:
@@ -582,13 +589,16 @@ class bhm_analyser():
                 ax = commonVars.ch_events_fig.add_subplot(121)
             elif self.uHTR == "11":
                 ax = commonVars.ch_events_fig.add_subplot(122)
-            ax.bar(channels, events, width=0.9, align="center")
+            ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
+            ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
             plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
             plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
             ax.set_xticks(np.arange(20))
             ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=8)
             ax.set_xlabel("Channels", fontsize=15)
             ax.set_ylabel("Events/1", fontsize=15)
+            ax.set_yscale("log")
+            ax.legend(loc='upper right', frameon=True)
             
         plt.close()
         
