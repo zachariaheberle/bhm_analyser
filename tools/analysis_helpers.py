@@ -13,6 +13,7 @@ import traceback
 #from paramiko import SSHClient, AutoAddPolicy
 import time
 from datetime import datetime
+from tkinter import messagebox
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -141,53 +142,87 @@ def run_handler(runs):
         
 
 def load_uHTR_data(data_folder_str):
+    """
+    Loads in uHTR data from the specified folder path.
+    """
+    def check_conversion_consent():
         """
-        Loads in uHTR data from the specified folder path.
+        Checks if the user would like to convert their text files to binary files
         """
-        uHTR4_files = glob(f"./data/{data_folder_str}/uHTR4*.txt")
-        uHTR11_files = glob(f"./data/{data_folder_str}/uHTR11*.txt")
-
-        if len(uHTR4_files) == 0 or len(uHTR11_files) == 0: # if files aren't found, return and catch error in analysis
-            raise FileNotFoundError
-
-        uHTR4 = bhm_analyser(uHTR="4")
-
-        for i, file in enumerate(uHTR4_files): # this loads each uHTR file and will combine them into one object
-            if i == 0: uHTR4.load_data(file)
+        if commonVars.root:
+            return messagebox.askyesno("Data Conversion Check", 
+                "uHTR.txt files found. Would you like to convert them into a new format which loads significantly faster and uses less disk space? (Note, this will not erase the original files)")
+        else:
+            answer = "a"
+            while answer.lower() != "y" and answer.lower() != "n":
+                answer = input("uHTR.txt files found. Would you like to convert them into a new format which loads significantly faster and uses less disk space? (Note, this will not erase the original files) (y/n): ")
+            if answer.lower() == "y":
+                return True
             else:
-                ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_text_file(file)
+                return False
 
-                uHTR4.ch = np.append(uHTR4.ch, ch, axis=0)
-                uHTR4.ampl = np.append(uHTR4.ampl, ampl, axis=0)
-                uHTR4.tdc = np.append(uHTR4.tdc, tdc, axis=0)
-                uHTR4.tdc_2 = np.append(uHTR4.tdc_2, tdc_2, axis=0)
-                uHTR4.bx = np.append(uHTR4.bx, bx, axis=0)
-                uHTR4.orbit = np.append(uHTR4.orbit, orbit, axis=0)
-                uHTR4.run = np.append(uHTR4.run, run, axis=0)
-                uHTR4.ch_mapped = np.append(uHTR4.ch_mapped, ch.T[0]*10 + ch.T[1], axis=0)
+    def load_from_file(uHTR, data_type, files):
+        """
+        Handles the actual loading process and creating bhm_analyser objects
+        """
+        _uHTR = bhm_analyser(uHTR=f"{uHTR}")
 
-        uHTR11 = bhm_analyser(uHTR="11")
-        
-        for i, file in enumerate(uHTR11_files): # this loads each uHTR file and will combine them into one object
-            if i == 0: uHTR11.load_data(file)
+        for i, file in enumerate(files): # this loads each uHTR file and will combine them into one object
+            if i == 0: _uHTR.load_data(file, data_type)
             else:
-                ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_text_file(file)
+                if data_type == "binary":
+                    ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_bin_file(file)
 
-                uHTR11.ch = np.append(uHTR11.ch, ch, axis=0)
-                uHTR11.ampl = np.append(uHTR11.ampl, ampl, axis=0)
-                uHTR11.tdc = np.append(uHTR11.tdc, tdc, axis=0)
-                uHTR11.tdc_2 = np.append(uHTR11.tdc_2, tdc_2, axis=0)
-                uHTR11.bx = np.append(uHTR11.bx, bx, axis=0)
-                uHTR11.orbit = np.append(uHTR11.orbit, orbit, axis=0)
-                uHTR11.run = np.append(uHTR11.run, run, axis=0)
-                uHTR11.ch_mapped = np.append(uHTR11.ch_mapped, ch.T[0]*10 + ch.T[1], axis=0)
-        
-        uHTR4.clean_data()
-        uHTR11.clean_data()
-        
-        loaded_runs = find_unique_runs(uHTR4, uHTR11)
+                elif data_type == "text":
+                    ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_text_file(file)
 
-        return uHTR4, uHTR11, loaded_runs
+                _uHTR.ch = np.append(_uHTR.ch, ch, axis=0)
+                _uHTR.ampl = np.append(_uHTR.ampl, ampl, axis=0)
+                _uHTR.tdc = np.append(_uHTR.tdc, tdc, axis=0)
+                _uHTR.tdc_2 = np.append(_uHTR.tdc_2, tdc_2, axis=0)
+                _uHTR.bx = np.append(_uHTR.bx, bx, axis=0)
+                _uHTR.orbit = np.append(_uHTR.orbit, orbit, axis=0)
+                _uHTR.run = np.append(_uHTR.run, run, axis=0)
+                _uHTR.ch_mapped = np.append(_uHTR.ch_mapped, ch.T[0]*10 + ch.T[1], axis=0)
+        
+        return _uHTR
+
+
+    uHTR4_text_files = glob(f"./data/{data_folder_str}/uHTR4*.txt")
+    uHTR11_text_files = glob(f"./data/{data_folder_str}/uHTR11*.txt")
+
+    uHTR4_bin_files = glob(f"./data/{data_folder_str}/uHTR4*.uhtr")
+    uHTR11_bin_files = glob(f"./data/{data_folder_str}/uHTR11*.uhtr")
+
+    if len(uHTR4_bin_files) > 0 and len(uHTR11_bin_files) > 0: # Check if binary .uhtr files are present
+        uHTR4 = load_from_file(uHTR="4", data_type="binary", files=uHTR4_bin_files)
+        uHTR11 = load_from_file(uHTR="11", data_type="binary", files=uHTR11_bin_files)
+
+    elif len(uHTR4_text_files) > 0 and len(uHTR11_text_files) > 0: # Check if text files are present
+        consent = check_conversion_consent() # Check if user wants to convert to binary files
+
+        if consent:
+            for file in uHTR4_text_files + uHTR11_text_files:
+                parser.txt_to_bin(file)
+            
+            uHTR4_bin_files = glob(f"./data/{data_folder_str}/uHTR4*.uhtr")
+            uHTR11_bin_files = glob(f"./data/{data_folder_str}/uHTR11*.uhtr")
+
+            uHTR4 = load_from_file(uHTR="4", data_type="binary", files=uHTR4_bin_files)
+            uHTR11 = load_from_file(uHTR="11", data_type="binary", files=uHTR11_bin_files)
+
+        else:
+            uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
+            uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
+
+    else: # If no files are found, raise error
+        raise FileNotFoundError
+    
+    uHTR4.clean_data()
+    uHTR11.clean_data()
+    
+    loaded_runs = find_unique_runs(uHTR4, uHTR11)
+    return uHTR4, uHTR11, loaded_runs
 
 def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None):
     """

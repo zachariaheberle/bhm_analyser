@@ -76,11 +76,18 @@ class bhm_analyser():
         self.ch_mapped= ch.T[0]*10 + ch.T[1] #Quick Channel Mapping
 
 
-    def load_data(self,folder_name):
+    def load_data(self,folder_name, data_type):
         '''
         Parsing Data and loads it into memory
         '''
-        ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_text_file(f"{folder_name}")
+        if data_type == "binary":
+            ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_bin_file(f"{folder_name}")
+
+        elif data_type == "text":
+            ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_text_file(f"{folder_name}")
+        else:
+            raise ValueError(f"{data_type} is not a valid data type")
+
         self.ch = ch
         self.ampl = ampl
         self.tdc = tdc
