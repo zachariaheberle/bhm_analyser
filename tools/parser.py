@@ -39,7 +39,7 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                 fp.readline() # skips a line
     #           print(evt_no,bx_no,orbit_no,run_no) #debugging
             else:
-                if (evt_no > start_event): # start from event number 
+                if (evt_no >= start_event): # start from event number 
                     if ((evt_no > stop_event)&(stop_flag)): break # break if the events exceed stop event
     #                 data = convert_int(l[i]) #convert strings to integer list
                     try:
@@ -112,7 +112,7 @@ def parse_text_file_old(file_name, start_event=0, stop_event=-1): #expects a cer
             i = i+1 #skip one line
 #             print(evt_no,bx_no,orbit_no,run_no) #debugging
         else:
-            if (evt_no > start_event): # start from event number 
+            if (evt_no >= start_event): # start from event number 
                 if ((evt_no > stop_event)&(stop_flag)): break # break if the events exceed stop event
 #                 data = convert_int(l[i]) #convert strings to integer list
                 try:
