@@ -1,5 +1,8 @@
 # Written by Rohith Saradhy rohithsaradhy@gmail.com
 import numpy as np
+import multiprocessing as mp
+from multiprocessing.shared_memory import SharedMemory
+import time
 
 def convert_int(x,extract_pos=False): # splits a single string to int
 #     print(x.split(" "))
@@ -173,68 +176,185 @@ def txt_to_bin(file_name, start_event=0, stop_event=-1):
             buffer = bytes_to_read + bytes_to_write
             new_fp.write(buffer)
 
-
-def parse_bin_file(file_name, start_event=0, stop_event=float("inf")):
+def _parse_bin_sector(array_len, offsets):
     """
-    Parses through the custom .uhtr binary file format for the uHTR data.
-    See txt_to_bin() for documentation on the file structure of the
-    .uhtr file type.
-    Returns numpy arrays of TDC, TDC2, AMPL, CH, BX, ORBIT, and RUN
+    Parses through a section of the file data, used for multiprocessing,
+    do not call outside of parse_bin_file.
     """
-
+    start = time.time()
     def get_ch_list(ch_byte):
         """
         Get channel list values from the channel byte
         ch[0] is stored in the first 4 bits of ch_byte (big endian)
         ch[1] is store in the last 4 bits of ch_byte (big endian)
         """
-        return [(ch_byte & 0b11110000) >> 4, (ch_byte & 0b1111)]
+        return bytes([(ch_byte & 0b11110000) >> 4, (ch_byte & 0b1111)])
+    
+    TDC = SharedMemory(name="TDC")
+    TDC2 = SharedMemory(name="TDC2")
+    BX = SharedMemory(name="BX")
+    AMPL = SharedMemory(name="AMPL")
+    CH = SharedMemory(name="CH")
+    ORBIT = SharedMemory(name="ORBIT")
+    RUN_NO = SharedMemory(name="RUN_NO")
+    DATA = SharedMemory(name="DATA")
 
-    TDC = []  # Time of the pulse in the 40 MHz clock. 0 to 25 ns in steps of 0.5 ns.
-    TDC2 = [] # if the threhold was crossed prior to recording
-    BX = []   #  Bunch crossing value: ranges from zero to 3564.
-    AMPL = [] # Pulse height of signal.
-    CH = []   # channel number, stored as a list of two numbers, 20 different values
-    ORBIT = []  # Orbit counter which tells you when the event occured.
-    RUN_NO = [] # Number of the data collection run.
+    # Modifying data types to get correct byte order in np.frombuffer()
+    uint16 = np.dtype(np.uint16).newbyteorder(">")
+    uint32 = np.dtype(np.uint32).newbyteorder(">")
+    uint64 = np.dtype(np.uint64).newbyteorder(">")
+
+    data = DATA.buf
+
+    tdc = np.ndarray(shape=(array_len,), dtype=np.uint8, buffer=TDC.buf)
+    tdc2 = np.ndarray(shape=(array_len,), dtype=np.int8, buffer=TDC2.buf)
+    bx = np.ndarray(shape=(array_len,), dtype=np.uint16, buffer=BX.buf)
+    ampl = np.ndarray(shape=(array_len, 20), dtype=np.uint8, buffer=AMPL.buf)
+    ch = np.ndarray(shape=(array_len, 2), dtype=np.uint8, buffer=CH.buf)
+    orbit = np.ndarray(shape=(array_len,), dtype=np.uint64, buffer=ORBIT.buf)
+    run = np.ndarray(shape=(array_len,), dtype=np.uint32, buffer=RUN_NO.buf)
+    
+    for array_index, offset in offsets:
+        bytes_to_read = int.from_bytes(data[offset:offset+2], "big")
+        event_data = data[offset+2:offset+2+bytes_to_read]
+
+        evt_no = event_data[0:4]
+        bx_no = event_data[4:6]
+        orbit_no = event_data[6:14]
+        run_no = event_data[14:18]
+
+        for i, byte_pos in enumerate(range(18, bytes_to_read - 18, 23)):
+            ch_array = get_ch_list(event_data[byte_pos])
+            adc_array = event_data[byte_pos+1:byte_pos+21]
+            tdc_no = event_data[byte_pos+21]
+            tdc2_no = event_data[byte_pos+22]
+
+            tdc[array_index+i] = tdc_no
+            tdc2[array_index+i] = tdc2_no
+            bx[array_index+i] = np.frombuffer(bx_no, dtype=uint16)
+            ampl[array_index+i] = np.frombuffer(adc_array, dtype=np.uint8)
+            ch[array_index+i] = np.frombuffer(ch_array, dtype=np.uint8)
+            orbit[array_index+i] = np.frombuffer(orbit_no, dtype=uint64)
+            run[array_index+i] = np.frombuffer(run_no, dtype=uint32)
+
+    del event_data, data, evt_no, bx_no, orbit_no, run_no, ch_array, adc_array, tdc_no, tdc2_no # MUST explicitly delete any reference to 'data'
+    del tdc, tdc2, bx, ampl, ch, orbit, run # Deletion for brevity's sake
+    TDC.close() # Close access to shared memory
+    TDC2.close()
+    BX.close()
+    AMPL.close()
+    CH.close()
+    ORBIT.close()
+    RUN_NO.close()
+    DATA.close()
+    end = time.time()
+    print(f"Time it took to parse: {end-start:.3f}s")
+    return
+            
+
+
+def parse_bin_file(file_name):
+    """
+    Parses through the custom .uhtr binary file format for the uHTR data.
+    See txt_to_bin() for documentation on the file structure of the
+    .uhtr file type.
+    Returns numpy arrays of TDC, TDC2, AMPL, CH, BX, ORBIT, and RUN
+    """
+    
+    def get_offsets(bytes):
+        """
+        Returns a list of the byte position of all events in the file, 
+        the starting index of those events, and the total length of the
+        final tdc/ampl/orbit/etc... arrays
+        """
+        offset_list = [(0, 0)]
+        bytes_read = 0
+        array_length = 0
+        offset = None
+        while offset != 0:
+            offset = int.from_bytes(bytes[bytes_read:bytes_read+2], "big")
+            array_length += (offset - 18) // 23
+            offset_list.append((array_length, bytes_read + offset + 2))
+            bytes_read += offset + 2
+        return offset_list[:-1], array_length + 1
+    
+    def split_offsets(offset_list, num_chunks):
+        """
+        Splits the offset list into equally sized lengths, used
+        for multiprocessing
+        """
+        split_offset_list = []
+        last_offset = 0
+        chunk_size = len(offset_list) // num_chunks
+        for i in range(num_chunks):
+            if i != num_chunks-1:
+                split_offset_list.append(offset_list[last_offset:last_offset+chunk_size])
+                last_offset += chunk_size
+            else:
+                split_offset_list.append(offset_list[last_offset:])
+        return split_offset_list
+    
+    start = time.time()
     with open(file_name, "rb") as fp:
-        eof = False
-        while eof == False:
-            bytes_to_read = int.from_bytes(fp.read(2), "big")
-            if not bytes_to_read:
-                eof = True
-                break
-            event_data = fp.read(bytes_to_read)
+        file_data = fp.read()
+    end = time.time()
+    print(f"Time it took to read data: {(end-start)*1000:.0f}ms")
 
-            evt_no = int.from_bytes(event_data[0:4], 'big')
-            bx_no = int.from_bytes(event_data[4:6], 'big')
-            orbit_no = int.from_bytes(event_data[6:14], 'big')
-            run_no = int.from_bytes(event_data[14:18], 'big')
+    start = time.time()
 
-            if evt_no >= start_event:
-                if evt_no <= stop_event:
-                    for byte_pos in range(18, bytes_to_read - 18, 23):
-                        ch = get_ch_list(event_data[byte_pos])
-                        adc = np.asarray(bytearray(event_data[byte_pos+1:byte_pos+21]))
-                        tdc = event_data[byte_pos+21]
-                        tdc2 = event_data[byte_pos+22]
-                        tdc2 = -(tdc2 & 0b10000000) + (tdc2 & 0b01111111) # Convert unsigned int to a signed int
+    offset_list, array_len = get_offsets(file_data)
 
-                        CH.append(ch)
-                        AMPL.append(adc)
-                        TDC.append(tdc)
-                        TDC2.append(tdc2)
-                        BX.append(bx_no)
-                        ORBIT.append(orbit_no)
-                        RUN_NO.append(run_no)
-                else:
-                    eof = True
-                    break
+    TDC = SharedMemory("TDC", create=True, size=array_len)  # Time of the pulse in the 40 MHz clock. 0 to 25 ns in steps of 0.5 ns.
+    TDC2 = SharedMemory("TDC2", create=True, size=array_len) # if the threhold was crossed prior to recording
+    BX = SharedMemory("BX", create=True, size=array_len*2)   #  Bunch crossing value: ranges from zero to 3564.
+    AMPL = SharedMemory("AMPL", create=True, size=array_len*20) # Pulse height of signal.
+    CH = SharedMemory("CH", create=True, size=array_len*2)   # channel number, stored as a list of two numbers, 20 different values
+    ORBIT = SharedMemory("ORBIT", create=True, size=array_len*8)  # Orbit counter which tells you when the event occured.
+    RUN_NO = SharedMemory("RUN_NO", create=True, size=array_len*4) # Number of the data collection run.
+    DATA = SharedMemory("DATA", create=True, size=len(file_data)) # Shared data memory buffer
 
-        
+    data = DATA.buf # Set 'data' to the DATA buffer
+    data[0:] = file_data # Fill 'data' with binary from file
 
-    return np.asarray(CH, dtype=np.int32),np.asarray(AMPL, dtype=np.int32),np.asarray(TDC, dtype=np.int32),np.asarray(TDC2, dtype=np.int32),np.asarray(BX, dtype=np.int32),np.asarray(ORBIT, dtype=np.int64),np.asarray(RUN_NO, dtype=np.int32)
-    # Note: ORBIT must be kept as a int64, otherwise rate plots may fail from integer overflow
+    useable_cores = mp.cpu_count() - 2
+    offset_sectors = split_offsets(offset_list, useable_cores)
+    
+    end = time.time()
+    print(f"Time it took to setup: {(end-start):.3f}s")
+
+    start = time.time()
+    with mp.Pool(useable_cores) as pool:
+        pool.starmap(_parse_bin_sector, [(array_len, offset_sectors[i]) for i in range(len(offset_sectors))])
+    end = time.time()
+    print(f"Time it took to parse all sectors: {end-start:.3f}s")
+    
+    tdc = np.copy(np.ndarray(shape=(array_len,), dtype=np.uint8, buffer=TDC.buf)) # Make sure to copy from shared memory
+    tdc2 = np.copy(np.ndarray(shape=(array_len,), dtype=np.int8, buffer=TDC2.buf))
+    bx = np.copy(np.ndarray(shape=(array_len,), dtype=np.uint16, buffer=BX.buf))
+    ampl = np.copy(np.ndarray(shape=(array_len, 20), dtype=np.uint8, buffer=AMPL.buf))
+    ch = np.copy(np.ndarray(shape=(array_len, 2), dtype=np.uint8, buffer=CH.buf))
+    orbit = np.copy(np.ndarray(shape=(array_len,), dtype=np.uint64, buffer=ORBIT.buf))
+    run = np.copy(np.ndarray(shape=(array_len,), dtype=np.uint32, buffer=RUN_NO.buf))
+
+    del data
+    TDC.close() # Free and release shared memory blocks
+    TDC.unlink()
+    TDC2.close()
+    TDC2.unlink()
+    BX.close()
+    BX.unlink()
+    AMPL.close()
+    AMPL.unlink()
+    CH.close()
+    CH.unlink()
+    ORBIT.close()
+    ORBIT.unlink()
+    RUN_NO.close()
+    RUN_NO.unlink()
+    DATA.close()
+    DATA.unlink()
+
+    return ch, ampl, tdc, tdc2, bx, orbit, run
 
     
 
