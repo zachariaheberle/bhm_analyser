@@ -168,9 +168,10 @@ def txt_to_bin(file_name, start_event=0, stop_event=-1):
                     print (f"Failed for evt:{evt_no} ",line[:-1])
 
         # Make sure to write last event once we hit EOF, since (if "----") event is not guaranteed to be True
-        bytes_to_read = len(bytes_to_write).to_bytes(2, "big")
-        buffer = bytes_to_read + bytes_to_write
-        new_fp.write(buffer)
+        if len(bytes_to_write) >= 41:
+            bytes_to_read = len(bytes_to_write).to_bytes(2, "big")
+            buffer = bytes_to_read + bytes_to_write
+            new_fp.write(buffer)
 
 
 def parse_bin_file(file_name, start_event=0, stop_event=float("inf")):
