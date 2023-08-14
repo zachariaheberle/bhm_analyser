@@ -222,14 +222,14 @@ def parse_bin_file(file_name):
     uint32 = np.dtype(np.uint32).newbyteorder(">")
     uint64 = np.dtype(np.uint64).newbyteorder(">")
     
-    #evt = np.ndarray(shape=(array_len,), dtype=np.uint32,    buffer=file_data[offset[1]:offset[2]])
+    #evt = np.ndarray(shape=(array_len,), dtype=np.uint32,    buffer=file_data[offset[0]:offset[1]])
     tdc = np.ndarray(shape=(array_len,), dtype=np.uint8,     buffer=file_data[offset[1]:offset[2]])
     tdc2 = np.ndarray(shape=(array_len,), dtype=np.int8,     buffer=file_data[offset[2]:offset[3]])
-    bx = np.ndarray(shape=(array_len,), dtype=uint16,     buffer=file_data[offset[3]:offset[4]])
+    bx = np.ndarray(shape=(array_len,), dtype=uint16,        buffer=file_data[offset[3]:offset[4]])
     ampl = np.ndarray(shape=(array_len, 20), dtype=np.uint8, buffer=file_data[offset[4]:offset[5]])
     ch = np.ndarray(shape=(array_len, 2), dtype=np.uint8,    buffer=file_data[offset[5]:offset[6]])
-    orbit = np.ndarray(shape=(array_len,), dtype=uint64,  buffer=file_data[offset[6]:offset[7]])
-    run = np.ndarray(shape=(array_len,), dtype=uint32,    buffer=file_data[offset[7]:offset[8]])
+    orbit = np.ndarray(shape=(array_len,), dtype=uint64,     buffer=file_data[offset[6]:offset[7]])
+    run = np.ndarray(shape=(array_len,), dtype=uint32,       buffer=file_data[offset[7]:offset[8]])
 
     return ch, ampl, tdc, tdc2, bx, orbit, run
 
