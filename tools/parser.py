@@ -196,40 +196,51 @@ def parse_bin_file(file_name):
     .uhtr file type.
     Returns numpy arrays of TDC, TDC2, AMPL, CH, BX, ORBIT, and RUN
     """
-    
-    def get_offsets(data_bytes):
+    def v1():
         """
-        Returns a list of the byte position of the start of all
-        arrays in the file
-        [4, 1, 1, 2, 20, 1, 8, 4] represents the order and byte length
-        of an individual element in their respective arrays
+        Parses version 1 of the .uhtr file format
         """
-        offset_list = [5]
-        bytes_read = 5
-        array_len = int.from_bytes(data_bytes[1:5], "big")
-        for byte_len in [4, 1, 1, 2, 20, 2, 8, 4]: # byte lengths of each array, order matters
-            offset_list.append(bytes_read + byte_len * array_len)
-            bytes_read += byte_len * array_len
-        return offset_list, array_len
-            
+        def get_offsets(data_bytes):
+            """
+            Returns a list of the byte position of the start of all
+            arrays in the file
+            [4, 1, 1, 2, 20, 2, 8, 4] represents the order and byte length
+            of an individual element in their respective arrays
+            """
+            offset_list = [5]
+            bytes_read = 5
+            array_len = int.from_bytes(data_bytes[1:5], "big")
+            for byte_len in [4, 1, 1, 2, 20, 2, 8, 4]: # byte lengths of each array, order matters
+                offset_list.append(bytes_read + byte_len * array_len)
+                bytes_read += byte_len * array_len
+            return offset_list, array_len
+        
+        offset, array_len = get_offsets(file_data)
+
+        uint16 = np.dtype(np.uint16).newbyteorder(">") # Force byte order for multi-byte values
+        uint32 = np.dtype(np.uint32).newbyteorder(">")
+        uint64 = np.dtype(np.uint64).newbyteorder(">")
+        
+        #evt = np.ndarray(shape=(array_len,), dtype=np.uint32,    buffer=file_data[offset[0]:offset[1]])
+        tdc = np.ndarray(shape=(array_len,), dtype=np.uint8,     buffer=file_data[offset[1]:offset[2]])
+        tdc2 = np.ndarray(shape=(array_len,), dtype=np.int8,     buffer=file_data[offset[2]:offset[3]])
+        bx = np.ndarray(shape=(array_len,), dtype=uint16,        buffer=file_data[offset[3]:offset[4]])
+        ampl = np.ndarray(shape=(array_len, 20), dtype=np.uint8, buffer=file_data[offset[4]:offset[5]])
+        ch = np.ndarray(shape=(array_len, 2), dtype=np.uint8,    buffer=file_data[offset[5]:offset[6]])
+        orbit = np.ndarray(shape=(array_len,), dtype=uint64,     buffer=file_data[offset[6]:offset[7]])
+        run = np.ndarray(shape=(array_len,), dtype=uint32,       buffer=file_data[offset[7]:offset[8]])
+
+        return ch, ampl, tdc, tdc2, bx, orbit, run
 
     with open(file_name, "rb") as fp:
         file_data = fp.read()
-
-    offset, array_len = get_offsets(file_data)
-
-    uint16 = np.dtype(np.uint16).newbyteorder(">") # Force byte order for multi-byte values
-    uint32 = np.dtype(np.uint32).newbyteorder(">")
-    uint64 = np.dtype(np.uint64).newbyteorder(">")
     
-    #evt = np.ndarray(shape=(array_len,), dtype=np.uint32,    buffer=file_data[offset[0]:offset[1]])
-    tdc = np.ndarray(shape=(array_len,), dtype=np.uint8,     buffer=file_data[offset[1]:offset[2]])
-    tdc2 = np.ndarray(shape=(array_len,), dtype=np.int8,     buffer=file_data[offset[2]:offset[3]])
-    bx = np.ndarray(shape=(array_len,), dtype=uint16,        buffer=file_data[offset[3]:offset[4]])
-    ampl = np.ndarray(shape=(array_len, 20), dtype=np.uint8, buffer=file_data[offset[4]:offset[5]])
-    ch = np.ndarray(shape=(array_len, 2), dtype=np.uint8,    buffer=file_data[offset[5]:offset[6]])
-    orbit = np.ndarray(shape=(array_len,), dtype=uint64,     buffer=file_data[offset[6]:offset[7]])
-    run = np.ndarray(shape=(array_len,), dtype=uint32,       buffer=file_data[offset[7]:offset[8]])
+    version = file_data[0]
+
+    if version == 1:
+        ch, ampl, tdc, tdc2, bx, orbit, run = v1()
+    else:
+        raise ValueError(f"Version number {version} does not exist.")
 
     return ch, ampl, tdc, tdc2, bx, orbit, run
 
