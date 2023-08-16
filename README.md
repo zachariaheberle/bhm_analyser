@@ -12,11 +12,21 @@ This repo provides a set of tools to parse the self-trigger tool data, and produ
 ---
 
 ## Procedure
-Run final_analysis.py in a conda environment with the required modules listed below. By default, the program will look for uHTR data folders in a subdirectory of the script titled "data". Make sure to create and place any data there for the program to work.
+Run final_analysis.py with the required modules listed below. Note, if you run in a conda environment, text may not render properly. By default, the program will look for uHTR data folders in a subdirectory of the script titled "data". Make sure to create and place any data there for the program to work.
 
 This framework requires the best estimate for the ADC, TDC cuts.  If the plots look incorrect, revisit the ADC & TDC cuts that are set. The TDC estimate needs to be within +/- 2.5ns of the peak
 - Timing of the Beam Halo Events could change for various reasons
 - If HV bias for the PMTs were optimized, one needs to rederive the ADC Thresholds
+
+### Ssh Setup
+When the program attempts to grab information about when a particular run happened, it will try to grab info from the OMS API. If it fails to connect from your local machine, the program will ssh (from terminal) into your CMS User account instead and contact the API from there. To ensure this works, you must have your ssh config setup with 'cmsusr' as the hostname for your cmsusr account. You can do this by pasting the following into your ssh config file and filling in your username:
+```bash
+Host cmsusr
+        HostName cmsusr.cern.ch
+        User (username)
+        #ProxyCommand ssh -W %h:%p (username)@lxplus.cern.ch
+```
+You may or may not need a proxy command to connect to connect to cmsusr. If so, you can use an ssh connection to lxplus as a proxy by uncommenting the ProxyCommand line and filling in your username.
 
 ---
 ## Status

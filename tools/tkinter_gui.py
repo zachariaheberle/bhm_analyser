@@ -11,6 +11,7 @@ import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
 import tools.hw_info as hw_info
 import tools.calibration as calib
+import subprocess
 import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -212,16 +213,22 @@ def gui():
         """
         try:
             erase_all_figures()
-            user_consent = False#messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. Are you are OK with entering in your credentials? Otherwise run time data will not be used")
+            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
             if user_consent:
-                start_time = user_pass_entry("CERN", run_cut)
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
+                start_time = get_run_info(run_cut)
+                if start_time:
+                    analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
+                else:
+                    raise KeyboardInterrupt
             else:
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, manual_calib=manual_calib)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
             fig_window.deiconify()
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
+
+        except KeyboardInterrupt:
+            data_status_message.set(f"Currently Loaded Data Folder: {loaded_data_folder.get()}")
 
         except Exception as err:
             data_status_message.set("Something went wrong with plotting and analysis!")
@@ -231,6 +238,51 @@ def gui():
         finally:
             enable_frame(MainPage)
             return
+        
+    def get_run_info(run_cut):
+        """
+        Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
+        """
+        def get_min_run(run_cut):
+            """
+            Finds the minimum run value from the currently selected run values
+            """
+            loaded_runs = [int(val) for val in individual_run_display_box["values"]]
+            if run_cut == None:
+                min_run = min(loaded_runs)
+            elif isinstance(run_cut, int):
+                min_run = run_cut
+            else:
+                min_run = min(run_cut)
+            return min_run
+        
+        run = get_min_run(run_cut)
+
+        try:
+            from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
+            from urllib.error import URLError
+            return query_run(run)[0]
+        
+        except URLError:
+            cmd = f"ssh cmsusr \"/nfshome0/lumipro/brilconda3/bin/python3 - \" < ./tools/get_run_time.py {run}"
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            stdout, stderr = process.communicate()
+
+            #print("Done!")
+            print(stdout, stderr)
+
+            if "Connection closed by remote host" in stderr.decode():
+                return None
+            elif "ssh: Could not resolve hostname" in stderr.decode():
+                messagebox.showerror("Hostname Error", 
+                f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
+            
+            try:
+                stdout = int(stdout)   
+            except ValueError:
+                raise Exception(stdout)
+                
+            return stdout
 
 
     #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
@@ -909,158 +961,4 @@ def gui():
 
     fig_window.withdraw()
 
-
-
-
-#@@@@@@@@@@@@@@@@@@ USER/PASS ENTRY WINDOW @@@@@@@@@@@@@@@@@@@@@@@@
-
-    def user_pass_entry(username_type, run_cut):
-        """
-        Creates a popup window to allow users to input a username and password
-        """
-        def get_run_info(event=None):
-            """
-            Grabs the username and password from the entry box and grabs the run time data from OMS
-            and launches a thread to get run time info.
-            """
-            toggle_input("disabled")
-            _username = username.get()
-            _password = password.get()
-            run_info_thread = Thread(target=get_run_info_thread, args=[_username, _password])
-            run_info_thread.start()
-            
-        def get_run_info_thread(_username, _password):
-            """
-            Connects to CMS through an ssh tunnel through LXPLUS in order to grab run time info from OMS.
-            """
-            destroy = False
-            if _username == "" or _password == "":
-                messagebox.showinfo("Info", f"Please enter your {username_type} username and password")
-                toggle_input("!disabled")
-            else:
-                run = get_min_run(run_cut)
-                try:
-                    readout = analysis_helpers.get_start_time(_username, _password, run)
-                    if isinstance(readout, int):
-                        start_time.set(readout)
-                        destroy = True
-                    else:
-                        messagebox.showwarning("Warning", f"{readout} Defaulting to start time of zero.")
-                        start_time.set(0)
-                        destroy = True
-                except Exception as err:
-                    if "Authentication failed." in err.args:
-                        messagebox.showwarning("Invalid Credentials", "Invalid username and/or password.")
-                        toggle_input("!disabled")
-                    else:
-                        messagebox.showwarning("Warning", f"{err.args[0]} Defaulting to start time of zero. Errors have been written to error.log")
-                        analysis_helpers.error_handler(err)
-                        start_time.set(0)
-                        destroy = True
-
-            if destroy:
-                entry_window.destroy()
-            return
-        
-        def ignore_user_pass():
-            entry_window.destroy()
-        
-        def get_min_run(run_cut):
-            if run_cut == None:
-                min_run = min(loaded_runs)
-            elif isinstance(run_cut, int):
-                min_run = run_cut
-            else:
-                min_run = min(run_cut)
-            return min_run
-        
-        def toggle_input(state):
-            if state == "!disabled":
-                entry_window.bind("<Return>", lambda event : get_run_info(event))
-                enable_frame(EntryPage)
-                raise_frame(EntryPage)
-            elif state == "disabled":
-                entry_window.unbind("<Return>")
-                disable_frame(EntryPage)
-                raise_frame(ProgressPage)
-            entry_window.lift()
-
-        # Creating the entry window
-        entry_window = tk.Toplevel(root)
-        entry_window.geometry("400x175")
-        entry_window.resizable(False, False)
-        entry_window.title("Please Enter Your Credentials")
-        entry_window.columnconfigure(0, weight=1)
-        entry_window.rowconfigure(0, weight=1)
-        entry_window.bind("<Return>", lambda event : get_run_info(event))
-
-
-
-        #@@@@@@@@@@@@@@@@@@@@@ BASE FRAME @@@@@@@@@@@@@@@@@@@@@@@
-
-        EntryPage = tk.Frame(entry_window)
-        EntryPage.grid(row=0, column=0, sticky=NSEW)
-        EntryPage.grid_rowconfigure(0, weight=1)
-        EntryPage.grid_rowconfigure(1, weight=1)
-        EntryPage.grid_columnconfigure(0, weight=1, uniform="entry")
-        EntryPage.grid_columnconfigure(1, weight=2, uniform="entry")
-
-        # Username Label
-        user_label = ttk.Label(EntryPage, text=f"{username_type} Username:")
-
-        # Password Label
-        pass_label = ttk.Label(EntryPage, text="Password:")
-
-        # Username Entry
-        username = StringVar(entry_window)
-        user_entry = ttk.Entry(EntryPage, textvariable=username, font=default_font)
-
-        # Password Entry
-        password = StringVar(entry_window)
-        pass_entry = ttk.Entry(EntryPage, textvariable=password, show="*", font=default_font)
-
-        # Enter Button
-        user_pass_button = ttk.Button(EntryPage, text="Enter", command=get_run_info)
-
-        # Cancel Button
-        user_pass_cancel = ttk.Button(EntryPage, text="Cancel", command=ignore_user_pass)
-
-        # Packing everything into the frame
-        user_label.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=E)
-        pass_label.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=E)
-        user_entry.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
-        pass_entry.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
-        user_pass_button.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
-        user_pass_cancel.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
-
-        #@@@@@@@@@@@@@@@@@@@@@@@ PROGRESS BAR FRAME @@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-        ProgressPage = tk.Frame(entry_window)
-        ProgressPage.grid(row=0, column=0, sticky=NSEW)
-
-        # Connection Progress Bar
-        connection_progress = ttk.Progressbar(ProgressPage, orient="horizontal", mode="determinate")
-        commonVars.connection_progress = connection_progress # Allow progress to be set from analysis_helpers.get_start_time()
-
-        # Progress Bar Label
-        connection_label_var = StringVar()
-        connection_label_var.set("Connecting to LXPLUS...")
-        commonVars.connection_label_var = connection_label_var # Allow progress to be set from analysis_helpers.get_start_time()
-        connection_label = ttk.Label(ProgressPage, textvariable=connection_label_var)
-
-        # Cancel Button
-        progress_cancel = ttk.Button(ProgressPage, text="Cancel", command=ignore_user_pass)
-
-        # Packing everything into the frame
-        connection_progress.place(x=200, y=45, width=390, height=30, anchor=CENTER)
-        connection_label.place(x=200, y=82, anchor=CENTER)
-        progress_cancel.pack(side=BOTTOM, anchor=S, ipadx=5, ipady=5, padx=5, pady=5)
-
-
-        raise_frame(EntryPage)
-        start_time = IntVar()
-        root.wait_window(entry_window)
-        return start_time.get()
-        
-    #user_pass_entry("CERN")
     root.mainloop()

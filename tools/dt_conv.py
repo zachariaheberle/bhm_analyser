@@ -28,7 +28,6 @@ def utc_to_string(utc_code):
     """
     Converts UTC time into string of format day month, year
     """
-    print(utc_code)
     t = get_date_time(utc_code)
     return t.strftime("%d %B, %Y")
 
