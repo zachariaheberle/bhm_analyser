@@ -248,6 +248,17 @@ def gui():
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, manual_calib=manual_calib)
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
+
+            if not plot_lego: # Hides optional plots if not selected
+                FigurePage.hide(LegoPage)
+            else:
+                FigurePage.select(LegoPage)
+            if not plot_ch_events:
+                FigurePage.hide(ChannelEventsPage)
+            else:
+                FigurePage.select(ChannelEventsPage)
+
+            FigurePage.select(ADCPage)
             fig_window.deiconify()
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
 
