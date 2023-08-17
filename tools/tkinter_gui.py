@@ -1020,4 +1020,7 @@ def gui():
 
     fig_window.withdraw()
 
+    gui_startup.stop()
+    window_startup = Profiler("Window Startup")
+    window_startup.start()
     root.mainloop()
