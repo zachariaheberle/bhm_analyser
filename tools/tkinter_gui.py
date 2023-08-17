@@ -237,7 +237,7 @@ def gui():
         """
         try:
             erase_all_figures()
-            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
+            user_consent = False#messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
             if user_consent:
                 start_time = get_run_info(run_cut)
                 if start_time:
@@ -312,7 +312,7 @@ def gui():
             return query_run(run)[0]
         
         except URLError:
-            cmd = f"ssh cmsusr \"/nfshome0/lumipro/brilconda3/bin/python3 - \" < ./tools/get_run_time.py {run}"
+            cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             stdout, stderr = process.communicate()
 
