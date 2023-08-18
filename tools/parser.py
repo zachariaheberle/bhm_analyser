@@ -96,15 +96,16 @@ def txt_to_bin(file_name):
         ch -> 16 bits / 2 bytes
             One byte for each value in ch
         ampl -> 20*8 bits / 20 bytes
-        tdc -> 16 bits / 2 bytes
-            tdc[0:8] -> measured tdc value
-            tdc[8:16] -> tdc2 value (signed)
-                example: tdc = [5] -> b'00000101 11111111'
-                example 2: tdc = [52, 62] -> b'00110100 00111110'
+        tdc -> 8 bits / 1 byte
+        tdc_2 -> 8 bits / 1 byte
+            tdc_2 values are SIGNED
+            example: tdc = [5] -> b'11111111' (tdc_2 = -1 if tdc line length = 1)
+            example 2: tdc = [52, 62] -> b'00111110'
 
     How values are formatted:
-        [version number][total number of events][evt_no array][bx_no array][orbit_no array]
-        [run_no array][ch array][ampl array][tdc array] -> all arrays are stored sequentially
+    
+        [version number][total number of events][evt_no array][tdc array][tdc_2 array][bx_no array]
+        [ampl array][ch array][orbit_no array][run_no array] -> all arrays are stored sequentially
         right next to each other, as they have the same length.
     """
 
