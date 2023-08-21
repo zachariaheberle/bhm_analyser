@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import json
+import numpy as np
+from urllib.error import URLError
 
 
 def gui():
@@ -268,19 +270,26 @@ def gui():
             return min_run
         
         run = get_min_run(run_cut)
+        add_to_cache = False
 
         try:
+            run_times = np.loadtxt("run_times.cache", dtype=np.uint32, delimiter=",") # Check if info exists in a local cache
+            if not any(run_times==run):
+                raise FileNotFoundError
+            else:
+                run_time_ms = run_times[run_times.T[0]==run][0][1]
+            
+        except FileNotFoundError:
+            add_to_cache = True
             from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
-            from urllib.error import URLError
-            return query_run(run)[0]
+            run_time_ms = query_run(run)[0]
         
         except URLError:
             cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             stdout, stderr = process.communicate()
 
-            #print("Done!")
-            print(stdout, stderr)
+            print("Done!")
 
             if "Connection closed by remote host" in stderr.decode():
                 return None
@@ -293,8 +302,13 @@ def gui():
             except ValueError:
                 raise Exception(stdout)
                 
-            return stdout
+            run_time_ms = stdout
 
+        if add_to_cache:
+            with open("run_times.cache", "a") as fp:
+                fp.write(f"{run},{run_time_ms}\n")
+
+        return run_time_ms
 
     #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
 
