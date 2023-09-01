@@ -35,11 +35,17 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                 evt_stat = list(filter(None, line.split(" ")))
                 #print(evt_stat) #debugging
                 # collect evt information
-                evt_no = int(evt_stat[3][:-1])
-                bx_no = int(evt_stat[5][:-1])
-                orbit_no = int(evt_stat[7][:-1])
-                run_no = int(evt_stat[9])
-                fp.readline() # skips a line
+                try:
+                    evt_no = int(evt_stat[3][:-1])
+                    bx_no = int(evt_stat[5][:-1])
+                    orbit_no = int(evt_stat[7][:-1])
+                    run_no = int(evt_stat[9])
+                    fp.readline() # skips a line
+                except IndexError:
+                    if fp.readline() == "":
+                        continue
+                    else:
+                        print(f"Failed to parse {line} in {file_name}")
     #           print(evt_no,bx_no,orbit_no,run_no) #debugging
             else:
                 if (evt_no >= start_event): # start from event number 
@@ -129,11 +135,17 @@ def txt_to_bin(file_name):
                 evt_stat = list(filter(None, line.split(" ")))
                 #print(evt_stat) #debugging
                 # collect evt information
-                evt_bytes = (int(evt_stat[3][:-1])).to_bytes(4, "big")
-                bx_bytes = (int(evt_stat[5][:-1])).to_bytes(2, "big")
-                orbit_bytes = (int(evt_stat[7][:-1])).to_bytes(8, "big")
-                run_bytes = (int(evt_stat[9])).to_bytes(4, "big")
-                fp.readline() # skips a line
+                try:
+                    evt_bytes = (int(evt_stat[3][:-1])).to_bytes(4, "big")
+                    bx_bytes = (int(evt_stat[5][:-1])).to_bytes(2, "big")
+                    orbit_bytes = (int(evt_stat[7][:-1])).to_bytes(8, "big")
+                    run_bytes = (int(evt_stat[9])).to_bytes(4, "big")
+                    fp.readline() # skips a line
+                except IndexError:
+                    if fp.readline() == "":
+                        continue
+                    else:
+                        print(f"Failed to parse {line} in {file_name}")
     #           print(evt_no,bx_no,orbit_no,run_no) #debugging
             else:
                 try:
