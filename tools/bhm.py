@@ -285,9 +285,9 @@ class bhm_analyser():
     def saveADCplots(self,binx=None,binx_tick=None):
         p = Profiler(name=f"uHTR{self.uHTR} ADC Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
         p.start()
-        if binx == None:
+        if binx is None:
             binx = np.arange(120,180,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
-        if binx_tick == None:    
+        if binx_tick is None:    
             binx_tick = np.arange(120,180,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
         self.ADC_Cuts = {}
         for i, ch in enumerate(self.CMAP.keys()):
@@ -318,12 +318,15 @@ class bhm_analyser():
 
             plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
             # the following lines are place holders
-            plt.axvline(vals[left_bound] - 0.5, color="magenta", linestyle="--")
+            #plt.axvline(vals[left_bound] - 0.5, color="magenta", linestyle="--")
             #plt.axvline(vals[right_bound] + 1.5, color="magenta", linestyle="--")
-            plt.axvline(vals[peak_index] + 0.5, color="k", linestyle="--")
+            #plt.axvline(vals[peak_index] + 0.5, color="k", linestyle="--")
             # end placeholders
             plt.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-            plt.xticks(binx_tick,rotation = 45)
+            if min(binx) < 120:
+                plt.xticks(binx_tick,rotation = 45, fontsize=5)
+            else:
+                plt.xticks(binx_tick,rotation = 45)
             plt.xlabel("ADC [a.u]")
             plt.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
             main_draw.stop()
@@ -826,8 +829,11 @@ class bhm_analyser():
         #plotting lego, ADC, and TDC plots
         if plot_lego:
             self.get_legoPlt()
-            
-        if not reAdjust: self.saveADCplots() #for debugging
+    
+        if not reAdjust: 
+            adc_binx = np.arange(min(120, min(calib.ADC_CUTS.values())), 181, 1)
+            adc_binx_tick = np.arange(min(120, min(calib.ADC_CUTS.values())//5*5), 181, 5)
+            self.saveADCplots(binx=adc_binx, binx_tick=adc_binx_tick)
 
         self.saveTDCplots(delay=0) # this derives the MVP for the beam halo peaks
         #Readjusting the TDC Peaks to specific values # Run after saveTDCplots()
