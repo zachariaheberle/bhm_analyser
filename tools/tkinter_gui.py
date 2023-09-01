@@ -20,6 +20,7 @@ import json
 from tools.profiler import Profiler
 import numpy as np
 from urllib.error import URLError
+import pandas
 
 TIME_DUMP_FILE = commonVars.TIME_DUMP_FILE
 LOG_DUMP_FILE = commonVars.LOG_DUMP_FILE
@@ -239,15 +240,11 @@ def gui():
         """
         try:
             erase_all_figures()
-            user_consent = False#messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
-            if user_consent:
-                start_time = get_run_info(run_cut)
-                if start_time:
-                    analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
-                else:
-                    raise KeyboardInterrupt
+            start_time = get_run_info(run_cut)
+            if start_time is not None:
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
             else:
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, manual_calib=manual_calib)
+                raise KeyboardInterrupt
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
             draw_all()
 
@@ -310,36 +307,36 @@ def gui():
         add_to_cache = False
 
         try:
-            run_times = np.loadtxt("run_times.cache", dtype=np.uint32, delimiter=",") # Check if info exists in a local cache
-            if not any(run_times==run):
+            run_times = np.loadtxt("run_times.cache", dtype=np.uint64, delimiter=",") # Check if info exists in a local cache
+            if not np.any(run_times.T[0]==run):
                 raise FileNotFoundError
             else:
                 run_time_ms = run_times[run_times.T[0]==run][0][1]
             
         except FileNotFoundError:
             add_to_cache = True
-            from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
-            run_time_ms = query_run(run)[0]
-        
-        except URLError:
-            cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            stdout, stderr = process.communicate()
-
-            print("Done!")
-
-            if "Connection closed by remote host" in stderr.decode():
-                return None
-            elif "ssh: Could not resolve hostname" in stderr.decode():
-                messagebox.showerror("Hostname Error", 
-                f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
-            
+            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
+            if not user_consent:
+                return 0
             try:
-                stdout = int(stdout)   
-            except ValueError:
-                raise Exception(stdout)
-                
-            run_time_ms = stdout
+                from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
+                run_time_ms = int(pandas.Timestamp(query_run(run)[0]).replace().timestamp()*1e3)
+        
+            except URLError:
+                cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                stdout, stderr = process.communicate()
+
+                if "Connection closed by remote host" in stderr.decode():
+                    return None
+                elif "ssh: Could not resolve hostname" in stderr.decode():
+                    messagebox.showerror("Hostname Error", 
+                    f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
+            
+                try:
+                    run_time_ms = int(pandas.Timestamp(stdout.decode()).replace().timestamp()*1e3)
+                except ValueError:
+                    raise Exception(stdout)
 
         if add_to_cache:
             with open("run_times.cache", "a") as fp:
