@@ -20,6 +20,7 @@ import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
 import os
+import time
 
 class bhm_analyser():
     __version__ ="0.1"
@@ -256,54 +257,98 @@ class bhm_analyser():
         if binx_tick is None:    
             binx_tick = np.arange(120,180,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
         self.ADC_Cuts = {}
+
+        f, ax = plt.subplots()        
+        #time_list = []
         for i, ch in enumerate(self.CMAP.keys()):
-            f,ax = plt.subplots()
-            # print(ch)
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
-            counts, vals, _ = plt.hist(x,bins=binx+0.5) 
-            peak_index = np.argmax(counts)
-            area_ratio = 0
-            left_bound = right_bound = peak_index
-            total_counts = sum(counts)
-            while area_ratio < .68 and len(x) != 0:
-                if left_bound > 0:
-                    left_bound -= 1
-                if right_bound < len(counts):
-                    right_bound += 1
-                area_ratio = sum(counts[left_bound:right_bound + 1]) / total_counts # + 1 on right bound because of the way slicing works
-
-            if int(total_counts) == 0:
-                self.ADC_Cuts[ch] = 120 # if channel is empty, we don't want this to break, set cut to 120 (lowest value on ADC graphs)
+            if i == 0:
+                #start = time.time()
+                line = ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
+                if min(binx) < 120:
+                    ax.set_xticks(binx_tick)
+                    ax.set_xticklabels(labels=binx_tick, rotation=45, fontsize=5)
+                else:
+                    ax.set_xticks(binx_tick)
+                    ax.set_xticklabels(labels=binx_tick, rotation=45)
+                ax.set_xlabel("ADC [a.u]")
+                text_obj = plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
+                counts, bins, polygon = ax.hist(x,bins=binx+0.5, histtype="stepfilled")
+                if max(counts) > 0:
+                    ax.set_ylim(top=max(counts)/.95)
+                else:
+                    ax.set_ylim(top=1)
             else:
-                self.ADC_Cuts[ch] = int(vals[left_bound])
+                """
+                It is *ever* so slightly faster (about 30-40ms faster per render on my machine) to change only the things we need to
+                (textbox, ylimits, histogram) on each iteration of the loop
+                """
+                #start = time.time()
+                hist, bin_edges = np.histogram(x, bins=binx)
+                verticies = []
+                for j in range(len(hist)): # Generates the verticies of the new histogram polygon
+                    if j == 0:
+                        verticies.append((bin_edges[0]+0.5, 0))
+                        verticies.append((bin_edges[0]+0.5, hist[1]))
+                    elif j == len(hist) - 1:
+                        verticies.append((bin_edges[j]+0.5, hist[j]))
+                        verticies.append((bin_edges[j+1]+0.5, hist[j]))
+                        verticies.append((bin_edges[j+1]+0.5, 0))
+                        verticies.append((bin_edges[0]+0.5, 0))
+                    else:
+                        verticies.append((bin_edges[j]+0.5, hist[j]))
+                        verticies.append((bin_edges[j]+0.5, hist[j+1]))
+                polygon[0].set_xy(verticies)
+                line.set_xdata([calib.ADC_CUTS[ch]]*2)
+                text_obj.set_text(f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
+                if max(hist) > 0:
+                    ax.set_ylim(top=max(hist)/.95)
+                else:
+                    ax.set_ylim(top=1)
 
-            plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
+            # peak_index = np.argmax(counts)
+            # area_ratio = 0
+            # left_bound = right_bound = peak_index
+            # total_counts = sum(counts)
+            # while area_ratio < .68 and len(x) != 0:
+            #     if left_bound > 0:
+            #         left_bound -= 1
+            #     if right_bound < len(counts):
+            #         right_bound += 1
+            #     area_ratio = sum(counts[left_bound:right_bound + 1]) / total_counts # + 1 on right bound because of the way slicing works
+
+            # if int(total_counts) == 0:
+            #     self.ADC_Cuts[ch] = 120 # if channel is empty, we don't want this to break, set cut to 120 (lowest value on ADC graphs)
+            # else:
+            #     self.ADC_Cuts[ch] = int(vals[left_bound])
+
             # the following lines are place holders
             #plt.axvline(vals[left_bound] - 0.5, color="magenta", linestyle="--")
             #plt.axvline(vals[right_bound] + 1.5, color="magenta", linestyle="--")
             #plt.axvline(vals[peak_index] + 0.5, color="k", linestyle="--")
             # end placeholders
-            plt.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-            if min(binx) < 120:
-                plt.xticks(binx_tick,rotation = 45, fontsize=5)
-            else:
-                plt.xticks(binx_tick,rotation = 45)
-            plt.xlabel("ADC [a.u]")
-            plt.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
+
+            f.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
+
+            #end = time.time()
+            #time_list.append((end-start)*1000)
+            #print(f"Render time: {(end-start)*1000:.3f}ms")
 
             if commonVars.root:
                 if self.uHTR == "4":
-                    ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
+                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
                 elif self.uHTR == "11":
-                    ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
-                ax.hist(x,bins=binx+0.5)
-                plotting.textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}", size=15, ax=ax)
-                ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-                ax.set_xticks(binx_tick)
-                ax.set_xticklabels(labels=binx_tick, rotation=45)
-                ax.set_xlabel("ADC [a.u]")
+                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
+                gui_ax.hist(x,bins=binx+0.5, histtype="stepfilled")
+                plotting.textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}", size=15, ax=gui_ax)
+                gui_ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
+                gui_ax.set_xticks(binx_tick)
+                gui_ax.set_xticklabels(labels=binx_tick, rotation=45)
+                gui_ax.set_xlabel("ADC [a.u]")
 
-            plt.close()
+        plt.close()
+        #print(f"Initial Render time: {time_list[0]:.3f}ms")
+        #print(f"Avg Extra Render time: {np.mean(time_list[1:]):.3f}ms")
             # if self.ADC_Cuts[ch] != calib.ADC_CUTS[ch]:
             #     print(f"For channel {ch} the left cut is at {self.ADC_Cuts[ch]} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
 

@@ -10,15 +10,16 @@ import tools.commonVars as commonVars
 
 def textbox(x,y,text,size=14,frameon=False, ax=None):
     if ax == None:
-        plt.gca().text(x, y, text, transform=plt.gca().transAxes, fontsize=size,
+        text_obj = plt.gca().text(x, y, text, transform=plt.gca().transAxes, fontsize=size,
             verticalalignment='top'
     #          , bbox=dict(facecolor='white', alpha=0.5)
             )
-        return
-    ax.text(x, y, text, transform=ax.transAxes, fontsize=size,
-            verticalalignment='top'
-    #          , bbox=dict(facecolor='white', alpha=0.5)
-            )
+    else:
+        text_obj = ax.text(x, y, text, transform=ax.transAxes, fontsize=size,
+                verticalalignment='top'
+        #          , bbox=dict(facecolor='white', alpha=0.5)
+                )
+    return text_obj
 
 
 from mpl_toolkits.mplot3d.axes3d import Axes3D
