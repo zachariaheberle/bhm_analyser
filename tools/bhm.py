@@ -403,35 +403,78 @@ class bhm_analyser():
             TDC distance of the peak from 0; This can be used if there is a activation peak that shadows the BH peak
         '''
         self.TDC_Peaks = {}
+            
+        f,ax = plt.subplots()
         for i, ch in enumerate(self.CMAP.keys()):
             total_draw = Profiler(name=f"TDC {ch} Total Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Plots"])
             main_draw = Profiler(name=f"TDC {ch} Main Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
             gui_draw = Profiler(name=f"TDC {ch} GUI Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
             total_draw.start()
             main_draw.start()
-            f,ax = plt.subplots()
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
-            counts,_,_ = plt.hist(x,bins=np.arange(-.5,50,1),histtype='step',color='r')
-            plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15)
-            plotting.textbox(0.0,1.11,'Preliminary',15)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15)
-            peak = np.argmax(counts[delay:])
-            plt.axvline(peak+delay,color='k',linestyle='--')
+            binx = np.arange(-.5,50,1)
+            if i == 0:
+                # start = time.time()
+                text_obj = plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
+                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+                ax.set_xlabel("TDC [a.u]")
+                counts, bins, polygon = ax.hist(x,bins=binx,histtype='step',color='r')
+                peak = np.argmax(counts[delay:])
+                line = ax.axvline(peak+delay,color='k',linestyle='--')
+                if max(counts) > 0:
+                    ax.set_ylim(top=max(counts)/.95)
+                else:
+                    ax.set_ylim(top=1)
+            else:
+                """
+                It is *ever* so slightly faster (about 50-100ms faster per render on my machine) to change only the things we need to
+                (textboxes, ylimits, histogram) on each iteration of the loop
+                """
+                # start = time.time()
+                hist, bin_edges = np.histogram(x, bins=binx)
+                verticies = []
+                for j in range(len(hist)): # Generates the verticies of the new histogram polygon
+                    if j == 0:
+                        verticies.append((bin_edges[0], 0))
+                        verticies.append((bin_edges[0], hist[1]))
+                    elif j == len(hist) - 1:
+                        verticies.append((bin_edges[j], hist[j]))
+                        verticies.append((bin_edges[j+1], hist[j]))
+                        verticies.append((bin_edges[j+1], 0))
+                        verticies.append((bin_edges[0], 0))
+                    else:
+                        verticies.append((bin_edges[j], hist[j]))
+                        verticies.append((bin_edges[j], hist[j+1]))
+                polygon[0].set_xy(verticies)
+                peak = np.argmax(hist[delay:])
+                line.set_xdata([peak+delay-1]*2)
+                text_obj.set_text(f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}')
+                if max(hist) > 0:
+                    ax.set_ylim(top=max(hist)/.95)
+                else:
+                    ax.set_ylim(top=1)
+            
             self.TDC_Peaks[ch] = peak+delay
-            plt.xlabel("TDC [a.u]")
-            plt.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
+
+            f.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
             main_draw.stop()
+            # end = time.time()
+            # if i == 0:
+            #     print(f"Initial {(end-start)*1000:.3f}ms")
+            # else:
+            #     print(f"Extra render {(end-start)*1000:.3f}ms")
 
             if commonVars.root:
                 gui_draw.start()
                 if self.uHTR == "4":
-                    ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
+                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
                 elif self.uHTR == "11":
-                    ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
-                ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
-                plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
-                ax.axvline(peak+delay,color='k',linestyle='--')
-                ax.set_xlabel("TDC [a.u]")
+                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
+                gui_ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
+                plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=gui_ax)
+                gui_ax.axvline(peak+delay,color='k',linestyle='--')
+                gui_ax.set_xlabel("TDC [a.u]")
                 gui_draw.stop()
             total_draw.stop()
 
