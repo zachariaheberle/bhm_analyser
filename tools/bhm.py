@@ -36,7 +36,13 @@ class bhm_analyser():
         self.figure_folder = "./figures"
 
         self.adc_plt_tdc_width = 1
-        pass
+
+        if self.uHTR=="4":
+            self.CMAP = hw_info.get_uHTR4_CMAP()
+        elif self.uHTR=="11":
+            self.CMAP = hw_info.get_uHTR11_CMAP()
+        else:
+            raise ValueError("Wrong Format for uHTR!!!")
 
     def create_figure_folder(self,folder=None):
         '''
@@ -108,24 +114,22 @@ class bhm_analyser():
         '''
         remove non connected channels
         '''
+        start = time.time()
         #removing non_connected_channels
-        for i in hw_info.not_connected_channels:
-            theCut  = (self.ch_mapped != i)
-            self.bx = self.bx[theCut]
-            self.ampl   = self.ampl[theCut]
-            self.tdc    = self.tdc[theCut]
-            self.tdc_2  = self.tdc_2[theCut]
-            self.ch_mapped    = self.ch_mapped[theCut]
-            self.orbit  = self.orbit[theCut]
-            self.run    = self.run[theCut]
+        for i, ch in enumerate(hw_info.not_connected_channels): # Create singular truth array 
+            if i == 0:
+                theCut = self.ch_mapped != ch
+            else:
+                theCut = theCut & (self.ch_mapped != ch)
+        self.bx = self.bx[theCut]
+        self.ampl   = self.ampl[theCut]
+        self.tdc    = self.tdc[theCut]
+        self.tdc_2  = self.tdc_2[theCut]
+        self.ch_mapped    = self.ch_mapped[theCut]
+        self.orbit  = self.orbit[theCut]
+        self.run    = self.run[theCut]
         self.peak_ampl = self.ampl.max(axis=1)
 
-        if self.uHTR=="4":
-            self.CMAP = hw_info.get_uHTR4_CMAP()
-        elif self.uHTR=="11":
-            self.CMAP = hw_info.get_uHTR11_CMAP()
-        else:
-            print("Wrong Format for uHTR!!!")
         if profile:
             p.stop()
 
