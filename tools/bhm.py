@@ -450,8 +450,7 @@ class bhm_analyser():
         self.df['ch']           =self.ch_mapped
 
         self.inverted_CMAP = {v: k for k, v in self.CMAP.items()}
-        self.df['ch_name']      = [self.inverted_CMAP[x] for x in self.ch_mapped ]
-
+        self.df["ch_name"] = self.df["ch"].map(self.inverted_CMAP)
 
         self.df['orbit']        =self.orbit
         self.df['run']          =self.run
@@ -471,32 +470,35 @@ class bhm_analyser():
 
         self.convert2pandas()
 
-        #Not the most optimum way, but works just fine...
-        self.SR = []
-        self.BR = []
-        self.CP = []
-        self.AR = []
+        # Much more optimal
+        SR = []
+        BR = []
+        CP = []
+        AR = []
         
         #width of the TDC window
         tdc_window = 1 # +/- 1
-        col_prod = "(tdc > 28) & (tdc < 34) & (peak_ampl > 80) & (peak_ampl < 140)"
+        #col_prod = "(tdc > 28) & (tdc < 34) & (peak_ampl > 80) & (peak_ampl < 140)"
 
         for ch in self.CMAP.keys():
             ch_num = self.CMAP[ch]
-            sr = self.df.query(f"(ch=={ch_num})& (tdc >= {calib.TDC_PEAKS[ch]-tdc_window})&(tdc <= {calib.TDC_PEAKS[ch]+tdc_window}) &(peak_ampl >= {calib.ADC_CUTS[ch]})")
-            br = self.df.query(f"(ch=={ch_num})&((tdc < {calib.TDC_PEAKS[ch]-tdc_window})|(tdc > {calib.TDC_PEAKS[ch]+tdc_window}))&(peak_ampl < {calib.ADC_CUTS[ch]})")
-            cp = self.df.query(f"(ch=={ch_num}) & ({col_prod})")
-            ar = self.df.query(f"(ch=={ch_num})&((tdc < {calib.TDC_PEAKS[ch]-tdc_window})|(tdc > {calib.TDC_PEAKS[ch]+tdc_window}))&(peak_ampl < {calib.ADC_CUTS[ch]}) & ~({col_prod})")
-            self.SR.append(sr)
-            self.BR.append(br)
-            self.CP.append(cp)
-            self.AR.append(ar)
-        self.SR = pd.concat(self.SR)
-        self.BR = pd.concat(self.BR)
-        self.CP = pd.concat(self.CP)
-        self.AR = pd.concat(self.AR)
+            ch_df = self.df[self.df["ch"].values==ch_num]
+            
+            sr = ch_df[(ch_df["tdc"].values >= calib.TDC_PEAKS[ch]-tdc_window) & (ch_df["tdc"].values <= calib.TDC_PEAKS[ch]+tdc_window) & (ch_df["peak_ampl"] >= calib.ADC_CUTS[ch])]
+            br = ch_df[((ch_df["tdc"].values < calib.TDC_PEAKS[ch]-tdc_window) | (ch_df["tdc"].values > calib.TDC_PEAKS[ch]+tdc_window)) & (ch_df["peak_ampl"] < calib.ADC_CUTS[ch])]
+            cp = ch_df[(ch_df["tdc"].values > 28) & (ch_df["tdc"].values < 34) & (ch_df["peak_ampl"].values > 80) & (ch_df["peak_ampl"].values < 140)]
+            ar = br[~((br["tdc"].values > 28) & (br["tdc"].values < 34) & (br["peak_ampl"].values > 80) & (br["peak_ampl"].values < 140))]
+
+            SR.append(sr)
+            BR.append(br)
+            CP.append(cp)
+            AR.append(ar)
+
+        self.SR = pd.concat(SR)
+        self.BR = pd.concat(BR)
+        self.CP = pd.concat(CP)
+        self.AR = pd.concat(AR)
         p.stop()
-        pass
         
     def plot_OccupancySRBR(self):
         p = Profiler(name=f"uHTR{self.uHTR} Occupancy Plots", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
