@@ -16,6 +16,7 @@ import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.patches import Polygon
 import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
@@ -662,20 +663,48 @@ class bhm_analyser():
         """
         Checks the events per channel to ensure angular and HV consistency
         """
+        
         if "df" not in self.__dict__.keys():
-            print("df not found: Calling convert2pandas()")
-            self.convert2pandas()
+            print("df not found: Calling get_SR_BR_CP_AR()")
+            self.get_SR_BR_AR_CP()
 
         f, ax = plt.subplots()
-        SR = self.SR
-        BR = self.BR
+
+        def get_poly(counts, width, color, label=""):
+            """
+            This saves a very small amount of time, but is *technically* faster
+            """
+            verticies = []
+            bin_edges = [i-width/2 for i in range(21)]
+            for j in range(len(counts)): # Generates the verticies of the new polygon
+                verticies.append((bin_edges[j], 0))
+                verticies.append((bin_edges[j], counts[j]))
+                verticies.append((bin_edges[j] + width, counts[j]))
+                verticies.append((bin_edges[j] + width, 0))
+                if j == len(counts) - 1:
+                    verticies.append((bin_edges[0], 0))
+            #print(verticies)
+            return Polygon(verticies, closed=True, facecolor=color, label=label)
+
         channels = [ch for ch in self.CMAP.keys()]
-        SR_events = [len(SR.query(f"ch_name=='{ch_name}'")) for ch_name in channels]
-        BR_events = [len(BR.query(f"ch_name=='{ch_name}'")) for ch_name in channels]
-        channel_vals = np.arange(len(channels))
-        width=0.9
-        ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
-        ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
+        SR_events = self.SR["ch"].value_counts(sort=False)#.to_numpy()
+        BR_events = self.BR["ch"].value_counts(sort=False)#.to_numpy()
+
+        for ch in self.CMAP.values(): # Pad pd.Series with zeros to ensure proper plotting
+            if ch not in SR_events:
+                SR_events.loc[ch] = 0
+            if ch not in BR_events:
+                BR_events.loc[ch] = 0
+        SR_events.sort_index(inplace=True)
+        BR_events.sort_index(inplace=True)
+
+        width = 0.9
+        sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB")
+        br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
+        ax.add_patch(br_poly)
+        ax.add_patch(sr_poly)
+        # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
+        # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
         plotting.textbox(0.0,1.11,'Preliminary', 15, ax=ax)
         plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
         ax.set_xticks(np.arange(20))
@@ -683,7 +712,9 @@ class bhm_analyser():
         ax.set_xlabel("Channels", fontsize=15)
         ax.set_ylabel("Events/1", fontsize=15)
         ax.set_yscale("log")
+        ax.set_xlim(-1, 20)
         ax.legend(loc='upper right', frameon=True)
+
         plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
 
         if commonVars.root:
@@ -691,8 +722,12 @@ class bhm_analyser():
                 ax = commonVars.ch_events_fig.add_subplot(121)
             elif self.uHTR == "11":
                 ax = commonVars.ch_events_fig.add_subplot(122)
-            ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
-            ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
+            sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB") # You cannot just copy the same Artist into different axes because reasons (? matplotlib black magic ?)
+            br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation") # Not a big deal, generating polygons is very quick
+            ax.add_patch(br_poly)
+            ax.add_patch(sr_poly)
+            # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
+            # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
             plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
             plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
             ax.set_xticks(np.arange(20))
@@ -700,6 +735,7 @@ class bhm_analyser():
             ax.set_xlabel("Channels", fontsize=15)
             ax.set_ylabel("Events/1", fontsize=15)
             ax.set_yscale("log")
+            ax.set_xlim(-1, 20)
             ax.legend(loc='upper right', frameon=True)
             
         plt.close()
