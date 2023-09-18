@@ -607,7 +607,6 @@ class bhm_analyser():
             print("df not found: Calling convert2pandas()")
             self.convert2pandas()
 
-        df = self.df
         t_df = []
         channels = []
         _mean = []
@@ -617,7 +616,8 @@ class bhm_analyser():
             ch_num = self.CMAP[ch]
             # print(f"ch: {ch}")
             # print(f"sr condition: (ch=={ch_num})&(peak_ampl >= {calib.ADC_CUTS[ch]})&(tdc >= {calib.TDC_PEAKS[ch]-5})&(tdc < {calib.TDC_PEAKS[ch]+5})")
-            sr = df.query(f"(ch=={ch_num})&(peak_ampl >= {calib.ADC_CUTS[ch]})&(tdc >= {calib.TDC_PEAKS[ch]-5})&(tdc < {calib.TDC_PEAKS[ch]+5})")
+            sr = self.df[(self.df["ch"].values == ch_num) & (self.df["peak_ampl"].values >= calib.ADC_CUTS[ch]) & (self.df["tdc"].values >= (calib.TDC_PEAKS[ch]-5)) & (self.df["tdc"].values < (calib.TDC_PEAKS[ch]+5))]
+            #sr2 = self.df.query(f"(ch=={ch_num})&(peak_ampl >= {calib.ADC_CUTS[ch]})&(tdc >= {calib.TDC_PEAKS[ch]-5})&(tdc < {calib.TDC_PEAKS[ch]+5})")
             # print(f"sr.tdc: {sr.tdc}")
             # print(f"sr.tdc.mean(): {sr.tdc.mean()}")
             # print(f"sr.tdc.mode(): {sr.tdc.mode()}")
@@ -641,9 +641,9 @@ class bhm_analyser():
 
 
         #Computing the re
-        self.tdc_correction = pd.DataFrame()
-        self.tdc_correction['CH']  = channels
-        self.tdc_correction['MVP'] = _mode
+        # self.tdc_correction = pd.DataFrame()
+        # self.tdc_correction['CH']  = channels
+        # self.tdc_correction['MVP'] = _mode
 
 
         t_df = pd.concat(t_df)
