@@ -276,7 +276,7 @@ def gui():
             else:
                 run_time_ms = run_times[run_times.T[0]==run][0][1]
             
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError):
             add_to_cache = True
             user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
             if not user_consent:
