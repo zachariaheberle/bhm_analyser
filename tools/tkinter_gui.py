@@ -222,7 +222,7 @@ def gui():
             else:
                 raise KeyboardInterrupt
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
-            draw_all()
+            #draw_all()
 
             if not plot_lego: # Hides optional plots if not selected
                 FigurePage.hide(LegoPage)
@@ -982,5 +982,6 @@ def gui():
     canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas, ch_events_canvas]
 
     fig_window.withdraw()
+    draw_all()
 
     root.mainloop()
