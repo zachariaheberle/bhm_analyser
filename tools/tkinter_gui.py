@@ -246,7 +246,7 @@ def gui():
             else:
                 raise KeyboardInterrupt
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
-            draw_all()
+            #draw_all()
 
             if not plot_lego: # Hides optional plots if not selected
                 FigurePage.hide(LegoPage)
@@ -849,14 +849,14 @@ def gui():
     #@@@@@@@@@@@@@@@ BEGIN FIGURE WINDOW @@@@@@@@@@@@@@@@@@@
 
     def draw_all():
-        p = Profiler(name="draw_all", parent=commonVars.profilers["Analysis Thread"])
-        p.start()
+        #p = Profiler(name="draw_all")#, parent=commonVars.profilers["Analysis Thread"])
+        #p.start()
         for canvas, name in zip(canvas_list, canvas_list_names):
-            p2 = Profiler(name=name, parent=commonVars.profilers["draw_all"])
-            p2.start()
+            #p2 = Profiler(name=name, parent=commonVars.profilers["draw_all"])
+            #p2.start()
             canvas.draw_idle()
-            p2.stop()
-        p.stop()
+            #p2.stop()
+        #p.stop()
     
     def erase_all_figures():
         p = Profiler(name="erase_all_figures", parent=commonVars.profilers["Analysis Thread"])
@@ -1030,6 +1030,7 @@ def gui():
     canvas_list_names = ["adc_canvas", "tdc_canvas", "tdc_stability_canvas", "occupancy_canvas", "rate_canvas", "lego_canvas", "ch_events_canvas"]
 
     fig_window.withdraw()
+    draw_all()
 
     gui_startup.stop()
     window_startup = Profiler("Window Startup")
