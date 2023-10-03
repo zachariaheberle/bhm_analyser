@@ -146,9 +146,9 @@ class bhm_analyser():
         """
         Removes all 25 tdc entries with 188 ampl peaks and also counts how many items were removed
         """
-        theCut = (self.tdc != 25) & (self.peak_ampl != 188)
+        theCut = ((self.tdc != 25) | (self.peak_ampl != 188))
 
-        total_cuts = np.count_nonzero((self.tdc == 25) & (self.peak_ampl == 188))
+        #total_cuts = np.count_nonzero((self.tdc == 25) & (self.peak_ampl == 188))
 
         self.bx           = self.bx[theCut]
         self.ampl         = self.ampl[theCut]
@@ -159,15 +159,15 @@ class bhm_analyser():
         self.run          = self.run[theCut]
         self.peak_ampl    = self.peak_ampl[theCut]
 
-        self.cut_124_0 = total_cuts
+        #self.cut_188_25 = total_cuts
 
     def remove124amp0tdc(self):
         """
         Removes all 0 tdc 124 ampl peak entries and also counts how many items were removed
         """
-        theCut = (self.tdc != 0) & (self.peak_ampl != 124)
+        theCut = (self.tdc != 0) | (self.peak_ampl != 124)
 
-        total_cuts = np.count_nonzero((self.tdc == 0) & (self.peak_ampl == 124))
+        #total_cuts = np.count_nonzero((self.tdc == 0) & (self.peak_ampl == 124))
 
         self.bx           = self.bx[theCut]
         self.ampl         = self.ampl[theCut]
@@ -178,7 +178,7 @@ class bhm_analyser():
         self.run          = self.run[theCut]
         self.peak_ampl    = self.peak_ampl[theCut]
 
-        self.cut_25 = total_cuts
+        #self.cut_124_0 = total_cuts
 
     def clean_data(self):
         """
