@@ -336,7 +336,7 @@ def gui():
                 try:
                     run_time_ms = int(pandas.Timestamp(stdout.decode()).replace().timestamp()*1e3)
                 except ValueError:
-                    raise Exception(stdout)
+                    raise Exception(f"Something went wrong! Connection stdout: {stdout}. Connection stderr: {stderr}.")
 
         if add_to_cache:
             with open("run_times.cache", "a") as fp:
