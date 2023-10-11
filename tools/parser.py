@@ -40,7 +40,7 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                     evt_no = int(evt_stat[3][:-1])
                     bx_no = int(evt_stat[5][:-1])
                     orbit_no = int(evt_stat[7][:-1])
-                    run_no = int(evt_stat[9])
+                    run_no = int(evt_stat[9].rstrip(","))
                     fp.readline() # skips a line
                 except IndexError:
                     if fp.readline() == "":
@@ -141,7 +141,7 @@ def txt_to_bin(file_name):
                     evt_bytes = (int(evt_stat[3][:-1])).to_bytes(4, "big")
                     bx_bytes = (int(evt_stat[5][:-1])).to_bytes(2, "big")
                     orbit_bytes = (int(evt_stat[7][:-1])).to_bytes(8, "big")
-                    run_bytes = (int(evt_stat[9])).to_bytes(4, "big")
+                    run_bytes = (int(evt_stat[9].rstrip(","))).to_bytes(4, "big")
                     fp.readline() # skips a line
                 except IndexError:
                     if fp.readline() == "":
