@@ -165,16 +165,28 @@ def load_uHTR_data(data_folder_str):
         """
         Handles the actual loading process and creating bhm_analyser objects
         """
+
+        commonVars.data_corrupted = False
+
+        def is_sorted(arr):
+            """
+            Checks if array is sorted
+            """
+            return np.all(arr[:-1] <= arr[1:])
+
         _uHTR = bhm_analyser(uHTR=f"{uHTR}")
 
         for i, file in enumerate(files): # this loads each uHTR file and will combine them into one object
             if i == 0: _uHTR.load_data(file, data_type)
             else:
                 if data_type == "binary":
-                    ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_bin_file(file)
+                    evt, ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_bin_file(file)
 
                 elif data_type == "text":
-                    ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_text_file(file)
+                    evt, ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_text_file(file)
+
+                if not is_sorted(evt):
+                    commonVars.data_corrupted = True
 
                 _uHTR.ch = np.append(_uHTR.ch, ch, axis=0)
                 _uHTR.ampl = np.append(_uHTR.ampl, ampl, axis=0)

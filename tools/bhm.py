@@ -88,13 +88,23 @@ class bhm_analyser():
         '''
         Parsing Data and loads it into memory
         '''
+
+        def is_sorted(arr):
+            """
+            Checks if array is sorted. Must be given numpy array
+            """
+            return np.all(arr[:-1] <= arr[1:])
+
         if data_type == "binary":
-            ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_bin_file(f"{folder_name}")
+            evt, ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_bin_file(f"{folder_name}")
 
         elif data_type == "text":
-            ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_text_file(f"{folder_name}")
+            evt, ch,ampl, tdc,tdc_2, bx,orbit,run  = parser.parse_text_file(f"{folder_name}")
         else:
             raise ValueError(f"{data_type} is not a valid data type")
+
+        if not is_sorted(evt):
+            commonVars.data_corrupted = True
 
         self.ch = ch
         self.ampl = ampl
@@ -221,8 +231,8 @@ class bhm_analyser():
         '''
         Lego Plot of peak ampl vs tdc
         '''
-        xdata = self.tdc#[self.ch_mapped == self.CMAP[ch]]
-        ydata = self.peak_ampl#[self.ch_mapped == self.CMAP[ch]]
+        xdata = self.tdc#[self.ch_mapped == self.CMAP["MN05"]]
+        ydata = self.peak_ampl#[self.ch_mapped == self.CMAP["MN05"]]
         h, xbins, ybins = np.histogram2d(xdata,ydata, bins=(np.arange(-0.5,50,1),np.arange(0,180,1)))
         # if you want to create your 3d axes in the current figure (plt.gcf()):
 
@@ -816,7 +826,14 @@ class bhm_analyser():
                 df = df.query("ch_mapped == ch")
             else:
                 raise TypeError
+        #print(type(df.orbit.values), type(df.sort_values("orbit").orbit.values))
+        #print(df.orbit.values == df.sort_values("orbit").orbit.values)
+        #df2 = df
         df = df.sort_values("orbit")
+        # print(np.array_equiv(df.orbit.values, df2.orbit.values))
+        # print(df.orbit.values, df2.orbit.values)
+        # is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+        # print(is_sorted(self.orbit))
         x = start_time+(df.orbit.values-df.orbit.values[0])*3564*25*10**-6## miliseconds 
         if bins==None:
             y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),25*1000)) # bins--> every sec

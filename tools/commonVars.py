@@ -8,3 +8,6 @@ folder_name=""
 
 # tkinter root if applicable
 root = None
+
+# Global flag to check for possible data corruption
+data_corrupted = False
