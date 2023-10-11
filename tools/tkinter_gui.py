@@ -134,6 +134,10 @@ def gui():
             #print(f"unique runs: {list(set(uHTR4.run).symmetric_difference(set(uHTR11.run)))}")
             loaded_data_folder.set(data_folder.get())
 
+            if commonVars.data_corrupted:
+                messagebox.showwarning("Possible Data Corruption", "Warning! Currently loaded data shows signs of possible data corruption!" + 
+                    " Please check for any abnormalities in data files.")
+
             update_runs(loaded_runs)
             data_status_message.set(f"Currently Loaded Data Folder: {data_folder_str}")
 

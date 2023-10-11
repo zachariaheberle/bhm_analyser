@@ -20,6 +20,7 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
     if (stop_event == -1): stop_flag = False #disable stop event
     else: stop_flag = True #enable stop event
     evt_status = ""
+    EVT = []  # Event number information
     TDC = []  # Time of the pulse in the 40 MHz clock. 0 to 25 ns in steps of 0.5 ns.
     TDC2 = [] # if the threhold was crossed prior to recording
     BX = []   #  Bunch crossing is ranges from zero to 3564.
@@ -68,6 +69,7 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                                     
                                     
                                 data = convert_int(adc_line[:-1])
+                                EVT.append(evt_no)
                                 AMPL.append(np.asarray(data[2:])[:20])
                                 CH.append(data[:2])
                                 BX.append(bx_no)
@@ -82,7 +84,7 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                         print (f"Failed for evt:{evt_no} ",line[:-1])
     #                     print (f"Failed for evt:{evt_no} ",l[i+1][:-1])
 
-        return np.asarray(CH),np.asarray(AMPL),np.asarray(TDC),np.asarray(TDC2),np.asarray(BX),np.asarray(ORBIT, dtype=np.int64),np.asarray(RUN_NO)
+        return np.asarray(EVT), np.asarray(CH),np.asarray(AMPL),np.asarray(TDC),np.asarray(TDC2),np.asarray(BX),np.asarray(ORBIT, dtype=np.int64),np.asarray(RUN_NO)
     # Note: ORBIT must be kept as a int64, otherwise rate plots may fail from integer overflow, since the default is np.int32
 
 def txt_to_bin(file_name):
@@ -234,7 +236,7 @@ def parse_bin_file(file_name):
         uint32 = np.dtype(np.uint32).newbyteorder(">")
         uint64 = np.dtype(np.uint64).newbyteorder(">")
         
-        #evt = np.ndarray(shape=(array_len,), dtype=np.uint32,    buffer=file_data[offset[0]:offset[1]])
+        evt = np.ndarray(shape=(array_len,), dtype=uint32,       buffer=file_data[offset[0]:offset[1]])
         tdc = np.ndarray(shape=(array_len,), dtype=np.uint8,     buffer=file_data[offset[1]:offset[2]])
         tdc2 = np.ndarray(shape=(array_len,), dtype=np.int8,     buffer=file_data[offset[2]:offset[3]])
         bx = np.ndarray(shape=(array_len,), dtype=uint16,        buffer=file_data[offset[3]:offset[4]])
@@ -243,7 +245,7 @@ def parse_bin_file(file_name):
         orbit = np.ndarray(shape=(array_len,), dtype=uint64,     buffer=file_data[offset[6]:offset[7]])
         run = np.ndarray(shape=(array_len,), dtype=uint32,       buffer=file_data[offset[7]:offset[8]])
 
-        return ch, ampl, tdc, tdc2, bx, orbit, run
+        return evt, ch, ampl, tdc, tdc2, bx, orbit, run
 
     with open(file_name, "rb") as fp:
         file_data = fp.read()
@@ -251,11 +253,11 @@ def parse_bin_file(file_name):
     version = file_data[0]
 
     if version == 1:
-        ch, ampl, tdc, tdc2, bx, orbit, run = v1()
+        evt, ch, ampl, tdc, tdc2, bx, orbit, run = v1()
     else:
         raise ValueError(f"Version number {version} does not exist.")
 
-    return ch, ampl, tdc, tdc2, bx, orbit, run
+    return evt, ch, ampl, tdc, tdc2, bx, orbit, run
 
     
 

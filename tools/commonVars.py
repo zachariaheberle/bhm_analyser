@@ -15,3 +15,6 @@ LOG_DUMP_FILE = "./log_info.txt"
 
 # Global tracker of all available profilers
 profilers = {}
+
+# Global flag to check for possible data corruption
+data_corrupted = False
