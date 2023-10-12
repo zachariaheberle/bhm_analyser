@@ -1,6 +1,13 @@
 # Written by Rohith Saradhy rohithsaradhy@gmail.com and Zachariah Eberle zachariaheberle@gmail.com
 import numpy as np
 
+class CorruptionError(Exception):
+    """
+    When a NULL (0x00) character is found in the uHTR.txt file, this means
+    something got corrupted during data taking
+    """
+    pass
+
 def convert_int(x,extract_pos=False): # splits a single string to int
 #     print(x.split(" "))
     if extract_pos:
@@ -25,9 +32,13 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
     CH = []   # channel number 1 to 20
     ORBIT = []  # Orbit counter which tells you where in the fill (run?) the event occured.
     RUN_NO = [] # Number of the data collection run.
+    line_num = 1
     with open(file_name, "r") as fp:
         for line in fp: # reads lines individually
+            if "\x00" in line:
+                raise CorruptionError(f"Failed to parse line {line_num} in {file_name}\nNULL (0x00) character found!")
             if ("---------------------------------------------------------------------------" in line):
+                line_num += 1
                 continue
             if ("--- START" in line): #parse the event information
                 evt_stat = list(filter(None, line.split(" ")))
@@ -39,11 +50,14 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                     orbit_no = int(evt_stat[7][:-1])
                     run_no = int(evt_stat[9].rstrip(","))
                     fp.readline() # skips a line
+                    line_num += 2
                 except (IndexError, ValueError):
                     if fp.readline() == "":
+                        line_num += 2
                         continue
                     else:
-                        print(f"Failed to parse {line} in {file_name}")
+                        print(f"Failed to parse line {line_num} in {file_name}")
+                        line_num += 1
     #           print(evt_no,bx_no,orbit_no,run_no) #debugging
             else:
                 if (evt_no >= start_event): # start from event number 
@@ -52,6 +66,7 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                     try:
                         adc_line = line
                         tdc_line = fp.readline() # read the next line in sequence for tdc values
+                        line_num += 1
                         if len(tdc_line.strip()) > 0: #if TDC triggered
                             tdc = convert_int(tdc_line[:-1])
                             if len(tdc) <=2:
@@ -80,6 +95,8 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                     except:
                         print (f"Failed for evt:{evt_no} ",line[:-1])
     #                     print (f"Failed for evt:{evt_no} ",l[i+1][:-1])
+                    finally:
+                        line_num += 1
 
         return np.asarray(EVT), np.asarray(CH),np.asarray(AMPL),np.asarray(TDC),np.asarray(TDC2),np.asarray(BX),np.asarray(ORBIT, dtype=np.int64),np.asarray(RUN_NO)
     # Note: ORBIT must be kept as a int64, otherwise rate plots may fail from integer overflow, since the default is np.int32
@@ -126,9 +143,13 @@ def txt_to_bin(file_name):
     RUN_NO = bytearray() # Number of the data collection run.
 
     new_file_name = file_name[:-3] + "uhtr"
+    line_num = 1
     with open(file_name, "r") as fp:
         for line in fp: # reads lines individually
+            if "\x00" in line:
+                raise CorruptionError(f"Failed to parse line {line_num} in {file_name}\nNULL (0x00) character found!")
             if ("---------------------------------------------------------------------------" in line):
+                line_num += 1
                 continue
             if ("--- START" in line): #parse the event information
                 evt_stat = list(filter(None, line.split(" ")))
@@ -140,16 +161,20 @@ def txt_to_bin(file_name):
                     orbit_bytes = (int(evt_stat[7][:-1])).to_bytes(8, "big")
                     run_bytes = (int(evt_stat[9].rstrip(","))).to_bytes(4, "big")
                     fp.readline() # skips a line
+                    line_num += 2
                 except (IndexError, ValueError):
                     if fp.readline() == "":
+                        line_num += 2
                         continue
                     else:
-                        print(f"Failed to parse {line} in {file_name}")
+                        print(f"Failed to parse line {line_num} in {file_name}")
+                        line_num += 1
     #           print(evt_no,bx_no,orbit_no,run_no) #debugging
             else:
                 try:
                     adc_line = line
                     tdc_line = fp.readline() # read the next line in sequence for tdc values
+                    line_num += 1
                     if len(tdc_line.strip()) > 0: #if TDC triggered
                         tdc = convert_int(tdc_line[:-1])
                         if len(tdc) <=2:
@@ -177,6 +202,8 @@ def txt_to_bin(file_name):
 
                 except:
                     print (f"Failed for evt:{int.from_bytes(evt_bytes, 'big')} ",line[:-1])
+                finally:
+                    line_num += 1
 
 
     with open(new_file_name, "wb") as fp:
