@@ -11,6 +11,7 @@ import tools.commonVars as commonVars
 import tools.analysis_helpers as analysis_helpers
 import tools.hw_info as hw_info
 import tools.calibration as calib
+from tools.parser import CorruptionError
 import subprocess
 import os
 import matplotlib.pyplot as plt
@@ -125,6 +126,13 @@ def gui():
         except FileNotFoundError:
             data_status_message.set(f"uHTR files not found in {data_folder_str}. Please ensure the data files are present.")
         
+        except CorruptionError as err:
+            err = str(err)
+            null = "\x00"
+            data_status_message.set("Something went wrong loading uHTR data!")
+            messagebox.showerror("Data Corruption Error", 
+                                 f"Error! Data shows major signs of corruption and cannot be safely parsed: \n{err.replace(null, '')}")
+
         except Exception as err:
             analysis_helpers.error_handler(err)
             data_status_message.set("Something went wrong loading uHTR data!")
@@ -136,7 +144,8 @@ def gui():
 
             if commonVars.data_corrupted:
                 messagebox.showwarning("Possible Data Corruption", "Warning! Currently loaded data shows signs of possible data corruption!" + 
-                    " Please check for any abnormalities in data files.")
+                    f" Please check for any abnormalities in text files. Consider deleting .uhtr files in {data_folder_str}," +
+                    " as these files may also be affected.")
 
             update_runs(loaded_runs)
             data_status_message.set(f"Currently Loaded Data Folder: {data_folder_str}")
