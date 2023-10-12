@@ -137,6 +137,7 @@ def gui():
             analysis_helpers.error_handler(err)
             data_status_message.set("Something went wrong loading uHTR data!")
             messagebox.showerror("Error", "Something went wrong loading uHTR data! Traceback information has been written to error.log")
+            messagebox.showerror("Error", "An unknown exception has occured! Traceback information has been written to error.log")
         
         else:
             #print(f"unique runs: {list(set(uHTR4.run).symmetric_difference(set(uHTR11.run)))}")
@@ -144,8 +145,8 @@ def gui():
 
             if commonVars.data_corrupted:
                 messagebox.showwarning("Possible Data Corruption", "Warning! Currently loaded data shows signs of possible data corruption!" + 
-                    f" Please check for any abnormalities in text files. Consider deleting .uhtr files in {data_folder_str}," +
-                    " as these files may also be affected.")
+                    f" Please check for any abnormalities in text files and ensure that they are numbered correctly." 
+                    f" If not loading from txt file, consider deleting uhtr files in {data_folder_str}, as these files may have been formed from corrupt data.")
 
             update_runs(loaded_runs)
             data_status_message.set(f"Currently Loaded Data Folder: {data_folder_str}")

@@ -170,6 +170,8 @@ def load_uHTR_data(data_folder_str):
         Handles the actual loading process and creating bhm_analyser objects
         """
 
+        files = sorted(files)
+
         commonVars.data_corrupted = False
 
         def is_sorted(arr):
@@ -200,6 +202,25 @@ def load_uHTR_data(data_folder_str):
                 _uHTR.orbit = np.append(_uHTR.orbit, orbit, axis=0)
                 _uHTR.run = np.append(_uHTR.run, run, axis=0)
                 _uHTR.ch_mapped = np.append(_uHTR.ch_mapped, ch.T[0]*10 + ch.T[1], axis=0)
+        
+        num_loops = 0
+        # Note, this assumes that uHTR*.txt files are named numerically in time (ie. uHTR4 -> uHTR4_1 -> uHTR4_2 -> ... etc)
+        while not is_sorted(_uHTR.orbit) and not commonVars.data_corrupted and num_loops < 100:
+            # If orbits aren't in order and evts are in order, an integer of orbits must have occured
+            # Add 2^32-1 to orbit values that aren't in order and check if orbits are sorted, repeat until
+            # all integer overflows have been accounted for (orbit dtype should be np.uint64)
+            try:
+                overflow_index = np.where((_uHTR.orbit[:-1] <= _uHTR.orbit[1:])==0)[0][0] + 1
+                _uHTR.orbit = np.concatenate((_uHTR.orbit[0:overflow_index], _uHTR.orbit[overflow_index:] + 4_294_967_295))
+            except IndexError:
+                commonVars.data_corrupted = True
+                break
+            finally:
+                num_loops += 1
+        
+        if num_loops >= 100: # If we are looping too many times, it's likely the data files aren't in order or the data is corrupted.
+            commonVars.data_corrupted = True
+            
         
         return _uHTR
 
