@@ -107,7 +107,7 @@ def gui():
         show_figures_button.state(["disabled"])
 
         data_status_message.set("Loading uHTR Data, Please Wait...")
-        loading_thread = Thread(target=load_data_thread, args=[data_folder_str])
+        loading_thread = Thread(target=load_data_thread, args=[data_folder_str], daemon=True)
         loading_thread.start()
         p.stop()
     
@@ -242,7 +242,7 @@ def gui():
         disable_frame(MainPage)
         data_status.state(["!disabled"])
 
-        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib))
+        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib), daemon=True)
         analysis_thread.start()
         p.stop()
 
