@@ -23,6 +23,7 @@ import scipy.stats as stats
 import seaborn as sns
 import os
 import time
+import warnings
 
 class bhm_analyser():
     __version__ ="0.1"
@@ -661,95 +662,106 @@ class bhm_analyser():
 
         # print(f"sr: {sr}")
         # print(f"t_df:\n{t_df}")
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+            
+            violin_main_draw = Profiler(name="Violin Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+            violin_gui_draw = Profiler(name="Violin GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+            violin_main_draw.start() 
+            #Violin Plot
+            f,ax = plt.subplots(figsize=(8,6))
+            sns.violinplot(data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
+            plt.xticks(rotation=45, ha='center',fontsize=15)
+            plotting.textbox(0.0,1.11,'Preliminary',30)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',30)
+            plt.ylabel("TDC [a.u]",fontsize=30)
+            plt.xlabel("Channels",fontsize=30)
+            plt.ylim(0,15)
+            plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
+            violin_main_draw.stop()
 
-        violin_main_draw = Profiler(name="Violin Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
-        violin_gui_draw = Profiler(name="Violin GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
-        violin_main_draw.start() 
-        #Violin Plot
-        f,ax = plt.subplots(figsize=(8,6))
-        sns.violinplot(data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
-        plt.xticks(rotation=45, ha='center',fontsize=15)
-        plotting.textbox(0.0,1.11,'Preliminary',30)
-        plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',30)
-        plt.ylabel("TDC [a.u]",fontsize=30)
-        plt.xlabel("Channels",fontsize=30)
-        plt.ylim(0,15)
-        plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
-        violin_main_draw.stop()
+            if commonVars.root:
+                violin_gui_draw.start()
+                if self.uHTR == "4":
+                        ax = commonVars.tdc_stability_fig.add_subplot(223)
+                elif self.uHTR == "11":
+                    ax = commonVars.tdc_stability_fig.add_subplot(224)
+                sns.violinplot(ax=ax, data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
+                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+                ax.set_xticks(np.arange(20))
+                ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+                ax.set_ylabel("TDC [a.u]",fontsize=15)
+                ax.set_xlabel("Channels",fontsize=15)
+                ax.set_ylim(0,15)
+                violin_gui_draw.stop()
 
-        if commonVars.root:
-            violin_gui_draw.start()
-            if self.uHTR == "4":
-                ax = commonVars.tdc_stability_fig.add_subplot(223)
-            elif self.uHTR == "11":
-                ax = commonVars.tdc_stability_fig.add_subplot(224)
-            sns.violinplot(ax=ax, data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
-            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-            ax.set_ylabel("TDC [a.u]",fontsize=15)
-            ax.set_xlabel("Channels",fontsize=15)
-            ax.set_ylim(0,15)
-            violin_gui_draw.stop()
-
-        plt.close()
+            plt.close()
 
 
-        #MVP Vanilla Stability Plots
-        vanilla_main_draw = Profiler(name="Vanilla Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
-        vanilla_gui_draw = Profiler(name="Vanilla GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
-        vanilla_main_draw.start()
-        f,ax = plt.subplots()
-        ax.errorbar(channels, _mode,yerr=_std_dev
-                    ,fmt='r.',ecolor='k',capsize=2
-                    ,label="MPV of TDC"
-                )
-        
-        _mode_val = t_df.tdc.mode()[0]
+            #MVP Vanilla Stability Plots
+            vanilla_main_draw = Profiler(name="Vanilla Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+            vanilla_gui_draw = Profiler(name="Vanilla GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Stability Plots"])
+            vanilla_main_draw.start()
+            f,ax = plt.subplots()
+            ax.errorbar(channels, _mode,yerr=_std_dev
+                            ,fmt='r.',ecolor='k',capsize=2
+                            ,label="MPV of TDC"
+                        )
+            try:
+                _mode_val = t_df.tdc.mode()[0]
+            except KeyError: # If we get a KeyError, this means the data is empty
+                pass
+            else:
 
-        if len(t_df.tdc) == 1: # ensure std() doesn't break due to only one entry existing
-            _sig = 0
-        else:
-            _sig = t_df.tdc.std()
+                if len(t_df.tdc) == 1: # ensure std() doesn't break due to only one entry existing
+                    _sig = 0
+                else:
+                    _sig = t_df.tdc.std()
 
-        # print(f"tdc length: {len(t_df.tdc)}")
-        # print(f"Is len == 1: {len(t_df.tdc) == 1}")
-        # print(type(_mode))
-        # print(f"_mode:\n{_mode}")
-        # print(type(_sig))
-        # print(f"_sig: {_sig}")
+                plt.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
+                plt.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
 
-        plt.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
-        plt.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
-        plotting.textbox(0.0,1.11,'Preliminary',15)
-        plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15)
-        plt.xticks(rotation=45, ha='center',fontsize=5)
-        plt.ylabel("TDC [a.u]",fontsize=15)
-        plt.xlabel("Channels",fontsize=15)
-        plt.ylim(0,15)
-        plt.legend(loc='upper right',frameon=True)
-        plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
-        vanilla_main_draw.stop()
+            # print(f"tdc length: {len(t_df.tdc)}")
+            # print(f"Is len == 1: {len(t_df.tdc) == 1}")
+            # print(type(_mode))
+            # print(f"_mode:\n{_mode}")
+            # print(type(_sig))
+            # print(f"_sig: {_sig}")
 
-        if commonVars.root:
-            vanilla_gui_draw.start()
-            if self.uHTR == "4":
-                ax = commonVars.tdc_stability_fig.add_subplot(221)
-            elif self.uHTR == "11":
-                ax = commonVars.tdc_stability_fig.add_subplot(222)
-            ax.errorbar(channels, _mode, yerr=_std_dev, fmt='r.', ecolor='k', capsize=2, label="MPV of TDC")
-            ax.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
-            ax.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
-            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-            ax.set_ylabel("TDC [a.u]",fontsize=15)
-            ax.set_xlabel("Channels",fontsize=15)
-            ax.set_ylim(0,15)
-            ax.legend(loc='upper right',frameon=True)
-            vanilla_gui_draw.stop()
+            
+            plotting.textbox(0.0,1.11,'Preliminary',15)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15)
+            plt.xticks(rotation=45, ha='center',fontsize=5)
+            plt.ylabel("TDC [a.u]",fontsize=15)
+            plt.xlabel("Channels",fontsize=15)
+            plt.ylim(0,15)
+            plt.legend(loc='upper right',frameon=True)
+            plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
+            vanilla_main_draw.stop()
+
+            if commonVars.root:
+                vanilla_gui_draw.start()
+                if self.uHTR == "4":
+                    ax = commonVars.tdc_stability_fig.add_subplot(221)
+                elif self.uHTR == "11":
+                    ax = commonVars.tdc_stability_fig.add_subplot(222)
+                try:
+                    ax.errorbar(channels, _mode, yerr=_std_dev, fmt='r.', ecolor='k', capsize=2, label="MPV of TDC")
+                    ax.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
+                    ax.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
+                    ax.legend(loc='upper right',frameon=True)
+                except UnboundLocalError: # Empty data check using whether or not _mode_val is defined
+                    pass
+                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+                ax.set_xticks(np.arange(20))
+                ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+                ax.set_ylabel("TDC [a.u]",fontsize=15)
+                ax.set_xlabel("Channels",fontsize=15)
+                ax.set_ylim(0,15)
+            
+                vanilla_gui_draw.stop()
 
         plt.close()
         p.stop()
@@ -1019,10 +1031,7 @@ class bhm_analyser():
         self.plot_OccupancySRBR()# plots the occupancy
         if plot_ch_events:
            self.plot_channel_events()
-        if not self.SR.empty:
-            self.tdc_stability()
-        else:
-            print("Signal region is empty, ignoring tdc stability plots...")
+        self.tdc_stability()
         p.stop()
 
 

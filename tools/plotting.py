@@ -101,13 +101,14 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
         x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=binx,start_time=start_time,uHTR11=True)
         ax.plot(x2[:N], y2[:N],color='k',label="-Z SR")
 
-    if not uHTR4.SR.empty or not uHTR11.SR.empty: # SR plots
-        ax.set_xlabel("Time Approximate ")
-        ax.set_ylabel("Event Rate")
+    # SR plots
+    ax.set_xlabel("Time Approximate ")
+    ax.set_ylabel("Event Rate")
+    if not uHTR4.SR.empty or not uHTR11.SR.empty: 
         ax.legend(loc=(1.1,0.8),frameon=1)
-        ax.set_yscale('log')
-        if start_time != 0:
-            textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
+    ax.set_yscale('log')
+    if start_time != 0:
+        textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
         #ax2 = ax#.twinx()
         # x1 = np.asarray(x1)
@@ -136,12 +137,13 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
                 ax.plot(x2[:N], y2[:N],color='k',label="-Z SR")
             ax.set_xlabel("Time Approximate ")
             ax.set_ylabel("Event Rate")
-            ax.legend(loc=(1.1,0.8),frameon=1)
+            if not uHTR4.SR.empty or not uHTR11.SR.empty:
+                ax.legend(loc=(1.1,0.8),frameon=1)
             ax.set_yscale('log')
             if start_time != 0:
                 textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
 
-        plt.close()
+    plt.close()
 
     f,ax = plt.subplots()
     f.autofmt_xdate()
@@ -156,13 +158,14 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
         x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=binx,start_time=start_time,uHTR11=True)
         ax.plot(x4[:N], y4[:N],color='k',label="-Z CP")
     
-    if not uHTR4.CP.empty or not uHTR11.CP.empty: # CP plots
-        ax.set_xlabel("Time Approximate ")
-        ax.set_ylabel("Event Rate")
+    # CP plots
+    ax.set_xlabel("Time Approximate ")
+    ax.set_ylabel("Event Rate")
+    if not uHTR4.CP.empty or not uHTR11.CP.empty:
         ax.legend(loc=(1.1,0.8),frameon=1)
-        ax.set_yscale('log')
-        if start_time != 0:
-            textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
+    ax.set_yscale('log')
+    if start_time != 0:
+        textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
         # x3 = np.asarray(x3)
         # x4 = np.asarray(x4)
@@ -190,12 +193,13 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
                 ax.plot(x4[:N], y4[:N],color='k',label="-Z CP")
             ax.set_xlabel("Time Approximate ")
             ax.set_ylabel("Event Rate")
-            ax.legend(loc=(1.1,0.8),frameon=1)
+            if not uHTR4.CP.empty or not uHTR11.CP.empty:
+                ax.legend(loc=(1.1,0.8),frameon=1)
             ax.set_yscale('log')
             if start_time != 0:
                 textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
 
-        plt.close()
+    plt.close()
 
     # f,ax = plt.subplots()
     # f.autofmt_xdate()
