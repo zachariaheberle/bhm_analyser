@@ -109,15 +109,15 @@ class bhm_analyser():
         if not is_sorted(evt):
             commonVars.data_corrupted = True
 
-        self.ch = ch
-        self.ampl = ampl
-        self.tdc = tdc
-        self.tdc_2 = tdc_2
-        self.bx = bx
-        self.orbit = orbit
-        self.run = run
-        self.ch_mapped= ch.T[0]*10 + ch.T[1] #Quick Channel Mapping
-        pass
+        if len(evt) > 0: # only run if data isn't empty
+            self.ch = ch
+            self.ampl = ampl
+            self.tdc = tdc
+            self.tdc_2 = tdc_2
+            self.bx = bx
+            self.orbit = orbit
+            self.run = run
+            self.ch_mapped= ch.T[0]*10 + ch.T[1] #Quick Channel Mapping
 
     def removeNC(self, profile=True):
         if profile:
