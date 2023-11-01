@@ -190,14 +190,18 @@ def load_uHTR_data(data_folder_str):
                 if not is_sorted(evt):
                     commonVars.data_corrupted = True
 
-                _uHTR.ch = np.append(_uHTR.ch, ch, axis=0)
-                _uHTR.ampl = np.append(_uHTR.ampl, ampl, axis=0)
-                _uHTR.tdc = np.append(_uHTR.tdc, tdc, axis=0)
-                _uHTR.tdc_2 = np.append(_uHTR.tdc_2, tdc_2, axis=0)
-                _uHTR.bx = np.append(_uHTR.bx, bx, axis=0)
-                _uHTR.orbit = np.append(_uHTR.orbit, orbit, axis=0)
-                _uHTR.run = np.append(_uHTR.run, run, axis=0)
-                _uHTR.ch_mapped = np.append(_uHTR.ch_mapped, ch.T[0]*10 + ch.T[1], axis=0)
+                try:
+                    _uHTR.ch = np.append(_uHTR.ch, ch, axis=0)
+                    _uHTR.ampl = np.append(_uHTR.ampl, ampl, axis=0)
+                    _uHTR.tdc = np.append(_uHTR.tdc, tdc, axis=0)
+                    _uHTR.tdc_2 = np.append(_uHTR.tdc_2, tdc_2, axis=0)
+                    _uHTR.bx = np.append(_uHTR.bx, bx, axis=0)
+                    _uHTR.orbit = np.append(_uHTR.orbit, orbit, axis=0)
+                    _uHTR.run = np.append(_uHTR.run, run, axis=0)
+                    _uHTR.ch_mapped = np.append(_uHTR.ch_mapped, ch.T[0]*10 + ch.T[1], axis=0)
+
+                except AttributeError: # If i == 0 entry is empty, we need to create the bhm arrays first
+                    _uHTR.load_data(file, data_type)
         
         num_loops = 0
         # Note, this assumes that uHTR*.txt files are named numerically in time (ie. uHTR4 -> uHTR4_1 -> uHTR4_2 -> ... etc)
