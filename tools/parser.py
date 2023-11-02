@@ -21,17 +21,15 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
     Function to unpack the uHTR.txt data files
     returns numpy arrays of TDC, AMPL, CH, BX, ORBIT, RUN
     """
-    if (stop_event == -1): stop_flag = False #disable stop event
-    else: stop_flag = True #enable stop event
-    evt_status = ""
-    EVT = []  # Event number information
-    TDC = []  # Time of the pulse in the 40 MHz clock. 0 to 25 ns in steps of 0.5 ns.
-    TDC2 = [] # if the threhold was crossed prior to recording
-    BX = []   #  Bunch crossing is ranges from zero to 3564.
-    AMPL = [] # Pulse height of signal.
-    CH = []   # channel number 1 to 20
-    ORBIT = []  # Orbit counter which tells you where in the fill (run?) the event occured.
-    RUN_NO = [] # Number of the data collection run.
+    EVT = bytearray() # Event number, may or may not be useful to keep track of
+    TDC = bytearray()  # Time of the pulse in the 40 MHz clock. 0 to 25 ns in steps of 0.5 ns.
+    TDC2 = bytearray() # if the threhold was crossed prior to recording
+    BX = bytearray()   #  Bunch crossing is ranges from zero to 3564.
+    AMPL = bytearray() # Pulse height of signal.
+    CH = bytearray()   # channel number 1 to 20
+    ORBIT = bytearray()  # Orbit counter which tells you where in the fill (run?) the event occured.
+    RUN_NO = bytearray() # Number of the data collection run.
+
     line_num = 1
     with open(file_name, "r") as fp:
         for line in fp: # reads lines individually
@@ -45,10 +43,10 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                 #print(evt_stat) #debugging
                 # collect evt information
                 try:
-                    evt_no = int(evt_stat[3][:-1])
-                    bx_no = int(evt_stat[5][:-1])
-                    orbit_no = int(evt_stat[7][:-1])
-                    run_no = int(evt_stat[9].rstrip(","))
+                    evt_bytes = (int(evt_stat[3][:-1])).to_bytes(4, "big")
+                    bx_bytes = (int(evt_stat[5][:-1])).to_bytes(2, "big")
+                    orbit_bytes = (int(evt_stat[7][:-1])).to_bytes(8, "big")
+                    run_bytes = (int(evt_stat[9].rstrip(","))).to_bytes(4, "big")
                     fp.readline() # skips a line
                     line_num += 2
                 except (IndexError, ValueError):
@@ -60,46 +58,56 @@ def parse_text_file(file_name, start_event=0, stop_event=-1): #expects a certain
                         line_num += 1
     #           print(evt_no,bx_no,orbit_no,run_no) #debugging
             else:
-                if (evt_no >= start_event): # start from event number 
-                    if ((evt_no > stop_event)&(stop_flag)): break # break if the events exceed stop event
-    #                 data = convert_int(l[i]) #convert strings to integer list
-                    try:
-                        adc_line = line
-                        tdc_line = fp.readline() # read the next line in sequence for tdc values
-                        line_num += 1
-                        if len(tdc_line.strip()) > 0: #if TDC triggered
-                            tdc = convert_int(tdc_line[:-1])
-                            if len(tdc) <=2:
-                                TDC.append(tdc[0])
-                                if len(tdc) == 2:
-                                    TDC2.append(tdc[1])
-                                elif len(tdc) == 1:
-                                    TDC2.append(-1)
-                                else:
-                                    TDC2.append(-1)
-    #                                 TDC2.append(tdc[0])
-                                    
-                                    
-                                data = convert_int(adc_line[:-1])
-                                EVT.append(evt_no)
-                                AMPL.append(np.asarray(data[2:])[:20])
-                                CH.append(data[:2])
-                                BX.append(bx_no)
-                                ORBIT.append(orbit_no)
-                                RUN_NO.append(run_no)
-    #                         elif len(tdc) >2:
-    #                             print (AMPL[-1])
-    #                         TDC2.append(tdc[1])
+                try:
+                    adc_line = line
+                    tdc_line = fp.readline() # read the next line in sequence for tdc values
+                    line_num += 1
+                    if len(tdc_line.strip()) > 0: #if TDC triggered
+                        tdc = convert_int(tdc_line[:-1])
+                        if len(tdc) <=2:
+                            tdc_bytes = tdc[0].to_bytes(1, "big")
+                            if len(tdc) == 2:
+                                tdc2_bytes = tdc[1].to_bytes(1, "big", signed=True)
+                            elif len(tdc) == 1:
+                                tdc2_bytes = (-1).to_bytes(1, "big", signed=True)
+                            else:
+                                tdc2_bytes = (-1).to_bytes(1, "big", signed=True)
+                                
+                                
+                            data = convert_int(adc_line[:-1])
+                            ampl_bytes = bytes(data[2:][:20])
+                            ch_bytes = bytes(data[:2])
 
+                            EVT.extend(evt_bytes)
+                            TDC.extend(tdc_bytes)
+                            TDC2.extend(tdc2_bytes)
+                            BX.extend(bx_bytes)
+                            AMPL.extend(ampl_bytes)
+                            CH.extend(ch_bytes)
+                            ORBIT.extend(orbit_bytes)
+                            RUN_NO.extend(run_bytes)
 
-                    except:
-                        print (f"Failed for evt:{evt_no} ",line[:-1])
-    #                     print (f"Failed for evt:{evt_no} ",l[i+1][:-1])
-                    finally:
-                        line_num += 1
+                except:
+                    print (f"Failed for evt:{int.from_bytes(evt_bytes, 'big')} ",line[:-1])
+                finally:
+                    line_num += 1
 
-        return np.asarray(EVT), np.asarray(CH),np.asarray(AMPL),np.asarray(TDC),np.asarray(TDC2),np.asarray(BX),np.asarray(ORBIT, dtype=np.int64),np.asarray(RUN_NO)
-    # Note: ORBIT must be kept as a int64, otherwise rate plots may fail from integer overflow, since the default is np.int32
+    array_len = len(TDC) # Since TDC values are 1 byte long, bytearray length will match total array lengths for all values
+
+    uint16 = np.dtype(np.uint16).newbyteorder(">") # Force byte order for multi-byte values
+    uint32 = np.dtype(np.uint32).newbyteorder(">")
+    uint64 = np.dtype(np.uint64).newbyteorder(">")
+
+    evt   = np.ndarray(shape=(array_len,),     dtype=uint32,    buffer=EVT,    order="C")
+    tdc   = np.ndarray(shape=(array_len,),     dtype=np.uint8,  buffer=TDC,    order="C")
+    tdc2  = np.ndarray(shape=(array_len,),     dtype=np.int8,   buffer=TDC2,   order="C")
+    bx    = np.ndarray(shape=(array_len,),     dtype=uint16,    buffer=BX,     order="C")
+    ampl  = np.ndarray(shape=(array_len, 20),  dtype=np.uint8,  buffer=AMPL,   order="C")
+    ch    = np.ndarray(shape=(array_len, 2),   dtype=np.uint8,  buffer=CH,     order="C")
+    orbit = np.ndarray(shape=(array_len,),     dtype=uint64,    buffer=ORBIT,  order="C")
+    run   = np.ndarray(shape=(array_len,),     dtype=uint32,    buffer=RUN_NO, order="C")
+
+    return evt, ch, ampl, tdc, tdc2, bx, orbit, run
 
 def txt_to_bin(file_name):
     """
