@@ -123,25 +123,25 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
         #     x1 = x1[:x2.size]
         #     y1 = y1[:x2.size]
 
-        f.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
+    f.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
 
 
-        if commonVars.root: # I'm sure I can implement this better
-            ax = commonVars.rate_fig.add_subplot(121)
-            commonVars.rate_fig.autofmt_xdate()
-            xfmt = mdates.DateFormatter('%H:%M')
-            ax.xaxis.set_major_formatter(xfmt)
-            if not uHTR4.SR.empty:
-                ax.plot(x1[:N], y1[:N],color='r',label="+Z SR")
-            if not uHTR11.SR.empty:
-                ax.plot(x2[:N], y2[:N],color='k',label="-Z SR")
-            ax.set_xlabel("Time Approximate ")
-            ax.set_ylabel("Event Rate")
-            if not uHTR4.SR.empty or not uHTR11.SR.empty:
-                ax.legend(loc=(1.1,0.8),frameon=1)
-            ax.set_yscale('log')
-            if start_time != 0:
-                textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
+    if commonVars.root: # I'm sure I can implement this better
+        ax = commonVars.rate_fig.add_subplot(121)
+        commonVars.rate_fig.autofmt_xdate()
+        xfmt = mdates.DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(xfmt)
+        if not uHTR4.SR.empty:
+            ax.plot(x1[:N], y1[:N],color='r',label="+Z SR")
+        if not uHTR11.SR.empty:
+            ax.plot(x2[:N], y2[:N],color='k',label="-Z SR")
+        ax.set_xlabel("Time Approximate ")
+        ax.set_ylabel("Event Rate")
+        if not uHTR4.SR.empty or not uHTR11.SR.empty:
+            ax.legend(loc=(1.1,0.8),frameon=1)
+        ax.set_yscale('log')
+        if start_time != 0:
+            textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
 
     plt.close()
 
@@ -180,24 +180,24 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
         #     y3 = y3[:x4.size]
         
 
-        f.savefig(f"{uHTR4.figure_folder}/rates_CP.png",dpi=300)
+    f.savefig(f"{uHTR4.figure_folder}/rates_CP.png",dpi=300)
 
-        if commonVars.root: # There's a better way to do this
-            ax = commonVars.rate_fig.add_subplot(122)
-            commonVars.rate_fig.autofmt_xdate()
-            xfmt = mdates.DateFormatter('%H:%M')
-            ax.xaxis.set_major_formatter(xfmt)
-            if not uHTR4.CP.empty:
-                ax.plot(x3[:N], y3[:N],color='r',label="+Z CP")
-            if not uHTR11.CP.empty:
-                ax.plot(x4[:N], y4[:N],color='k',label="-Z CP")
-            ax.set_xlabel("Time Approximate ")
-            ax.set_ylabel("Event Rate")
-            if not uHTR4.CP.empty or not uHTR11.CP.empty:
-                ax.legend(loc=(1.1,0.8),frameon=1)
-            ax.set_yscale('log')
-            if start_time != 0:
-                textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
+    if commonVars.root: # There's a better way to do this
+        ax = commonVars.rate_fig.add_subplot(122)
+        commonVars.rate_fig.autofmt_xdate()
+        xfmt = mdates.DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(xfmt)
+        if not uHTR4.CP.empty:
+            ax.plot(x3[:N], y3[:N],color='r',label="+Z CP")
+        if not uHTR11.CP.empty:
+            ax.plot(x4[:N], y4[:N],color='k',label="-Z CP")
+        ax.set_xlabel("Time Approximate ")
+        ax.set_ylabel("Event Rate")
+        if not uHTR4.CP.empty or not uHTR11.CP.empty:
+            ax.legend(loc=(1.1,0.8),frameon=1)
+        ax.set_yscale('log')
+        if start_time != 0:
+            textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
 
     plt.close()
 
