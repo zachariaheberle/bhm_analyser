@@ -171,22 +171,33 @@ def load_uHTR_data(data_folder_str):
         Checks if the user would like to convert their text files to binary files
         """
         if commonVars.root:
-            return messagebox.askyesno("Data Conversion Check", 
+            consent = messagebox.askyesno("Data Conversion Check", 
                 "uHTR.txt files found. Would you like to convert them into a new format which loads significantly faster and uses less disk space? (Note, this will not erase the original files)")
         else:
             answer = "a"
             while answer.lower() != "y" and answer.lower() != "n":
                 answer = input("uHTR.txt files found. Would you like to convert them into a new format which loads significantly faster and uses less disk space? (Note, this will not erase the original files) (y/n): ")
             if answer.lower() == "y":
-                return True
+                consent = True
             else:
-                return False
+                consent = False
+        if consent:
+            for file in glob(f"./data/{data_folder_str}/*.txt"):
+                parser.txt_to_bin(file)
 
-    def load_from_file(uHTR, data_type, files):
+    def load_from_file(uHTR, files, data_type=None):
         """
         Handles the actual loading process and creating bhm_analyser objects
         """
+        if data_type is None:
 
+            if any([".uhtr" in file for file in files]):
+                data_type = "binary"
+                files = [file for file in files if ".uhtr" in file]
+
+            else:
+                data_type = "text"
+        
         files = sorted(files)
 
         commonVars.data_corrupted = False
@@ -207,6 +218,9 @@ def load_uHTR_data(data_folder_str):
 
                 elif data_type == "text":
                     evt, ch, ampl, tdc, tdc_2, bx, orbit, run  = parser.parse_text_file(file)
+                
+                else:
+                    raise ValueError(f"Unknown data type: \"{data_type}\"")
 
                 if not is_sorted(evt):
                     commonVars.data_corrupted = True
@@ -248,86 +262,66 @@ def load_uHTR_data(data_folder_str):
     uHTR4 = create_empty_bhm("4")
     uHTR11 = create_empty_bhm("11")
 
-    uHTR4_text_files = glob(f"./data/{data_folder_str}/uHTR4*.txt") + glob(f"./data/{data_folder_str}/uHTR_4*.txt")
-    uHTR11_text_files = glob(f"./data/{data_folder_str}/uHTR11*.txt") + glob(f"./data/{data_folder_str}/uHTR_11*.txt")
+    uHTR4_files = glob(f"./data/{data_folder_str}/uHTR4*.txt") + glob(f"./data/{data_folder_str}/uHTR_4*.txt") + \
+                    glob(f"./data/{data_folder_str}/uHTR4*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_4*.uhtr")
+    
+    uHTR11_files = glob(f"./data/{data_folder_str}/uHTR11*.txt") + glob(f"./data/{data_folder_str}/uHTR_11*.txt") + \
+                    glob(f"./data/{data_folder_str}/uHTR11*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_11*.uhtr")
+    
+    if not any([".uhtr" in file for file in uHTR4_files + uHTR11_files]) and len(uHTR4_files + uHTR11_files) > 0:
+        check_conversion_consent()
+    
 
-    uHTR4_bin_files = glob(f"./data/{data_folder_str}/uHTR4*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_4*.uhtr")
-    uHTR11_bin_files = glob(f"./data/{data_folder_str}/uHTR11*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_11*.uhtr")
-
-    if len(uHTR4_bin_files) > 0 and len(uHTR11_bin_files) > 0: # Check if binary .uhtr files are present
-
-        commonVars.unknown_side = False
-
-        uHTR4 = load_from_file(uHTR="4", data_type="binary", files=uHTR4_bin_files)
-        uHTR11 = load_from_file(uHTR="11", data_type="binary", files=uHTR11_bin_files)
-
-    elif len(uHTR4_text_files) > 0 and len(uHTR11_text_files) > 0: # Check if text files are present
+    if len(uHTR4_files) > 0 and len(uHTR11_files) > 0: # Check for standard file format
 
         commonVars.unknown_side = False
 
-        consent = check_conversion_consent() # Check if user wants to convert to binary files
+        uHTR4 = load_from_file(uHTR="4", files=uHTR4_files)
+        uHTR11 = load_from_file(uHTR="11", files=uHTR11_files)
 
-        if consent:
-            for file in uHTR4_text_files + uHTR11_text_files:
-                parser.txt_to_bin(file)
-            
-            uHTR4_bin_files = glob(f"./data/{data_folder_str}/uHTR4*.uhtr")
-            uHTR11_bin_files = glob(f"./data/{data_folder_str}/uHTR11*.uhtr")
-
-            uHTR4 = load_from_file(uHTR="4", data_type="binary", files=uHTR4_bin_files)
-            uHTR11 = load_from_file(uHTR="11", data_type="binary", files=uHTR11_bin_files)
-
-        else:
-            uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
-            uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
 
     else: # Check for different known file naming schemes
 
-        consent = check_conversion_consent()
+        data_files =  glob(f"./data/{data_folder_str}/*.txt") + glob(f"./data/{data_folder_str}/*.uhtr")
 
-        text_files = glob(f"./data/{data_folder_str}/*.txt") 
+        if not any([".uhtr" in file for file in data_files]) and len(data_files) > 0:
+            check_conversion_consent()
 
-        if all(["MINUS" in file or "PLUS" in file for file in text_files]):
+        if all(["MINUS" in file or "PLUS" in file for file in data_files]): # Check for MINUS or PLUS naming scheme
 
             commonVars.unknown_side = False
 
-            uHTR4_text_files = glob(f"./data/{data_folder_str}/*PLUS*.txt")
-            uHTR11_text_files = glob(f"./data/{data_folder_str}/*MINUS*.txt")
+            uHTR4_files = glob(f"./data/{data_folder_str}/*PLUS*.txt") + glob(f"./data/{data_folder_str}/*PLUS*.uhtr")
+            uHTR11_files = glob(f"./data/{data_folder_str}/*MINUS*.txt") + glob(f"./data/{data_folder_str}/*MINUS*.uhtr")
 
-            if consent:
-                for file in uHTR4_text_files + uHTR11_text_files:
-                    parser.txt_to_bin(file)
+            if len(uHTR4_files) > 0:
+                uHTR4 = load_from_file(uHTR="4", files=uHTR4_files)
+            if len(uHTR11_files) > 0:
+                uHTR11 = load_from_file(uHTR="11", files=uHTR11_files)
 
-            if len(uHTR4_text_files) > 0:
-                uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
-            if len(uHTR11_text_files) > 0:
-                uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
+
         
-        elif all(["MN" in file or "MF" in file  or "PN" in file or "PF" in file for file in text_files]):
+        elif all(["MN" in file or "MF" in file  or "PN" in file or "PF" in file for file in data_files]): # Check for M or P naming scheme
 
             commonVars.unknown_side = False
 
             uHTR4_text_files = glob(f"./data/{data_folder_str}/*PF*.txt") + glob(f"./data/{data_folder_str}/*PN*.txt")
             uHTR11_text_files = glob(f"./data/{data_folder_str}/*MF*.txt") + glob(f"./data/{data_folder_str}/*MN*.txt")
 
-            if consent:
-                for file in uHTR4_text_files + uHTR11_text_files:
-                    parser.txt_to_bin(file)
-
             if len(uHTR4_text_files) > 0:
                 uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
             if len(uHTR11_text_files) > 0:
                 uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
 
-        elif len(text_files) > 0:
 
-            if consent:
-                for file in text_files:
-                    parser.txt_to_bin(file)
 
-            uHTR4 = load_from_file(uHTR="4", data_type="text", files=text_files)
+        elif len(data_files) > 0: # Cannot determine consistent naming scheme, load everything in as uHTR4
+
+            uHTR4 = load_from_file(uHTR="4", data_type="text", files=data_files)
             
             commonVars.unknown_side = True
+
+
         
         else: # If no files are found, raise error
             raise FileNotFoundError
