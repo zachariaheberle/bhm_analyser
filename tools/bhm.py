@@ -32,7 +32,7 @@ class bhm_analyser():
     }
 
     def __init__(self,uHTR="4") -> None:
-        print(f"Initialized {self.beam_side[uHTR]}")
+        #print(f"Initialized {self.beam_side[uHTR]}")
         self.uHTR=uHTR
         self.figure_folder = "./figures"
 
@@ -872,13 +872,8 @@ class bhm_analyser():
         '''
         Runs the steps in sequence
         Make sure you set the correct ADC Cuts & TDC Cuts in calib.ADC_CUTS & calib.TDC_PEAKS
+        Make sure you run self.clean_data() before running analysis!!!
         '''
-        #cleaning up data
-        self.removeNC()
-        self.remove62()
-        self.remove25glich()
-        self.remove124amp0tdc()
-
         # select runs if applicable
         if run_cut:
             self.select_runs(run_cut, custom_range=custom_range)
