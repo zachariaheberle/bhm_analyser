@@ -15,6 +15,7 @@ import traceback
 import time
 from datetime import datetime
 from tkinter import messagebox
+import os
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -25,21 +26,26 @@ def find_folder_name(file_path):
     """
     Seperates out the final folder name from its entire file path name
     """
-    return file_path.split("/")[-1].split("\\")[-1] # Jank workaround for windows and linux support
-
+    return file_path.split("./data")[-1][1:]
 
 def find_unique_runs(uHTR4, uHTR11):
     """
     Finds and identifies all runs that are present in the data
     """
     all_runs = np.concatenate((uHTR4.run, uHTR11.run))
-    return np.unique(all_runs)
+    return np.unique(all_runs).astype(np.uint32)
 
 def find_data():
     """
     Uses glob to find all folders present in ./data/ subdirectory of the script 
     """
-    data_folders = glob("./data/*")
+    data_files = glob("./data/**/*.txt", recursive=True) + glob("./data/**/*.uhtr", recursive=True)
+    data_folders = []
+    for file in data_files:
+        if os.stat(file).st_size != 0: # exclude directories that contain only zero length files
+            data_folders.append(os.path.split(file)[0])
+    data_folders = np.unique(np.asarray(data_folders))
+    data_folders = data_folders[data_folders != "./data"]
     data_folders_names = [find_folder_name(folder) for folder in data_folders]
     data_folders_dict = {find_folder_name(folder) : folder for folder in data_folders}
 
@@ -47,6 +53,20 @@ def find_data():
         raise FileNotFoundError
     
     return data_folders, data_folders_names, data_folders_dict
+
+def create_empty_bhm(uHTR):
+    uHTR = bhm_analyser(uHTR=uHTR)
+
+    uHTR.ch = np.empty(0,)
+    uHTR.ampl = np.empty(0,)
+    uHTR.tdc = np.empty(0,)
+    uHTR.tdc_2 = np.empty(0,)
+    uHTR.bx = np.empty(0,)
+    uHTR.orbit = np.empty(0,)
+    uHTR.run = np.empty(0,)
+    uHTR.ch_mapped= np.empty(0,)
+
+    return uHTR
 
 # def get_start_time(username, password, run):
 #     """
@@ -228,18 +248,26 @@ def load_uHTR_data(data_folder_str):
         
         return _uHTR
 
+    uHTR4 = create_empty_bhm("4")
+    uHTR11 = create_empty_bhm("11")
 
-    uHTR4_text_files = glob(f"./data/{data_folder_str}/uHTR4*.txt")
-    uHTR11_text_files = glob(f"./data/{data_folder_str}/uHTR11*.txt")
+    uHTR4_text_files = glob(f"./data/{data_folder_str}/uHTR4*.txt") + glob(f"./data/{data_folder_str}/uHTR_4*.txt")
+    uHTR11_text_files = glob(f"./data/{data_folder_str}/uHTR11*.txt") + glob(f"./data/{data_folder_str}/uHTR_11*.txt")
 
-    uHTR4_bin_files = glob(f"./data/{data_folder_str}/uHTR4*.uhtr")
-    uHTR11_bin_files = glob(f"./data/{data_folder_str}/uHTR11*.uhtr")
+    uHTR4_bin_files = glob(f"./data/{data_folder_str}/uHTR4*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_4*.uhtr")
+    uHTR11_bin_files = glob(f"./data/{data_folder_str}/uHTR11*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_11*.uhtr")
 
     if len(uHTR4_bin_files) > 0 and len(uHTR11_bin_files) > 0: # Check if binary .uhtr files are present
+
+        commonVars.unknown_side = False
+
         uHTR4 = load_from_file(uHTR="4", data_type="binary", files=uHTR4_bin_files)
         uHTR11 = load_from_file(uHTR="11", data_type="binary", files=uHTR11_bin_files)
 
     elif len(uHTR4_text_files) > 0 and len(uHTR11_text_files) > 0: # Check if text files are present
+
+        commonVars.unknown_side = False
+
         consent = check_conversion_consent() # Check if user wants to convert to binary files
 
         if consent:
@@ -256,13 +284,64 @@ def load_uHTR_data(data_folder_str):
             uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
             uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
 
-    else: # If no files are found, raise error
-        raise FileNotFoundError
-    
-    uHTR4.clean_data()
-    uHTR11.clean_data()
+    else: # Check for different known file naming schemes
+
+        consent = check_conversion_consent()
+
+        text_files = glob(f"./data/{data_folder_str}/*.txt") 
+
+        if all(["MINUS" in file or "PLUS" in file for file in text_files]):
+
+            commonVars.unknown_side = False
+
+            uHTR4_text_files = glob(f"./data/{data_folder_str}/*PLUS*.txt")
+            uHTR11_text_files = glob(f"./data/{data_folder_str}/*MINUS*.txt")
+
+            if consent:
+                for file in uHTR4_text_files + uHTR11_text_files:
+                    parser.txt_to_bin(file)
+
+            if len(uHTR4_text_files) > 0:
+                uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
+            if len(uHTR11_text_files) > 0:
+                uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
+        
+        elif all(["MN" in file or "MF" in file  or "PN" in file or "PF" in file for file in text_files]):
+
+            commonVars.unknown_side = False
+
+            uHTR4_text_files = glob(f"./data/{data_folder_str}/*PF*.txt") + glob(f"./data/{data_folder_str}/*PN*.txt")
+            uHTR11_text_files = glob(f"./data/{data_folder_str}/*MF*.txt") + glob(f"./data/{data_folder_str}/*MN*.txt")
+
+            if consent:
+                for file in uHTR4_text_files + uHTR11_text_files:
+                    parser.txt_to_bin(file)
+
+            if len(uHTR4_text_files) > 0:
+                uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
+            if len(uHTR11_text_files) > 0:
+                uHTR11 = load_from_file(uHTR="11", data_type="text", files=uHTR11_text_files)
+
+        elif len(text_files) > 0:
+
+            if consent:
+                for file in text_files:
+                    parser.txt_to_bin(file)
+
+            uHTR4 = load_from_file(uHTR="4", data_type="text", files=text_files)
+            
+            commonVars.unknown_side = True
+        
+        else: # If no files are found, raise error
+            raise FileNotFoundError
+
+    if len(uHTR4.run) > 0:
+        uHTR4.clean_data()
+    if len(uHTR11.run) > 0:
+        uHTR11.clean_data()
     
     loaded_runs = find_unique_runs(uHTR4, uHTR11)
+
     p.stop()
     return uHTR4, uHTR11, loaded_runs
 
@@ -274,8 +353,10 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
     """
     commonVars.folder_name = (f"figures/{figure_folder}")
 
-    uHTR11.create_figure_folder()
-    uHTR4.create_figure_folder()
+    if uHTR4 is not None:
+        uHTR4.create_figure_folder()
+    if uHTR11 is not None:
+        uHTR11.create_figure_folder()
 
     if run_cut == None:
         analysed_runs = find_unique_runs(uHTR4, uHTR11)

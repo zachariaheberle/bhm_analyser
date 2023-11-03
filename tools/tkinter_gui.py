@@ -147,6 +147,10 @@ def gui():
                 messagebox.showwarning("Possible Data Corruption", "Warning! Currently loaded data shows signs of possible data corruption!" + 
                     f" Please check for any abnormalities in text files and ensure that they are numbered correctly." 
                     f" If not loading from txt file, consider deleting uhtr files in {data_folder_str}, as these files may have been formed from corrupt data.")
+            
+            if commonVars.unknown_side:
+                messagebox.showinfo("Unknown uHTR Side", "Data folder contains errantly named data files. As such, it cannot be determined" +
+                                    " which side of the detector (+Z or -Z) the data comes from. All data will be assumed to be from uHTR4 (+Z).")
 
             update_runs(loaded_runs)
             data_status_message.set(f"Currently Loaded Data Folder: {data_folder_str}")

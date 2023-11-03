@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.dates as mdates
 import tools.dt_conv as dt_conv
 import tools.commonVars as commonVars
+import pandas as pd
 from tools.profiler import Profiler
 
 
@@ -65,6 +66,13 @@ def rate_plots(uHTR4,uHTR11,binx=None,N=-1,start_time=0,):
     f.autofmt_xdate()
     xfmt = mdates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(xfmt)
+
+    if len(uHTR4.run) == 0:
+        uHTR4.SR = pd.DataFrame()
+        uHTR4.CP = pd.DataFrame()
+    if len(uHTR11.run) == 0:
+        uHTR11.SR = pd.DataFrame()
+        uHTR11.CP = pd.DataFrame()
 
     
 
