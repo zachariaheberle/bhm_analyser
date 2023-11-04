@@ -846,7 +846,9 @@ class bhm_analyser():
         # print(df.orbit.values, df2.orbit.values)
         # is_sorted = lambda a: np.all(a[:-1] <= a[1:])
         # print(is_sorted(self.orbit))
-        x = start_time+(df.orbit.values-df.orbit.values[0])*3564*25*10**-6## miliseconds 
+        x = start_time+(df.orbit.values-df.orbit.values[0])*3564*25*10**-6## miliseconds
+        if len(x) == 1:
+            return [dt_conv.get_date_time(x[0])], [1], [None]
         if bins==None:
             y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),25*1000)) # bins--> every sec
         else:
