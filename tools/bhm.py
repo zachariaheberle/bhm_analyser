@@ -259,6 +259,19 @@ class bhm_analyser():
         '''
         Lego Plot of peak ampl vs tdc
         '''
+        if len(self.run) == 0 and commonVars.root: # Draw empty plot in gui if data empty
+            if self.uHTR == "4":
+                ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
+            elif self.uHTR == "11":
+                ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
+            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
+            ax3d.set_xlabel("TDC [a.u]")
+            ax3d.set_ylabel("Ampl [a.u]")
+            ax3d.set_zlabel("Events")
+            ax3d.set_xlim3d(left=0, right=50)
+            ax3d.set_ylim3d(bottom=0, top=180)
+            return
+        
         xdata = self.tdc#[self.ch_mapped == self.CMAP["MN05"]]
         ydata = self.peak_ampl#[self.ch_mapped == self.CMAP["MN05"]]
         h, xbins, ybins = np.histogram2d(xdata,ydata, bins=(np.arange(-0.5,50,1),np.arange(0,180,1)))
@@ -312,10 +325,30 @@ class bhm_analyser():
         #time_list = []
         for i, ch in enumerate(self.CMAP.keys()):
             total_draw = Profiler(name=f"ADC {ch} Total Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} ADC Plots"])
-            main_draw = Profiler(name=f"ADC {ch} Main Draw", parent=commonVars.profilers[f"ADC {ch} Total Draw"])
             gui_draw = Profiler(name=f"ADC {ch} GUI Draw", parent=commonVars.profilers[f"ADC {ch} Total Draw"])
             total_draw.start()
+            
+            if len(self.run) == 0 and commonVars.root:
+                gui_draw.start()
+                if self.uHTR == "4":
+                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
+                elif self.uHTR == "11":
+                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
+
+                gui_ax.set_xlabel("ADC [a.u]")
+                gui_ax.set_xticks(binx_tick)
+                gui_ax.set_xticklabels(labels=binx_tick, rotation=45)
+                x_val_range = (binx[-1] - binx[0])
+                margin = ((x_val_range/10) - int(x_val_range/10))/2 + (x_val_range/10) // 2 # Cursed 5% margins
+                # matplot lib uses """5%""" margins, but the right margin always seems to be +1 of the left margin
+                # Both still add up to 10% regardless. Cursed but oh well
+                gui_ax.set_xlim(binx[0]-margin, binx[-1]+margin+1)
+                gui_draw.stop()
+                continue
+
+            main_draw = Profiler(name=f"ADC {ch} Main Draw", parent=commonVars.profilers[f"ADC {ch} Total Draw"])
             main_draw.start()
+
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
             if i == 0:
                 #start = time.time()
@@ -423,9 +456,24 @@ class bhm_analyser():
         f,ax = plt.subplots()
         for i, ch in enumerate(self.CMAP.keys()):
             total_draw = Profiler(name=f"TDC {ch} Total Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} TDC Plots"])
-            main_draw = Profiler(name=f"TDC {ch} Main Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
             gui_draw = Profiler(name=f"TDC {ch} GUI Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
             total_draw.start()
+
+            if len(self.run) == 0 and commonVars.root:
+                gui_draw.start()
+                if self.uHTR == "4":
+                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
+                elif self.uHTR == "11":
+                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
+                
+                margin = ((50/10) - int(50/10))/2 + (50/10) // 2 # Cursed 5% margins
+                # Margins have a -1 on the left rather than a +1 on the right.
+                gui_ax.set_xlim(-margin-1, 50+margin)
+                gui_ax.set_xlabel("TDC [a.u]")
+                gui_draw.stop()
+                continue
+
+            main_draw = Profiler(name=f"TDC {ch} Main Draw", parent=commonVars.profilers[f"TDC {ch} Total Draw"])
             main_draw.start()
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
             binx = np.arange(-.5,50,1)
@@ -568,9 +616,28 @@ class bhm_analyser():
         '''
         # print(f"self.BR.bx: {self.BR.bx}")
         # print(f"self.SR.bx: {self.SR.bx}")
-        main_draw = Profiler(name="Occupancy Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
+    
         gui_draw = Profiler(name="Occupancy GUI Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
+
+        if len(self.run) == 0 and commonVars.root:
+            gui_draw.start()
+            if self.uHTR == "4":
+                ax = commonVars.occupancy_fig.add_subplot(121)
+            elif self.uHTR == "11":
+                ax = commonVars.occupancy_fig.add_subplot(122)
+            x_val_range = (3563.5 - -0.5)
+            margin = x_val_range/20 # Sane 5% margins
+            plotting.textbox(0.0,1.05,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            ax.set_xlabel('BX ID')
+            ax.set_ylabel('Events/1')
+            ax.set_xlim(-0.5-margin, 3563.5+margin)
+            gui_draw.stop()
+            return
+        
+        main_draw = Profiler(name="Occupancy Main Draw", parent=commonVars.profilers[f"uHTR{self.uHTR} Occupancy Plots"])
         main_draw.start()
+
         f, ax = plt.subplots()
         ax.set_yscale('log')
         plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
@@ -613,6 +680,39 @@ class bhm_analyser():
         MVP kept in self.tdc_correction
         '''
         #Should only apply ADC cuts
+
+        if len(self.run) == 0 and commonVars.root:
+            # Violin filler
+            if self.uHTR == "4":
+                    ax = commonVars.tdc_stability_fig.add_subplot(223)
+            elif self.uHTR == "11":
+                ax = commonVars.tdc_stability_fig.add_subplot(224)
+            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            channels = [ch for ch in self.CMAP.keys()]
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+            ax.set_ylabel("TDC [a.u]",fontsize=15)
+            ax.set_xlabel("Channels",fontsize=15)
+            margin = 0.5 # fixed margin
+            ax.set_ylim(0,15)
+            ax.set_xlim(-margin, 19+margin)
+            
+            # Vanilla filler
+            if self.uHTR == "4":
+                ax = commonVars.tdc_stability_fig.add_subplot(221)
+            elif self.uHTR == "11":
+                ax = commonVars.tdc_stability_fig.add_subplot(222)
+            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+            ax.set_ylabel("TDC [a.u]",fontsize=15)
+            ax.set_xlabel("Channels",fontsize=15)
+            ax.set_ylim(0,15)
+            margin = 19/20 # Sane 5% margins
+            ax.set_xlim(-margin, 19+margin)
+            return
         
         if "df" not in self.__dict__.keys():
             print("df not found: Calling convert2pandas()")
@@ -772,6 +872,20 @@ class bhm_analyser():
         """
         Checks the events per channel to ensure angular and HV consistency
         """
+
+        if len(self.run) == 0 and commonVars.root:
+            if self.uHTR == "4":
+                ax = commonVars.ch_events_fig.add_subplot(121)
+            elif self.uHTR == "11":
+                ax = commonVars.ch_events_fig.add_subplot(122)
+            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
+            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=[ch for ch in self.CMAP.keys()], rotation=45, ha="center", fontsize=8)
+            ax.set_xlabel("Channels", fontsize=15)
+            ax.set_ylabel("Events/1", fontsize=15)
+            ax.set_xlim(-1, 20)
+            return
         
         if "df" not in self.__dict__.keys():
             print("df not found: Calling get_SR_BR_CP_AR()")
@@ -979,7 +1093,7 @@ class bhm_analyser():
         #self.print_values() # debug
         
 
-        if len(self.run) == 0: # make sure it doesn't analyse data that doesn't exist
+        if len(self.run) == 0 and not commonVars.root: # make sure it doesn't analyse data that doesn't exist if there is no gui to display
             return
             
         #plotting lego, ADC, and TDC plots
@@ -1016,19 +1130,21 @@ class bhm_analyser():
             detector_side='M'
 
         # combine all the plots into pdfs
-        image_magick = Profiler(name=f"uHTR{self.uHTR} ImageMagick", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
-        image_magick.start()
-        os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}F*.png  {self.figure_folder}/adc_{detector_side}F.pdf")
-        os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
-        os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
-        os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
-        image_magick.stop()
+        if len(self.run) != 0:
+            image_magick = Profiler(name=f"uHTR{self.uHTR} ImageMagick", parent=commonVars.profilers[f"uHTR{self.uHTR}"])
+            image_magick.start()
+            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}F*.png  {self.figure_folder}/adc_{detector_side}F.pdf")
+            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
+            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
+            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
+            image_magick.stop()
 
-        self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
+            self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
+        
         self.plot_OccupancySRBR()# plots the occupancy
-        if plot_ch_events:
-           self.plot_channel_events()
         self.tdc_stability()
+        if plot_ch_events:
+            self.plot_channel_events()
         p.stop()
 
 
