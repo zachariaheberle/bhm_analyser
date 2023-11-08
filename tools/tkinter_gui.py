@@ -588,6 +588,7 @@ def gui():
     FolderLabel = ttk.LabelFrame(MainPage, text="Figure Folder Name")
     folder_name_var = StringVar()
     folder_name = ttk.Entry(FolderLabel, textvariable=folder_name_var, font=default_font)
+    folder_name.bind("<Return>", lambda event : do_analysis()) # Bind pressing enter to start analysis
 
     # Placing items in Folder selection frame
     FolderLabel.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
