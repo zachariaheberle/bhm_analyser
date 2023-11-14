@@ -942,15 +942,11 @@ class bhm_analyser():
                 df = df.query("ch_mapped == ch")
             else:
                 raise TypeError
-        #print(type(df.orbit.values), type(df.sort_values("orbit").orbit.values))
-        #print(df.orbit.values == df.sort_values("orbit").orbit.values)
-        #df2 = df
+
         df = df.sort_values("orbit")
-        # print(np.array_equiv(df.orbit.values, df2.orbit.values))
-        # print(df.orbit.values, df2.orbit.values)
-        # is_sorted = lambda a: np.all(a[:-1] <= a[1:])
-        # print(is_sorted(self.orbit))
-        x = start_time+(df.orbit.values-df.orbit.values[0])*3564*25*10**-6## miliseconds
+
+        # Very important to cast to 64bit float to prevent crashing!!
+        x = start_time+(df.orbit.to_numpy().astype(np.float64)-commonVars.reference_orbit)*3564*25*10**-6## miliseconds
         if len(x) == 1:
             return [dt_conv.get_date_time(x[0])], [1], [None]
         if bins==None:

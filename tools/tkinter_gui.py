@@ -12,15 +12,12 @@ import tools.analysis_helpers as analysis_helpers
 import tools.hw_info as hw_info
 import tools.calibration as calib
 from tools.parser import CorruptionError
-import subprocess
 import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import json
 import numpy as np
-from urllib.error import URLError
-import pandas
 
 
 def gui():
@@ -235,7 +232,7 @@ def gui():
         """
         try:
             erase_all_figures()
-            start_time = get_run_info(run_cut)
+            start_time = analysis_helpers.get_run_info()
             if start_time is not None:
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
             else:
@@ -267,64 +264,6 @@ def gui():
         finally:
             enable_frame(MainPage)
             return
-        
-    def get_run_info(run_cut):
-        """
-        Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
-        """
-        def get_min_run(run_cut):
-            """
-            Finds the minimum run value from the currently selected run values
-            """
-            loaded_runs = [int(val) for val in individual_run_display_box["values"]]
-            if run_cut == None:
-                min_run = min(loaded_runs)
-            elif isinstance(run_cut, int):
-                min_run = run_cut
-            else:
-                min_run = min(run_cut)
-            return min_run
-        
-        run = get_min_run(run_cut)
-        add_to_cache = False
-
-        try:
-            run_times = np.loadtxt("run_times.cache", dtype=np.uint64, delimiter=",") # Check if info exists in a local cache
-            if not np.any(run_times.T[0]==run):
-                raise FileNotFoundError
-            else:
-                run_time_ms = run_times[run_times.T[0]==run][0][1]
-            
-        except (FileNotFoundError, OSError):
-            add_to_cache = True
-            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
-            if not user_consent:
-                return 0
-            try:
-                from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
-                run_time_ms = int(pandas.Timestamp(query_run(run)[0]).replace().timestamp()*1e3)
-        
-            except URLError:
-                cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
-                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-                stdout, stderr = process.communicate()
-
-                if "Connection closed by remote host" in stderr.decode():
-                    return None
-                elif "ssh: Could not resolve hostname" in stderr.decode():
-                    messagebox.showerror("Hostname Error", 
-                    f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
-            
-                try:
-                    run_time_ms = int(pandas.Timestamp(stdout.decode()).replace().timestamp()*1e3)
-                except ValueError:
-                    raise Exception(f"Something went wrong! Connection stdout: {stdout}. Connection stderr: {stderr}.")
-
-        if add_to_cache:
-            with open("run_times.cache", "a") as fp:
-                fp.write(f"{run},{run_time_ms}\n")
-
-        return run_time_ms
 
     #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
 
