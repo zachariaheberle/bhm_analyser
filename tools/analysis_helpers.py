@@ -11,11 +11,12 @@ from tools.profiler import Profiler
 import pandas as pd
 from copy import deepcopy
 import traceback
-#from paramiko import SSHClient, AutoAddPolicy
 import time
 from datetime import datetime
 from tkinter import messagebox
 import os
+from urllib.error import URLError
+import subprocess
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -68,75 +69,6 @@ def create_empty_bhm(uHTR):
 
     return uHTR
 
-# def get_start_time(username, password, run):
-#     """
-#     Uses a double ssh to get start time for rate plots through the OMS API,
-#     must have access to lxplus and cmsusr. 
-#     """
-#     with SSHClient() as ssh: # lxplus connection
-
-#         try:
-#             ssh.set_missing_host_key_policy(AutoAddPolicy())
-#             ssh.connect("lxplus.cern.ch", username=username, password=password) # ssh username@lxplus.cern.ch
-#             if commonVars.root:
-#                 commonVars.connection_label_var.set("Connecting to CMSUSR...")
-#                 commonVars.connection_progress["value"] = 20
-#         except Exception as err:
-#             raise type(err)("Something went wrong with connection to LXPLUS!", *err.args)
-            
-#         try:
-#             ssh_transport = ssh.get_transport()
-#             ssh_channel = ssh_transport.open_channel("direct-tcpip", ("cmsusr.cern.ch", 22), ("lxplus.cern.ch", 22))
-#         except Exception as err:
-#             raise type(err)("Something went wrong with ssh tunnel between LXPLUS and CMS!", *err.args)
-        
-#         with SSHClient() as ssh2: # cmsusr connection
-            
-#             try:
-#                 ssh2.set_missing_host_key_policy(AutoAddPolicy())
-#                 ssh2.connect("cmsusr.cern.ch", username=username, password=password, sock=ssh_channel) # ssh username@cmsusr.cern.ch from lxplus
-#                 if commonVars.root:
-#                     commonVars.connection_label_var.set("Connection to CMSUSR OK!")
-#                     commonVars.connection_progress["value"] = 40
-#                     time.sleep(0.3) # Just so the user can see the message for a brief moment
-#             except Exception as err:
-#                 raise type(err)("Something went wrong with connection to CMS from LXPLUS!", *err.args)
-
-#             try:
-#                 if commonVars.root:
-#                     commonVars.connection_label_var.set("Copying over files...")
-#                     commonVars.connection_progress["value"] = 60
-#                 with ssh2.open_sftp() as sftp: # adding temporary directory to add script to
-#                     try:
-#                         sftp.chdir("bhm_tmp")
-#                     except IOError:
-#                         sftp.mkdir("bhm_tmp")
-#                         sftp.chdir("bhm_tmp")
-
-#                     sftp.put("./tools/get_run_time.py", "./get_run_time.py") # Copies get_run_time.py from local machine and moves it to the cms machine
-#             except Exception as err:
-#                 raise type(err)("Something went wrong with copying get_run_time.py to CMS!", *err.args)
-
-#             try:
-#                 if commonVars.root:
-#                     commonVars.connection_label_var.set("Getting run time data...")
-#                     commonVars.connection_progress["value"] = 80
-#                 stdin, stdout, stderr = ssh2.exec_command(f"/nfshome0/lumipro/brilconda3/bin/python3 ~/bhm_tmp/get_run_time.py {run}") 
-#                 readout = stdout.read().decode()
-#             except Exception as err:
-#                 raise type(err)("Something went wrong when running get_run_time.py!", *err.args)
-#             try:
-#                 readout = int(readout)
-#             except ValueError:
-#                 pass
-
-#     del stdin, stdout, stderr, ssh, ssh2, ssh_transport, ssh_channel # clean up
-#     if commonVars.root:
-#         commonVars.connection_label_var.set("Done!")
-#         commonVars.connection_progress["value"] = 100
-#         time.sleep(0.1) # Just so the user can see the message for but a moment
-#     return readout
-
 def error_handler(err):
     """
     Function that will write an error to error.log, ususally used when unknown errors have occured
@@ -162,7 +94,107 @@ def run_handler(runs):
             else:
                 fp.write("{:^8}\n".format(run))
 
+def get_run_orbit_ref(uHTR4, uHTR11):
+    """
+    Finds a run that is shared in both uHTR4 and uHTR11 that can be best used for timing.
+    This requires a run transition in the data and thus at least 2 runs for accurate timing,
+    else timing could be off by anywhere from seconds to hours.
+    Additionally, finds the lowest orbit value within that run to use as a reference point for timing.
+    """
+    all_runs = sorted(find_unique_runs(uHTR4, uHTR11))
+    for i in range(1, len(all_runs)):
+        if all_runs[i] in uHTR4.run and all_runs[i] in uHTR11.run: # Check if run transition exists in both files
+            run = all_runs[i]
+            break
+        elif (all_runs[i] == all_runs[i-1]+1 and all_runs[i] in uHTR4.run and all_runs[i-1] in uHTR4.run) or \
+             (all_runs[i] == all_runs[i-1]+1 and all_runs[i] in uHTR11.run and all_runs[i-1] in uHTR11.run): 
+            # Else check if run transition is +1 within a single file
+            run = all_runs[i]
+            break
+
+    # If above conditions are never met, inform user about inaccurate run time data and return min value
+    else:
+        if commonVars.root:
+            messagebox.showinfo("Inaccurate run time data", 
+                            "The program was unable to accurately determine an accurate run timestamp of the loaded runs, this is probably due to only one run being present in the data." +
+                            " Loaded run time data will be off from UTC by anywhere between a few seconds to multiple hours.")
+        else:
+            print("The program was unable to accurately determine an accurate run timestamp of the loaded runs, this is probably due to only one run being present in the data." +
+                    " Loaded run time data will be off from UTC by anywhere between a few seconds to multiple hours.")
+        run = min(all_runs)
         
+    min_orbit = min(*uHTR4.orbit[uHTR4.run==run], *uHTR11.orbit[uHTR11.run==run])
+    print(run, min_orbit)
+    print(max(uHTR4.orbit))
+    return run, min_orbit
+
+def get_run_info():
+    """
+    Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
+    """
+
+    if commonVars.reference_run != 0:
+        run = commonVars.reference_run
+    else:
+        return 0
+    
+    add_to_cache = False
+
+    try:
+        run_times = np.loadtxt("run_times.cache", dtype=np.uint64, delimiter=",") # Check if info exists in a local cache
+        if not np.any(run_times.T[0]==run):
+            raise FileNotFoundError
+        else:
+            run_time_ms = run_times[run_times.T[0]==run][0][1]
+        
+    except (FileNotFoundError, OSError):
+        add_to_cache = True
+
+        if commonVars.root:
+            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
+       
+        else:
+            answer = "a"
+            while answer.lower() != "y" and answer.lower() != "n":
+                answer = input("In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this? (y/n): ")
+            if answer.lower() == "y":
+                user_consent = True
+            else:
+                user_consent = False
+
+        if not user_consent:
+            return 0
+        
+        try:
+            from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
+            run_time_ms = int(pd.Timestamp(query_run(run)[0]).replace().timestamp()*1e3)
+    
+        except URLError:
+            cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            stdout, stderr = process.communicate()
+
+            if "Connection closed by remote host" in stderr.decode():
+                return None
+            elif "ssh: Could not resolve hostname" in stderr.decode():
+                if commonVars.root:
+                    messagebox.showerror("Hostname Error", 
+                    f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
+                else:
+                    print(f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
+            
+            try:
+                run_time_ms = int(pd.Timestamp(stdout.decode()).replace().timestamp()*1e3)
+            except ValueError:
+                raise Exception(f"Something went wrong! Connection stdout: {stdout}. Connection stderr: {stderr}.")
+
+    if add_to_cache:
+        with open("run_times.cache", "a") as fp:
+            fp.write(f"{run},{run_time_ms}\n")
+
+    return run_time_ms
+
+
 def load_uHTR_data(data_folder_str):
     p = Profiler(name="load_uHTR_data", parent=commonVars.profilers["uHTR Loader"])
     p.start()
@@ -328,6 +360,8 @@ def load_uHTR_data(data_folder_str):
         
         else: # If no files are found, raise error
             raise FileNotFoundError
+    
+    commonVars.reference_run, commonVars.reference_orbit = get_run_orbit_ref(uHTR4, uHTR11) # Must be done before clean_data()
 
     if len(uHTR4.run) > 0:
         uHTR4.clean_data()
