@@ -52,7 +52,7 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
     return ax  
 
-def rate_plots(uHTR4,uHTR11,binx=None,start_time=0,):
+def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=None):
     p = Profiler(name="rate_plots", parent=commonVars.profilers["Main Analysis"])
     p.start()
     '''
@@ -103,10 +103,10 @@ def rate_plots(uHTR4,uHTR11,binx=None,start_time=0,):
 
 
     if not uHTR4.SR.empty: # basic checks to ensure data isn't empty
-        x1,y1,binx_ = uHTR4.get_rate(uHTR4.SR,bins=binx,start_time=start_time,uHTR11=False)
+        x1,y1,binx_ = uHTR4.get_rate(uHTR4.SR,bins=lumi_bins,start_time=start_time,uHTR11=False)
         ax.plot(x1, y1,color='r',label="+Z SR")
     if not uHTR11.SR.empty:
-        x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=binx,start_time=start_time,uHTR11=True)
+        x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=lumi_bins,start_time=start_time,uHTR11=True)
         ax.plot(x2, y2,color='k',label="-Z SR")
 
     # SR plots
@@ -160,10 +160,10 @@ def rate_plots(uHTR4,uHTR11,binx=None,start_time=0,):
 
 
     if not uHTR4.CP.empty:
-        x3,y3,_ = uHTR4.get_rate(uHTR4.CP,bins=binx,start_time=start_time,uHTR11=False)
+        x3,y3,_ = uHTR4.get_rate(uHTR4.CP,bins=lumi_bins,start_time=start_time,uHTR11=False)
         ax.plot(x3, y3,color='r',label="+Z CP")
     if not uHTR11.CP.empty:
-        x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=binx,start_time=start_time,uHTR11=True)
+        x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=lumi_bins,start_time=start_time,uHTR11=True)
         ax.plot(x4, y4,color='k',label="-Z CP")
     
     # CP plots

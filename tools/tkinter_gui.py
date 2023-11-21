@@ -174,6 +174,7 @@ def gui():
             show_all_runs.insert("", END, values=run)
         individual_run_display_box["values"] = list(loaded_runs)
         custom_run_var.set(list(loaded_runs))
+        commonVars.loaded_runs = loaded_runs
         p.stop()
     
     def clear_selection(widget):
@@ -238,8 +239,6 @@ def gui():
         else:
             manual_calib = None
         
-        data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
-        
         disable_frame(MainPage)
         data_status.state(["!disabled"])
 
@@ -255,13 +254,22 @@ def gui():
         """
         try:
             erase_all_figures()
-            start_time = analysis_helpers.get_run_info()
+
+            # Grabbing info from OMS
+            data_status_message.set("Grabbing CMS run info...")
+            start_time, lumi_bins, delivered_lumi_bins = analysis_helpers.get_run_info(run_cut)
+            # Note: lumisection bins and delivered lumi are not enabled, work is currently being done to get this info
+
+            # Main data analysis section
             if start_time is not None:
-                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, manual_calib=manual_calib)
+                data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
+                analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, 
+                                          plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, 
+                                          manual_calib=manual_calib)#, lumi_bins=lumi_bins, delivered_lumi_bins=delivered_lumi_bins)
             else:
                 raise KeyboardInterrupt
-            data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}\nLoading figure window...")
-            #draw_all()
+            data_status_message.set("Loading figure window...")
+            draw_all()
 
             if not plot_lego: # Hides optional plots if not selected
                 FigurePage.hide(LegoPage)
@@ -275,7 +283,7 @@ def gui():
             FigurePage.select(ADCPage)
             fig_window.deiconify()
             data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
-
+        
         except KeyboardInterrupt:
             data_status_message.set(f"Currently Loaded Data Folder: {loaded_data_folder.get()}")
 

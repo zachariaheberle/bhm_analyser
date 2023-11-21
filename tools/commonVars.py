@@ -25,3 +25,6 @@ unknown_side = False
 # Most accurate references to UTC time in for our data (both the run and orbit number)
 reference_run = 0
 reference_orbit = 0
+
+# currently loaded runs in the gui
+loaded_runs = []
