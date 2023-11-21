@@ -6,7 +6,7 @@ tmp_data/
 20*.ipynb
 *.bat
 stuff.md
-test.py
+test*.py
 error.log
 _old/
 tools/__pycache__/*.pyc

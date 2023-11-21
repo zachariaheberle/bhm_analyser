@@ -127,7 +127,7 @@ def get_run_orbit_ref(uHTR4, uHTR11):
     print(max(uHTR4.orbit))
     return run, min_orbit
 
-def get_run_info():
+def get_run_info(run_cut):
     """
     Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
     """
@@ -135,7 +135,7 @@ def get_run_info():
     if commonVars.reference_run != 0:
         run = commonVars.reference_run
     else:
-        return 0
+        return 0, None, None
     
     add_to_cache = False
 
@@ -162,7 +162,7 @@ def get_run_info():
                 user_consent = False
 
         if not user_consent:
-            return 0
+            return 0, None, None
         
         try:
             from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
@@ -174,7 +174,7 @@ def get_run_info():
             stdout, stderr = process.communicate()
 
             if "Connection closed by remote host" in stderr.decode():
-                return None
+                return None, None, None
             elif "ssh: Could not resolve hostname" in stderr.decode():
                 if commonVars.root:
                     messagebox.showerror("Hostname Error", 
@@ -191,7 +191,7 @@ def get_run_info():
         with open("run_times.cache", "a") as fp:
             fp.write(f"{run},{run_time_ms}\n")
 
-    return run_time_ms
+    return run_time_ms, None, None
 
 
 def load_uHTR_data(data_folder_str):
