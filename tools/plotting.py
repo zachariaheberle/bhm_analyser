@@ -51,7 +51,7 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
     return ax  
 
-def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=None):
+def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None):
     '''
     After analysis step has been completed, and the plots look reasonable, you can get the rate plot
     uHTR4  --> BHM Analyser object for uHTR4 
@@ -63,6 +63,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
     f.autofmt_xdate()
     xfmt = mdates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(xfmt)
+    lumi_ax = ax.twinx()
 
     if len(uHTR4.run) == 0:
         uHTR4.SR = pd.DataFrame()
@@ -71,7 +72,8 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
         uHTR11.SR = pd.DataFrame()
         uHTR11.CP = pd.DataFrame()
 
-    
+    if delivered_lumi is not None:
+        delivered_lumi = np.asarray(delivered_lumi)
 
 
     # get correct binx
@@ -105,12 +107,20 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
     if not uHTR11.SR.empty:
         x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=lumi_bins,start_time=start_time,uHTR11=True)
         ax.plot(x2, y2,color='k',label="-Z SR")
+    if lumi_bins is not None:
+        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
+        lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+        lumi_ax.set_yscale('log')
+        lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
+        ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
 
     # SR plots
     ax.set_xlabel("Time Approximate ")
-    ax.set_ylabel("Event Rate")
+    ax.set_ylabel("BHM Event Rate")
     if not uHTR4.SR.empty or not uHTR11.SR.empty: 
-        ax.legend(loc=(1.1,0.8),frameon=1)
+        lines, labels = ax.get_legend_handles_labels()
+        lines2, labels2 = lumi_ax.get_legend_handles_labels()
+        ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
     ax.set_yscale('log')
     if start_time != 0:
         textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
@@ -132,18 +142,27 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
 
 
     if commonVars.root: # I'm sure I can implement this better
-        ax = commonVars.rate_fig.add_subplot(121)
+        ax = commonVars.rate_fig.add_subplot(121)  
         commonVars.rate_fig.autofmt_xdate()
         xfmt = mdates.DateFormatter('%H:%M')
         ax.xaxis.set_major_formatter(xfmt)
+        lumi_ax = ax.twinx()
         if not uHTR4.SR.empty:
             ax.plot(x1, y1,color='r',label="+Z SR")
         if not uHTR11.SR.empty:
             ax.plot(x2, y2,color='k',label="-Z SR")
+        if lumi_bins is not None:
+            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
+            lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+            lumi_ax.set_yscale('log')
+            lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
+            ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
         ax.set_xlabel("Time Approximate ")
-        ax.set_ylabel("Event Rate")
-        if not uHTR4.SR.empty or not uHTR11.SR.empty:
-            ax.legend(loc=(1.1,0.8),frameon=1)
+        ax.set_ylabel("BHM Event Rate")
+        if not uHTR4.SR.empty or not uHTR11.SR.empty or lumi_bins is not None:
+            lines, labels = ax.get_legend_handles_labels()
+            lines2, labels2 = lumi_ax.get_legend_handles_labels()
+            ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
         ax.set_yscale('log')
         if start_time != 0:
             textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
@@ -154,6 +173,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
     f.autofmt_xdate()
     xfmt = mdates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(xfmt)
+    lumi_ax = ax.twinx()
 
 
     if not uHTR4.CP.empty:
@@ -162,12 +182,20 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
     if not uHTR11.CP.empty:
         x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=lumi_bins,start_time=start_time,uHTR11=True)
         ax.plot(x4, y4,color='k',label="-Z CP")
+    if lumi_bins is not None:
+        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
+        lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+        lumi_ax.set_yscale('log')
+        lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
+        ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
     
     # CP plots
     ax.set_xlabel("Time Approximate ")
-    ax.set_ylabel("Event Rate")
+    ax.set_ylabel("BHM Event Rate")
     if not uHTR4.CP.empty or not uHTR11.CP.empty:
-        ax.legend(loc=(1.1,0.8),frameon=1)
+        lines, labels = ax.get_legend_handles_labels()
+        lines2, labels2 = lumi_ax.get_legend_handles_labels()
+        ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
     ax.set_yscale('log')
     if start_time != 0:
         textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
@@ -192,14 +220,23 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi_bins=
         commonVars.rate_fig.autofmt_xdate()
         xfmt = mdates.DateFormatter('%H:%M')
         ax.xaxis.set_major_formatter(xfmt)
+        lumi_ax = ax.twinx()
         if not uHTR4.CP.empty:
             ax.plot(x3, y3,color='r',label="+Z CP")
         if not uHTR11.CP.empty:
             ax.plot(x4, y4,color='k',label="-Z CP")
+        if lumi_bins is not None:
+            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
+            lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+            lumi_ax.set_yscale('log')
+            lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
+            ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
         ax.set_xlabel("Time Approximate ")
-        ax.set_ylabel("Event Rate")
-        if not uHTR4.CP.empty or not uHTR11.CP.empty:
-            ax.legend(loc=(1.1,0.8),frameon=1)
+        ax.set_ylabel("BHM Event Rate")
+        if not uHTR4.CP.empty or not uHTR11.CP.empty or lumi_bins is not None:
+            lines, labels = ax.get_legend_handles_labels()
+            lines2, labels2 = lumi_ax.get_legend_handles_labels()
+            ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
         ax.set_yscale('log')
         if start_time != 0:
             textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)

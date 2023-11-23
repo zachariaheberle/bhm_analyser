@@ -950,8 +950,10 @@ class bhm_analyser():
         if len(x) == 1:
             return [dt_conv.get_date_time(x[0])], [1], [None]
         if bins==None:
-            y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),25*1000)) # bins--> every sec
+            y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),23.5*1000)) # bins--> every sec
         else:
+            if bins[-1] < np.max(x): # If lumi data cannot cover all of BHM data, artifically extend it
+                bins.extend([np.arange(bins[-1] + 23500, np.max(x)+1, 23500)]) # +1 to capture end point
             y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=bins)
         # if uHTR11:
         #     y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),25000))
