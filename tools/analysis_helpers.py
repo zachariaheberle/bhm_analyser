@@ -7,6 +7,7 @@ import tools.parser as parser
 import tools.calibration as calib
 import tools.plotting as plotting
 import tools.commonVars as commonVars
+from tools.get_run_info import *
 from tools.profiler import Profiler
 import pandas as pd
 from copy import deepcopy
@@ -22,6 +23,26 @@ import subprocess
 Various helper functions needed for both no gui and gui analysis files. These
 functions are placed in here to prevent redundancy
 """
+def mkdir(path):
+    try:
+        os.mkdir(path)
+    except:
+        pass
+
+def askyesno(message, title=""):
+    if commonVars.root:
+        return messagebox.askyesno(title, message)
+       
+    else:
+        answer = "a"
+        while answer.lower() != "y" and answer.lower() != "n":
+            answer = input(f"{message} (y/n): ")
+        if answer.lower() == "y":
+            response = True
+        else:
+            response = False
+        return response
+
 
 def find_folder_name(file_path):
     """
@@ -124,75 +145,106 @@ def get_run_orbit_ref(uHTR4, uHTR11):
         run = min(all_runs)
         
     min_orbit = min(*uHTR4.orbit[uHTR4.run==run], *uHTR11.orbit[uHTR11.run==run])
-    print(run, min_orbit)
-    print(max(uHTR4.orbit))
     return run, min_orbit
 
 def get_run_info(run_cut):
     """
     Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
     """
+    mkdir("./cache")
+
+    def get_runs_from_cut(run_cut):
+        if run_cut == None:
+            return commonVars.loaded_runs
+        elif isinstance(run_cut, int):
+            return [run_cut]
+        else:
+            return run_cut
+
+    def get_run_time_ms(run):
+
+        try:
+            run_times = np.loadtxt("./cache/run_times.cache", dtype=np.uint64, delimiter=",") # Check if info exists in a local cache
+            if not np.any(run_times.T[0]==run):
+                raise FileNotFoundError
+            else:
+                run_time_ms = run_times[run_times.T[0]==run][0][1]
+            
+        except (FileNotFoundError, OSError):
+
+            if not askyesno("In order to get accurate run time data for rate plots, a valid CMS User account is required."+\
+                            " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
+                            title="Information Notice"):
+                return 0
+            
+            run_time_ms, _ = query_run(run)
+
+            with open("./cache/run_times.cache", "a") as fp:
+                fp.write(f"{run},{run_time_ms}\n")
+
+        return run_time_ms
+    
+    def get_lumi_info(runs):
+        write_to_cache = True
+
+        try:
+            lumi_info = pd.read_csv("./cache/lumi_info.cache")
+            if lumi_info.empty:
+                raise FileNotFoundError
+            
+            elif not all([run in lumi_info["run"].to_numpy() for run in runs]):
+                user_consent = askyesno("In order to compare BHM event rate data to CMS Luminosity, a valid LXPLUS account is required."+\
+                                        " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
+                                        title="Information Notice")
+                if not user_consent:
+                    return None
+                lumi_info = pd.concat((lumi_info, get_lumisections(runs))).drop_duplicates().reset_index(drop=True)
+                
+            else:
+                write_to_cache = False
+
+        except (FileNotFoundError, OSError):
+            user_consent = askyesno("In order to compare BHM event rate data to CMS Luminosity, a valid LXPLUS account is required."+\
+                                        " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
+                                        title="Information Notice")
+            if not user_consent:
+                return None
+            lumi_info = get_lumisections(runs)
+
+        finally:
+            if write_to_cache:
+                lumi_info.to_csv("./cache/lumi_info.cache") # This will overwrite old cache, be careful with this!
+
+        lumi_info = lumi_info.dropna().query(f"run>={min(runs)} & run<={max(runs)}") # Get rid of rows with None entries and only select rows with relevant runs
+
+        time_vals = lumi_info["time"].to_numpy()*1000 # convert to ms
+        lumi_vals = lumi_info["delivered_lumi"].to_numpy() # In units of ub^-1
+
+        lumi_bins = [time_vals[0]]
+        delivered_lumi = [lumi_vals[0]]
+
+        for i in range(len(time_vals)-1):
+
+            # If we do not have lumi info for a large period (>25s), set delivered lumi to zero, and fill in missing lumi bins with 23.5s bins
+            if time_vals[i+1] - time_vals[i] > 25000:
+                lumi_bins.extend(np.arange(time_vals[i] + 23500, time_vals[i+1], 23500))
+                delivered_lumi.extend([0]*len(np.arange(time_vals[i] + 23500, time_vals[i+1], 23500)))
+
+            lumi_bins.append(time_vals[i+1])
+            delivered_lumi.append(lumi_vals[i+1])
+        
+        return lumi_bins, delivered_lumi
+
 
     if commonVars.reference_run != 0:
         run = commonVars.reference_run
     else:
         return 0, None, None
     
-    add_to_cache = False
+    run_time_ms = get_run_time_ms(run)
+    lumi_bins, delivered_lumi = get_lumi_info(get_runs_from_cut(run_cut))
 
-    try:
-        run_times = np.loadtxt("run_times.cache", dtype=np.uint64, delimiter=",") # Check if info exists in a local cache
-        if not np.any(run_times.T[0]==run):
-            raise FileNotFoundError
-        else:
-            run_time_ms = run_times[run_times.T[0]==run][0][1]
-        
-    except (FileNotFoundError, OSError):
-        add_to_cache = True
-
-        if commonVars.root:
-            user_consent = messagebox.askyesno("Information Notice", "In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this?")
-       
-        else:
-            answer = "a"
-            while answer.lower() != "y" and answer.lower() != "n":
-                answer = input("In order to get accurate run time data for rate plots, a valid CMS User account is required. You can enter your credentials in the terminal used to launch this program, are you OK with this? (y/n): ")
-            if answer.lower() == "y":
-                user_consent = True
-            else:
-                user_consent = False
-
-        if not user_consent:
-            return 0, None, None
-        
-        try:
-            from tools.get_run_time import query_run # try to run the script locally, else ssh into cmsusr
-            run_time_ms = int(pd.Timestamp(query_run(run)[0]).replace().timestamp()*1e3)
-    
-        except URLError:
-            cmd = f"ssh cmsusr \"python3 - \" < ./tools/get_run_time.py {run}"
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            stdout, stderr = process.communicate()
-
-            if "Connection closed by remote host" in stderr.decode():
-                return None, None, None
-            elif "ssh: Could not resolve hostname" in stderr.decode():
-                if commonVars.root:
-                    messagebox.showerror("Hostname Error", 
-                    f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
-                else:
-                    print(f"Error: {stderr.decode()}. Please ensure your ssh config file is setup correctly. Please see the ssh config section of README.md for further documentation on how to do this.")
-            
-            try:
-                run_time_ms = int(pd.Timestamp(stdout.decode()).replace().timestamp()*1e3)
-            except ValueError:
-                raise Exception(f"Something went wrong! Connection stdout: {stdout}. Connection stderr: {stderr}.")
-
-    if add_to_cache:
-        with open("run_times.cache", "a") as fp:
-            fp.write(f"{run},{run_time_ms}\n")
-
-    return run_time_ms, None, None
+    return run_time_ms, lumi_bins, delivered_lumi
 
 
 def load_uHTR_data(data_folder_str):
@@ -205,17 +257,9 @@ def load_uHTR_data(data_folder_str):
         """
         Checks if the user would like to convert their text files to binary files
         """
-        if commonVars.root:
-            consent = messagebox.askyesno("Data Conversion Check", 
-                "uHTR.txt files found. Would you like to convert them into a new format which loads significantly faster and uses less disk space? (Note, this will not erase the original files)")
-        else:
-            answer = "a"
-            while answer.lower() != "y" and answer.lower() != "n":
-                answer = input("uHTR.txt files found. Would you like to convert them into a new format which loads significantly faster and uses less disk space? (Note, this will not erase the original files) (y/n): ")
-            if answer.lower() == "y":
-                consent = True
-            else:
-                consent = False
+        consent = askyesno("uHTR.txt files found. Would you like to convert them into a new format which loads"+\
+                           " significantly faster and uses less disk space? (Note, this will not erase the original files)",
+                           title="Data Conversion Check")
         if consent:
             for file in glob(f"./data/{data_folder_str}/*.txt"):
                 parser.txt_to_bin(file)
@@ -373,7 +417,9 @@ def load_uHTR_data(data_folder_str):
     p.stop()
     return uHTR4, uHTR11, loaded_runs
 
-def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None):
+def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, 
+             plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None,
+             lumi_bins=None, delivered_lumi=None):
     p = Profiler(name="Main Analysis", parent=commonVars.profilers["Analysis Thread"])
     p.start()
     """
@@ -416,7 +462,7 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, plo
         commonVars.current_uHTR = 11
         _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
 
-    plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time)
+    plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi)
 
     del _uHTR4 # removing temp variables
     del _uHTR11

@@ -256,8 +256,8 @@ def gui():
             erase_all_figures()
 
             # Grabbing info from OMS
-            data_status_message.set("Grabbing CMS run info...")
-            start_time, lumi_bins, delivered_lumi_bins = analysis_helpers.get_run_info(run_cut)
+            data_status_message.set("Grabbing CMS info...")
+            start_time, lumi_bins, delivered_lumi = analysis_helpers.get_run_info(run_cut)
             # Note: lumisection bins and delivered lumi are not enabled, work is currently being done to get this info
 
             # Main data analysis section
@@ -265,7 +265,7 @@ def gui():
                 data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, 
                                           plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, 
-                                          manual_calib=manual_calib)#, lumi_bins=lumi_bins, delivered_lumi_bins=delivered_lumi_bins)
+                                          manual_calib=manual_calib, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi)
             else:
                 raise KeyboardInterrupt
             data_status_message.set("Loading figure window...")
