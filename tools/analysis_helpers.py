@@ -212,9 +212,9 @@ def get_run_info(run_cut):
 
         finally:
             if write_to_cache:
-                lumi_info.to_csv("./cache/lumi_info.cache") # This will overwrite old cache, be careful with this!
+                lumi_info.to_csv("./cache/lumi_info.cache", index=False) # This will overwrite old cache, be careful with this!
 
-        lumi_info = lumi_info.dropna().query(f"run>={min(runs)} & run<={max(runs)}") # Get rid of rows with None entries and only select rows with relevant runs
+        lumi_info = lumi_info.dropna().query(f"(run >= {min(runs)}) & (run <= {max(runs)})") # Get rid of rows with None entries and only select rows with relevant runs
 
         time_vals = lumi_info["time"].to_numpy()*1000 # convert to ms
         lumi_vals = lumi_info["delivered_lumi"].to_numpy() # In units of ub^-1
