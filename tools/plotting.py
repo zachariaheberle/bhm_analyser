@@ -78,6 +78,15 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
     if delivered_lumi is not None:
         delivered_lumi = np.asarray(delivered_lumi)
 
+    unit_labels = {
+        1_000_000 : r"CMS Delivered Luminosity [$b^{-1}$]",
+        1000 : r"CMS Delivered Luminosity [$mb^{-1}$]",
+        1 : r"CMS Delivered Luminosity [$\mub^{-1}$]",
+        1/1000 : r"CMS Delivered Luminosity [$nb^{-1}$]",
+        1/1_000_000 : r"CMS Delivered Luminosity [$pb^{-1}$]",
+        1/1_000_000_000 : r"CMS Delivered Luminosity [$fb^{-1}$]",
+    }
+
 
     # get correct binx
     # binx = np.arange(np.min(uHTR4.orbit),np.max(uHTR4.orbit),3564*25*10**-6*25000)# 25 secs
@@ -111,8 +120,11 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
         x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=lumi_bins,start_time=start_time,uHTR11=True)
         ax.plot(x2, y2,color='k',label="-Z SR")
     if lumi_bins is not None:
-        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
-        lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+        for scale_factor in [10**i for i in range(-9, 6, 3)]:
+            if max(delivered_lumi)*scale_factor > 10:
+                break
+        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
+        lumi_ax.set_ylabel(unit_labels[scale_factor])
         lumi_ax.set_yscale('log')
         lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
         ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
@@ -155,8 +167,11 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
         if not uHTR11.SR.empty:
             ax.plot(x2, y2,color='k',label="-Z SR")
         if lumi_bins is not None:
-            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
-            lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+            for scale_factor in [10**i for i in range(-9, 6, 3)]:
+                if max(delivered_lumi)*scale_factor > 10:
+                    break
+            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
+            lumi_ax.set_ylabel(unit_labels[scale_factor])
             lumi_ax.set_yscale('log')
             lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
             ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
@@ -186,8 +201,11 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
         x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=lumi_bins,start_time=start_time,uHTR11=True)
         ax.plot(x4, y4,color='k',label="-Z CP")
     if lumi_bins is not None:
-        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
-        lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+        for scale_factor in [10**i for i in range(-9, 6, 3)]:
+            if max(delivered_lumi)*scale_factor > 10:
+                break
+        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
+        lumi_ax.set_ylabel(unit_labels[scale_factor])
         lumi_ax.set_yscale('log')
         lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
         ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
@@ -229,8 +247,11 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
         if not uHTR11.CP.empty:
             ax.plot(x4, y4,color='k',label="-Z CP")
         if lumi_bins is not None:
-            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi/1000, color="#a600ff", label="CMS Lumi")
-            lumi_ax.set_ylabel(r"CMS Delivered Luminosity [$nb^{-1}$]")
+            for scale_factor in [10**i for i in range(-9, 6, 3)]:
+                if max(delivered_lumi)*scale_factor > 10:
+                    break
+            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
+            lumi_ax.set_ylabel(unit_labels[scale_factor])
             lumi_ax.set_yscale('log')
             lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
             ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)

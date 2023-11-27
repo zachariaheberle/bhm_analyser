@@ -1057,7 +1057,8 @@ class bhm_analyser():
             y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),23.5*1000)) # bins--> every sec
         else:
             if bins[-1] < np.max(x): # If lumi data cannot cover all of BHM data, artifically extend it
-                bins.extend([np.arange(bins[-1] + 23500, np.max(x)+1, 23500)]) # +1 to capture end point
+                bins = bins[:] # Make a shallow copy if we need to modify the lumi_bins list because we need lumi_bins to be constant in plotting.py
+                bins.extend(np.arange(bins[-1] + 23500, np.max(x)+1, 23500)) # +1 to capture end point
             y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=bins)
         # if uHTR11:
         #     y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),25000))
