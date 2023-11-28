@@ -151,6 +151,8 @@ def get_run_info(run_cut):
     """
     Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
     """
+    p = Profiler(name="get_run_info", parent=commonVars.profilers["Analysis Thread"])
+    p.start()
     mkdir("./cache")
 
     def get_runs_from_cut(run_cut):
@@ -244,6 +246,7 @@ def get_run_info(run_cut):
     run_time_ms = get_run_time_ms(run)
     lumi_bins, delivered_lumi = get_lumi_info(get_runs_from_cut(run_cut))
 
+    p.stop()
     return run_time_ms, lumi_bins, delivered_lumi
 
 

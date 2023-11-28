@@ -7,6 +7,8 @@ import shlex
 import numpy as np
 from io import StringIO
 import subprocess
+from tools.profiler import Profiler
+import tools.commonVars as commonVars
 # import requests
 # import json
 # import socket
@@ -59,6 +61,7 @@ import subprocess
 #             raise ConnectionError("Failed to connect to cmsusr!")
 
 def query_run(run: int = 375000):
+    p = Profiler(name="query_run", parent=commonVars.profilers["get_run_info"])
     url = f"http://cmsoms.cms/agg/api/v1/runs/csv?filter[run_number][EQ]={run}"
     try:
         run_info = pd.read_csv(url).squeeze()
@@ -69,10 +72,12 @@ def query_run(run: int = 375000):
         run_info = pd.read_csv(StringIO(process.stdout)).squeeze()
     
     finally:
+        p.start()
         if process.stderr != "" and "warning" not in process.stderr.lower():
             raise Exception(process.stderr)
         start = run_info.start_time
         end = run_info.end_time
+        p.stop()
         return (int(pd.Timestamp(start).replace().timestamp()*1e3), int(pd.Timestamp(end).replace().timestamp()*1e3))
 
 
@@ -87,6 +92,8 @@ def get_lumisections(runs: list = [375000]):
             
 
     finally:
+        p = Profiler(name="get_lumisections", parent=commonVars.profilers["get_run_info"])
+        p.start()
         if process.stderr != "" and "warning" not in process.stderr.lower():
             raise Exception(process.stderr)
         lumi_info = pd.read_csv(StringIO(process.stdout), 
@@ -113,5 +120,5 @@ def get_lumisections(runs: list = [375000]):
                                  "fill" : [None]
                        })
                 lumi_info = pd.concat((lumi_info, df))
-
+        p.stop()
         return lumi_info
