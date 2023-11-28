@@ -996,7 +996,6 @@ def gui():
     canvas_list_names = ["adc_canvas", "tdc_canvas", "tdc_stability_canvas", "occupancy_canvas", "rate_canvas", "lego_canvas", "ch_events_canvas"]
 
     fig_window.withdraw()
-    draw_all()
 
     gui_startup.stop()
     window_startup = Profiler("Window Startup")
