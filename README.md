@@ -46,16 +46,15 @@ Host cmsusr
 ```
 You may or may not need a proxy command to connect to connect to cmsusr. If so, you can use an ssh connection to lxplus as a proxy by uncommenting the ProxyCommand line and filling in your username.
 
+### brilcalc Setup
+In order to grab lumisection data from CMS, we use the brilcalc tool on LXPLUS. In order to use this, you must have brilcalc setup on your LXPLUS user account. To set up brilcalc using brilconda, please see the Twiki quickstart guide here: https://twiki.cern.ch/twiki/bin/viewauth/CMS/BrilcalcQuickStart
+
 ---
 ## Status
 This project is in its intial stage. If you find bugs, please reach out to rohithsaradhy@gmail.com, zachariah.eberle@gmail.com, or raise an issue.
 
 ### To-Do
 - Run level plots
-- Correct orbit time to UTC [Talk to OMS system] (Done)
-- Error Handling for channels with no data (Done)
 - Automate derivation of ADC Peak without best estimate
 - Automate TDC Window [TDC Peaks are automatically derived]
-- XML configuration generator (Done in JSON, not XML)
-- Hardcoded value of MN05 needs to be removed. General method to remove list of channels needs to be implemented. (Done)
 ---
