@@ -199,7 +199,7 @@ def get_run_info(run_cut):
                                         " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
                                         title="Information Notice")
                 if not user_consent:
-                    return None
+                    return None, None
                 lumi_info = pd.concat((lumi_info, get_lumisections(runs))).drop_duplicates().reset_index(drop=True)
                 
             else:
@@ -210,7 +210,7 @@ def get_run_info(run_cut):
                                         " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
                                         title="Information Notice")
             if not user_consent:
-                return None
+                return None, None
             lumi_info = get_lumisections(runs)
 
         finally:
