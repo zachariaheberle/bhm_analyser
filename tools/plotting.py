@@ -1,10 +1,11 @@
-# Written by Rohith Saradhy rohithsaradhy@gmail.com
+# Written by Rohith Saradhy rohithsaradhy@gmail.com and Zachariah Eberle zachariah.eberle@gmail.com
 
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
 import tools.dt_conv as dt_conv
 import tools.commonVars as commonVars
+from matplotlib.patches import Polygon
 import pandas as pd
 
 
@@ -49,7 +50,24 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     depth = ybins[1]-ybins[0]
     mask = (h.flatten() == 0)
     ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
-    return ax  
+    return ax
+
+def get_poly(counts, width, color, label=""):
+    """
+    This saves a very small amount of time, but is *technically* faster.
+    Used for generating bar chart polygon for channel events
+    """
+    verticies = []
+    bin_edges = [i-width/2 for i in range(21)]
+    for j in range(len(counts)): # Generates the verticies of the new polygon
+        verticies.append((bin_edges[j], 0))
+        verticies.append((bin_edges[j], counts[j]))
+        verticies.append((bin_edges[j] + width, counts[j]))
+        verticies.append((bin_edges[j] + width, 0))
+        if j == len(counts) - 1:
+            verticies.append((bin_edges[0], 0))
+    #print(verticies)
+    return Polygon(verticies, closed=True, facecolor=color, label=label)
 
 def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None):
     '''

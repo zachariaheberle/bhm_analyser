@@ -1,4 +1,4 @@
-# Written by Rohith Saradhy rohithsaradhy@gmail.com
+# Written by Rohith Saradhy rohithsaradhy@gmail.com and Zachariah Eberle zachariah.eberle@gmail.com
 
 
 import tools.parser as parser
@@ -16,7 +16,6 @@ import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from matplotlib.patches import Polygon
 import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
@@ -228,21 +227,12 @@ class bhm_analyser():
         self.peak_ampl    = self.peak_ampl[theCut]
 
 
-    def get_legoPlt(self):
+    def get_legoPlt(self, queue):
         '''
         Lego Plot of peak ampl vs tdc
         '''
-        if len(self.run) == 0 and commonVars.root: # Draw empty plot in gui if data empty
-            if self.uHTR == "4":
-                ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
-            elif self.uHTR == "11":
-                ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
-            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
-            ax3d.set_xlabel("TDC [a.u]")
-            ax3d.set_ylabel("Ampl [a.u]")
-            ax3d.set_zlabel("Events")
-            ax3d.set_xlim3d(left=0, right=50)
-            ax3d.set_ylim3d(bottom=0, top=180)
+        if len(self.run) == 0: # Draw empty plot in gui if data empty
+            queue.put_nowait([self.uHTR, None, None, None])
             return
         
         xdata = self.tdc#[self.ch_mapped == self.CMAP["MN05"]]
@@ -264,22 +254,12 @@ class bhm_analyser():
         ax3d.set_ylim3d(bottom=0, top=180)
         plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
 
-        if commonVars.root:
-            if self.uHTR == "4":
-                ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
-            elif self.uHTR == "11":
-                ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
-            ax = plotting.lego(h, xbins, ybins, ax=ax3d)
-            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
-            ax3d.set_xlabel("TDC [a.u]")
-            ax3d.set_ylabel("Ampl [a.u]")
-            ax3d.set_zlabel("Events")
-            ax3d.set_xlim3d(left=0, right=50)
-            ax3d.set_ylim3d(bottom=0, top=180)
+        if self.gui:
+            queue.put_nowait([self.uHTR, h, xbins, ybins])
 
         plt.close()
 
-    def saveADCplots(self,binx=None,binx_tick=None):
+    def saveADCplots(self, binx=None, binx_tick=None, queue=None):
         if binx is None:
             binx = np.arange(120,180,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
         if binx_tick is None:    
@@ -290,20 +270,8 @@ class bhm_analyser():
         #time_list = []
         for i, ch in enumerate(self.CMAP.keys()):
 
-            if len(self.run) == 0 and commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
-
-                gui_ax.set_xlabel("ADC [a.u]")
-                gui_ax.set_xticks(binx_tick)
-                gui_ax.set_xticklabels(labels=binx_tick, rotation=45)
-                x_val_range = (binx[-1] - binx[0])
-                margin = ((x_val_range/10) - int(x_val_range/10))/2 + (x_val_range/10) // 2 # Cursed 5% margins
-                # matplot lib uses """5%""" margins, but the right margin always seems to be +1 of the left margin
-                # Both still add up to 10% regardless. Cursed but oh well
-                gui_ax.set_xlim(binx[0]-margin, binx[-1]+margin+1)
+            if len(self.run) == 0:
+                queue.put_nowait([ch, None, binx, binx_tick, self.adc_plt_tdc_width])
                 continue
 
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
@@ -379,17 +347,8 @@ class bhm_analyser():
             #time_list.append((end-start)*1000)
             #print(f"Render time: {(end-start)*1000:.3f}ms")
 
-            if commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
-                gui_ax.hist(x,bins=binx+0.5, histtype="stepfilled")
-                plotting.textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}", size=15, ax=gui_ax)
-                gui_ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-                gui_ax.set_xticks(binx_tick)
-                gui_ax.set_xticklabels(labels=binx_tick, rotation=45)
-                gui_ax.set_xlabel("ADC [a.u]")
+            if self.gui:
+                queue.put_nowait([ch, x, binx, binx_tick, self.adc_plt_tdc_width])
 
         plt.close()
         #print(f"Initial Render time: {time_list[0]:.3f}ms")
@@ -397,7 +356,7 @@ class bhm_analyser():
             # if self.ADC_Cuts[ch] != calib.ADC_CUTS[ch]:
             #     print(f"For channel {ch} the left cut is at {self.ADC_Cuts[ch]} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
 
-    def saveTDCplots(self,delay=10):
+    def saveTDCplots(self, delay=10, queue=None):
         '''
             TDC distance of the peak from 0; This can be used if there is a activation peak that shadows the BH peak
         '''
@@ -405,16 +364,8 @@ class bhm_analyser():
         f,ax = plt.subplots()
         for i, ch in enumerate(self.CMAP.keys()):
 
-            if len(self.run) == 0 and commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
-                
-                margin = ((50/10) - int(50/10))/2 + (50/10) // 2 # Cursed 5% margins
-                # Margins have a -1 on the left rather than a +1 on the right.
-                gui_ax.set_xlim(-margin-1, 50+margin)
-                gui_ax.set_xlabel("TDC [a.u]")
+            if len(self.run) == 0:
+                queue.put_nowait([ch, None, None, None])
                 continue
 
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
@@ -470,15 +421,8 @@ class bhm_analyser():
             # else:
             #     print(f"Extra render {(end-start)*1000:.3f}ms")
 
-            if commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
-                gui_ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
-                plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=gui_ax)
-                gui_ax.axvline(peak+delay,color='k',linestyle='--')
-                gui_ax.set_xlabel("TDC [a.u]")
+            if self.gui:
+                queue.put_nowait([ch, x, peak, delay])
 
             plt.close()
             # if self.TDC_Peaks[ch] != calib.TDC_PEAKS[ch]:
@@ -542,25 +486,15 @@ class bhm_analyser():
         self.AR = pd.concat(AR)
 
 
-    def plot_OccupancySRBR(self):
+    def plot_OccupancySRBR(self, queue):
         '''
         plot occupancy histogram (Events in BX)
         Collision & Activation against  BIB
         '''
         # print(f"self.BR.bx: {self.BR.bx}")
         # print(f"self.SR.bx: {self.SR.bx}")
-        if len(self.run) == 0 and commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.occupancy_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.occupancy_fig.add_subplot(122)
-            x_val_range = (3563.5 - -0.5)
-            margin = x_val_range/20 # Sane 5% margins
-            plotting.textbox(0.0,1.05,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xlabel('BX ID')
-            ax.set_ylabel('Events/1')
-            ax.set_xlim(-0.5-margin, 3563.5+margin)
+        if len(self.run) == 0:
+            queue.put_nowait([self.uHTR, None, None])
             return
         
         f, ax = plt.subplots()
@@ -574,24 +508,12 @@ class bhm_analyser():
         ax.legend(loc='upper right',frameon=1)
         plt.savefig(f"{self.figure_folder}/occupancy_uHTR{self.uHTR}.png",dpi=300)
 
-        if commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.occupancy_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.occupancy_fig.add_subplot(122)
-            ax.set_yscale('log')
-            plotting.textbox(0.0,1.05,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xlabel('BX ID')
-            ax.set_ylabel('Events/1')
-            ax.hist(self.BR.bx, bins=np.arange(-0.5,3564,1), color='k', histtype="stepfilled", label="Collision $\&$ Activation")
-            ax.hist(self.SR.bx, bins=np.arange(-0.5,3564,1), color='r', histtype="stepfilled", label="BIB")
-            ax.legend(loc='upper right',frameon=1)
-
+        if self.gui:
+            queue.put_nowait([self.uHTR, self.BR.bx, self.SR.bx])
         plt.close()
 
     #Data Quality Plots
-    def tdc_stability(self):
+    def tdc_stability(self, queue):
         '''
         Plots the stability, and calculates the MVP of the TDC
 
@@ -599,37 +521,8 @@ class bhm_analyser():
         '''
         #Should only apply ADC cuts
 
-        if len(self.run) == 0 and commonVars.root:
-            # Violin filler
-            if self.uHTR == "4":
-                    ax = commonVars.tdc_stability_fig.add_subplot(223)
-            elif self.uHTR == "11":
-                ax = commonVars.tdc_stability_fig.add_subplot(224)
-            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            channels = [ch for ch in self.CMAP.keys()]
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-            ax.set_ylabel("TDC [a.u]",fontsize=15)
-            ax.set_xlabel("Channels",fontsize=15)
-            margin = 0.5 # fixed margin
-            ax.set_ylim(0,15)
-            ax.set_xlim(-margin, 19+margin)
-            
-            # Vanilla filler
-            if self.uHTR == "4":
-                ax = commonVars.tdc_stability_fig.add_subplot(221)
-            elif self.uHTR == "11":
-                ax = commonVars.tdc_stability_fig.add_subplot(222)
-            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-            ax.set_ylabel("TDC [a.u]",fontsize=15)
-            ax.set_xlabel("Channels",fontsize=15)
-            ax.set_ylim(0,15)
-            margin = 19/20 # Sane 5% margins
-            ax.set_xlim(-margin, 19+margin)
+        if len(self.run) == 0:
+            queue.put_nowait([self.uHTR, None, None, None, None, None])
             return
         
         if "df" not in self.__dict__.keys():
@@ -693,21 +586,6 @@ class bhm_analyser():
             plt.xlabel("Channels",fontsize=30)
             plt.ylim(0,15)
             plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
-
-            if commonVars.root:
-                if self.uHTR == "4":
-                    ax = commonVars.tdc_stability_fig.add_subplot(223)
-                elif self.uHTR == "11":
-                    ax = commonVars.tdc_stability_fig.add_subplot(224)
-                sns.violinplot(ax=ax, data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
-                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-                ax.set_xticks(np.arange(20))
-                ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-                ax.set_ylabel("TDC [a.u]",fontsize=15)
-                ax.set_xlabel("Channels",fontsize=15)
-                ax.set_ylim(0,15)
-
             plt.close()
 
 
@@ -720,7 +598,7 @@ class bhm_analyser():
             try:
                 _mode_val = t_df.tdc.mode()[0]
             except KeyError: # If we get a KeyError, this means the data is empty
-                pass
+                _mode_val = None
             else:
 
                 if len(t_df.tdc) == 1: # ensure std() doesn't break due to only one entry existing
@@ -748,46 +626,18 @@ class bhm_analyser():
             plt.legend(loc='upper right',frameon=True)
             plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
 
-            if commonVars.root:
-                if self.uHTR == "4":
-                    ax = commonVars.tdc_stability_fig.add_subplot(221)
-                elif self.uHTR == "11":
-                    ax = commonVars.tdc_stability_fig.add_subplot(222)
-                try:
-                    ax.errorbar(channels, _mode, yerr=_std_dev, fmt='r.', ecolor='k', capsize=2, label="MPV of TDC")
-                    ax.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
-                    ax.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
-                    ax.legend(loc='upper right',frameon=True)
-                except UnboundLocalError: # Empty data check using whether or not _mode_val is defined
-                    pass
-                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-                ax.set_xticks(np.arange(20))
-                ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-                ax.set_ylabel("TDC [a.u]",fontsize=15)
-                ax.set_xlabel("Channels",fontsize=15)
-                ax.set_ylim(0,15)
-            
+            if self.gui:
+                queue.put_nowait([self.uHTR, t_df, _mode, _mode_val, _std_dev, _sig])
 
         plt.close()
 
-    def plot_channel_events(self):
+    def plot_channel_events(self, queue):
         """
         Checks the events per channel to ensure angular and HV consistency
         """
 
-        if len(self.run) == 0 and commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.ch_events_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.ch_events_fig.add_subplot(122)
-            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=[ch for ch in self.CMAP.keys()], rotation=45, ha="center", fontsize=8)
-            ax.set_xlabel("Channels", fontsize=15)
-            ax.set_ylabel("Events/1", fontsize=15)
-            ax.set_xlim(-1, 20)
+        if len(self.run) == 0:
+            queue.put_nowait([self.uHTR, None, None, None])
             return
         
         if "df" not in self.__dict__.keys():
@@ -795,22 +645,6 @@ class bhm_analyser():
             self.get_SR_BR_AR_CP()
 
         f, ax = plt.subplots()
-
-        def get_poly(counts, width, color, label=""):
-            """
-            This saves a very small amount of time, but is *technically* faster
-            """
-            verticies = []
-            bin_edges = [i-width/2 for i in range(21)]
-            for j in range(len(counts)): # Generates the verticies of the new polygon
-                verticies.append((bin_edges[j], 0))
-                verticies.append((bin_edges[j], counts[j]))
-                verticies.append((bin_edges[j] + width, counts[j]))
-                verticies.append((bin_edges[j] + width, 0))
-                if j == len(counts) - 1:
-                    verticies.append((bin_edges[0], 0))
-            #print(verticies)
-            return Polygon(verticies, closed=True, facecolor=color, label=label)
 
         channels = [ch for ch in self.CMAP.keys()]
         SR_events = self.SR["ch"].value_counts(sort=False)#.to_numpy()
@@ -825,8 +659,8 @@ class bhm_analyser():
         BR_events.sort_index(inplace=True)
 
         width = 0.9
-        sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB")
-        br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
+        sr_poly = plotting.get_poly(SR_events.to_numpy(), width, "r", label="BIB")
+        br_poly = plotting.get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
         ax.add_patch(br_poly)
         ax.add_patch(sr_poly)
         # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
@@ -843,27 +677,8 @@ class bhm_analyser():
 
         plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
 
-        if commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.ch_events_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.ch_events_fig.add_subplot(122)
-            sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB") # You cannot just copy the same Artist into different axes because reasons (? matplotlib black magic ?)
-            br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation") # Not a big deal, generating polygons is very quick
-            ax.add_patch(br_poly)
-            ax.add_patch(sr_poly)
-            # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
-            # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
-            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=8)
-            ax.set_xlabel("Channels", fontsize=15)
-            ax.set_ylabel("Events/1", fontsize=15)
-            ax.set_yscale("log")
-            ax.set_xlim(-1, 20)
-            ax.legend(loc='upper right', frameon=True)
-            
+        if self.gui:
+            queue.put_nowait([self.uHTR, channels, SR_events, BR_events])
         plt.close()
         
 
@@ -973,32 +788,40 @@ class bhm_analyser():
         self.convert2pandas()
         print(f"print values for uHTR{self.uHTR}:\n{self.df}")
 
-    def analyse(self, reAdjust=True, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False):
+    def analyse(self, reAdjust=True, plot_lego=False, plot_ch_events=False, queue_list=None, 
+                ADC_CUTS=calib.ADC_CUTS_v2, TDC_PEAKS=calib.TDC_PEAKS_v2, gui=True):
         '''
         Runs the steps in sequence
-        Make sure you set the correct ADC Cuts & TDC Cuts in calib.ADC_CUTS & calib.TDC_PEAKS
-        Make sure you run self.clean_data() before running analysis!!!
+        Make sure you run self.clean_data() and self.select_runs() before running analysis!!!
+        Queue list is in the order as follows:
+        [0] -> Lego plots (if applicable)
+        [1] -> ADC plots
+        [2] -> TDC plots
+        [3] -> Occupancy plots
+        [4] -> TDC Stability plots
+        [5] -> Channel Event plots (If applicable)
         '''
-        # select runs if applicable
-        if run_cut:
-            self.select_runs(run_cut, custom_range=custom_range)
+        calib.ADC_CUTS = ADC_CUTS
+        calib.TDC_PEAKS = TDC_PEAKS
+        self.gui = gui # Indicate if gui is present
 
         #self.print_values() # debug
         
+        print(f"Starting BHM analysis for uHTR{self.uHTR}")
 
-        if len(self.run) == 0 and not commonVars.root: # make sure it doesn't analyse data that doesn't exist if there is no gui to display
+        if len(self.run) == 0 and not self.gui: # make sure it doesn't analyse data that doesn't exist if there is no gui to display
             return
             
         #plotting lego, ADC, and TDC plots
         if plot_lego:
-            self.get_legoPlt()
+            self.get_legoPlt(queue=queue_list[0])
     
         if not reAdjust: 
             adc_binx = np.arange(min(120, min(calib.ADC_CUTS.values())), 181, 1)
             adc_binx_tick = np.arange(min(120, min(calib.ADC_CUTS.values())//5*5), 181, 5)
-            self.saveADCplots(binx=adc_binx, binx_tick=adc_binx_tick)
+            self.saveADCplots(binx=adc_binx, binx_tick=adc_binx_tick, queue=queue_list[1])
 
-        self.saveTDCplots(delay=0) # this derives the MVP for the beam halo peaks
+        self.saveTDCplots(delay=0, queue=queue_list[2]) # this derives the MVP for the beam halo peaks
         #Readjusting the TDC Peaks to specific values # Run after saveTDCplots()
         ## self.saveADCplots() # this derivates the 68% cuts from MVP for ADC plots
         if reAdjust:
@@ -1014,7 +837,7 @@ class bhm_analyser():
                 #     calib.ADC_CUTS[key] = self.ADC_Cuts[key] 
                 
                 #self.saveTDCplots(delay=0)
-                self.saveADCplots() # Running again to derive the 
+                self.saveADCplots(queue=queue_list[1]) # Running again to derive the 
                 i += 1
 
         if self.uHTR == '4':
@@ -1028,13 +851,13 @@ class bhm_analyser():
             os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
             os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
             os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
-
-            self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
         
-        self.plot_OccupancySRBR()# plots the occupancy
-        self.tdc_stability()
+        print("Doing occupancy stuff")
+        self.plot_OccupancySRBR(queue=queue_list[3])# plots the occupancy
+        self.tdc_stability(queue=queue_list[4])
         if plot_ch_events:
-            self.plot_channel_events()
+            self.plot_channel_events(queue=queue_list[5])
+        print(f"Finished BHM analysis for uHTR{self.uHTR}")
 
 
         

@@ -8,6 +8,7 @@ import tools.calibration as calib
 import tools.plotting as plotting
 import tools.commonVars as commonVars
 from tools.get_run_info import *
+from tools.plot_gui import *
 import pandas as pd
 from copy import deepcopy
 import traceback
@@ -15,8 +16,7 @@ import time
 from datetime import datetime
 from tkinter import messagebox
 import os
-from urllib.error import URLError
-import subprocess
+from multiprocessing import Process, Queue
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -445,14 +445,58 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False,
     _uHTR4 = deepcopy(uHTR4) # create copies so multiple analyses can be run without having to reload data
     _uHTR11 = deepcopy(uHTR11)
 
+    start = time.time()
+    # select runs if applicable
+    if run_cut:
+        _uHTR4.select_runs(run_cut, custom_range=custom_range)
+        _uHTR11.select_runs(run_cut, custom_range=custom_range)
+    
+    _uHTR4.get_SR_BR_AR_CP() # separates the data into signal region, background region, activation region, and collision products
+    _uHTR11.get_SR_BR_AR_CP()
+
+    end2 = time.time()
+
+    print(f"Time it took to do cuts and get SR_BR: {end2-start:.3f}s")
+
+    queue_list = [Queue() for i in range(6)]
+
     if manual_calib:
-        _uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
-        _uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        kwargs = {"reAdjust" : False, "plot_lego" : plot_lego, "plot_ch_events" : plot_ch_events, 
+                  "queue_list" : queue_list, "ADC_CUTS" : calib.ADC_CUTS, "TDC_PEAKS" : calib.TDC_PEAKS}
     else:
-        _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
-        _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        kwargs = {"plot_lego" : plot_lego, "plot_ch_events" : plot_ch_events, 
+                  "queue_list" : queue_list, "ADC_CUTS" : calib.ADC_CUTS, "TDC_PEAKS" : calib.TDC_PEAKS}
 
+
+    uHTR4_process = Process(target=_uHTR4.analyse, kwargs=kwargs, daemon=True)
+    uHTR11_process = Process(target=_uHTR11.analyse, kwargs=kwargs, daemon=True)
+    uHTR4_process.start()
+    uHTR11_process.start()
+
+    """
+    Queue list is in the order as follows:
+        [0] -> Lego plots (if applicable)
+        [1] -> ADC plots
+        [2] -> TDC plots
+        [3] -> Occupancy plots
+        [4] -> TDC Stability plots
+        [5] -> Channel Event plots (If applicable)
+    """
+    if commonVars.root: # Plotting info in the gui
+        if plot_lego:
+            plot_lego_gui(queue_list[0])
+        plot_adc_gui(queue_list[1])
+        plot_tdc_gui(queue_list[2])
+        plot_occupancy_gui(queue_list[3])
+        plot_tdc_stability_gui(queue_list[4])
+        if plot_ch_events:
+            plot_channel_events_gui(queue_list[5])
+
+
+    uHTR4_process.join()
+    uHTR11_process.join()
+    print("Joined all processes!")
+    print("doing rate plots!")
+    end = time.time()
+    print(f"Time it took using 2 cores without threading: {end-start:.3f}s")
     plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi)
-
-    del _uHTR4 # removing temp variables
-    del _uHTR11
