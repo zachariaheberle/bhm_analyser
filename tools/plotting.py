@@ -132,7 +132,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
     if not uHTR4.SR.empty or not uHTR11.SR.empty: 
         lines, labels = ax.get_legend_handles_labels()
         lines2, labels2 = lumi_ax.get_legend_handles_labels()
-        ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
+        ax.legend(lines + lines2, labels + labels2, loc=(1.2,0.8), frameon=1)
     ax.set_yscale('log')
     if start_time != 0:
         textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
@@ -213,7 +213,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
     if not uHTR4.CP.empty or not uHTR11.CP.empty:
         lines, labels = ax.get_legend_handles_labels()
         lines2, labels2 = lumi_ax.get_legend_handles_labels()
-        ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
+        ax.legend(lines + lines2, labels + labels2, loc=(1.2,0.8), frameon=1)
     ax.set_yscale('log')
     if start_time != 0:
         textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
