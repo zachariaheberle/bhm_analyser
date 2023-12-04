@@ -78,20 +78,36 @@ def query_run(run: int = 375000):
 
 def get_lumisections(runs: list = [375000]):
     try:
-        cmd = f"brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)}"
+        # We run two seperate brilcalcs because we want the delivered lumi data with the normtag, but want the beamstatus from the data without a normtag
+        cmd = f"brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)} &&" +\
+            f"brilcalc lumi --byls --tssec --output-style csv --begin {min(runs)} --end {max(runs)}"
         process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
 
     except (FileNotFoundError, OSError):
-        cmd = f"ssh lxplus \"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)}\""
+        cmd = f"ssh lxplus \"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)} && " +\
+            f"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --begin {min(runs)} --end {max(runs)}\""
         process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
             
 
     finally:
-        if process.stderr != "" and "warning" not in process.stderr.lower():
+        if "Connection closed" in process.stderr:
+            raise ConnectionAbortedError(process.stderr)
+        elif process.stderr != "" and "warning" not in process.stderr.lower():
             raise Exception(process.stderr)
-        lumi_info = pd.read_csv(StringIO(process.stdout), 
+        norm_data, web_data, _ = process.stdout.split("#Summary:\n") # Split data from data collected with normtag and without normtag
+
+        norm_lumi_info = pd.read_csv(StringIO(norm_data), 
                                 names=["run:fill", "ls", "time", "beamstatus", "energy", "delivered_lumi", "recorded_lumi", "avgpu", "source"],
-                                skiprows=2, skipfooter=3, engine="python").squeeze()
+                                skiprows=2).squeeze()
+        norm_lumi_info["normtag"] = [True]*len(norm_lumi_info["ls"])
+
+        web_lumi_info = pd.read_csv(StringIO(web_data), 
+                                names=["run:fill", "ls", "time", "beamstatus", "energy", "delivered_lumi", "recorded_lumi", "avgpu", "source"],
+                                skiprows=4).squeeze()
+        web_lumi_info["normtag"] = [False]*len(web_lumi_info["ls"])
+
+        lumi_info = pd.concat((norm_lumi_info, web_lumi_info)).drop_duplicates(subset=["run:fill", "ls"], keep="first").reset_index(drop=True)
+
         if not lumi_info.empty:
             lumi_info[["run", "fill"]] = lumi_info["run:fill"].str.split(":", expand=True).astype(np.int32)
             lumi_info = lumi_info.drop(columns=["run:fill"])
@@ -109,8 +125,9 @@ def get_lumisections(runs: list = [375000]):
                         "recorded_lumi" : [None],
                                 "avgpu" : [None],
                                "source" : [None],
+                              "normtag" : [None],
                                   "run" : [run],
-                                 "fill" : [None]
+                                 "fill" : [None],
                        })
                 lumi_info = pd.concat((lumi_info, df))
 

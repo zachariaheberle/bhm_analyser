@@ -234,7 +234,7 @@ def gui():
 
             # Grabbing info from OMS
             data_status_message.set("Grabbing CMS info...")
-            start_time, lumi_bins, delivered_lumi = analysis_helpers.get_run_info(run_cut)
+            start_time, lumi_bins, delivered_lumi, beam_status = analysis_helpers.get_run_info(run_cut)
             # Note: lumisection bins and delivered lumi are not enabled, work is currently being done to get this info
 
             # Main data analysis section
@@ -242,7 +242,8 @@ def gui():
                 data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, 
                                           plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, 
-                                          manual_calib=manual_calib, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi)
+                                          manual_calib=manual_calib, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi,
+                                          beam_status=beam_status)
             else:
                 raise KeyboardInterrupt
             data_status_message.set("Loading figure window...")
@@ -263,6 +264,10 @@ def gui():
         
         except KeyboardInterrupt:
             data_status_message.set(f"Currently Loaded Data Folder: {loaded_data_folder.get()}")
+        
+        except LookupError as err:
+            data_status_message.set("Something went wrong with plotting and analysis!")
+            messagebox.showerror("File Format Error", err)
 
         except Exception as err:
             data_status_message.set("Something went wrong with plotting and analysis!")
@@ -306,7 +311,8 @@ def gui():
     commonVars.occupancy_fig = Figure(figsize=(7, 2.7), dpi=100)
     commonVars.occupancy_fig.subplots_adjust(left=0.055, bottom=0.11, right=0.96, top=0.913)
     commonVars.rate_fig = Figure(figsize=(7, 2.625), dpi=100)
-    commonVars.rate_fig.subplots_adjust(left=0.06, bottom=0.153, right=0.86, top=0.88, wspace=0.6)
+    commonVars.rate_fig.autofmt_xdate()
+    commonVars.rate_fig.subplots_adjust(left=0.06, bottom=0.1, right=0.8, top=0.9, wspace=0.6, hspace=0.3)
     commonVars.lego_fig = Figure(dpi=100)
     commonVars.lego_fig.subplots_adjust(left=0.04, bottom=0.043, right=0.966, top=0.923, wspace=0.176)
     commonVars.ch_events_fig = Figure(dpi=100)

@@ -15,8 +15,6 @@ import time
 from datetime import datetime
 from tkinter import messagebox
 import os
-from urllib.error import URLError
-import subprocess
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
@@ -188,6 +186,8 @@ def get_run_info(run_cut):
 
         try:
             lumi_info = pd.read_csv("./cache/lumi_info.cache")
+            if "normtag" not in lumi_info.columns:
+                raise LookupError("Old lumi_info file format detected! Please delete your ./cache/lumi_info.cache file and retry analysis.")
             if lumi_info.empty:
                 raise FileNotFoundError
             
@@ -196,7 +196,7 @@ def get_run_info(run_cut):
                                         " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
                                         title="Information Notice")
                 if not user_consent:
-                    return None, None
+                    return None, None, None
                 lumi_info = pd.concat((lumi_info, get_lumisections(runs))).drop_duplicates().reset_index(drop=True)
                 
             else:
@@ -207,20 +207,25 @@ def get_run_info(run_cut):
                                         " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
                                         title="Information Notice")
             if not user_consent:
-                return None, None
+                return None, None, None
             lumi_info = get_lumisections(runs)
 
         finally:
             if write_to_cache:
                 lumi_info.to_csv("./cache/lumi_info.cache", index=False) # This will overwrite old cache, be careful with this!
 
-        lumi_info = lumi_info.dropna().query(f"(run >= {min(runs)}) & (run <= {max(runs)})") # Get rid of rows with None entries and only select rows with relevant runs
+        # Get rid of rows with None entries and only select rows with relevant runs, 
+        # set lumi to zero for lumisections without normtag (values cannot be trusted)
+        lumi_info = lumi_info.query(f"(run >= {min(runs)}) & (run <= {max(runs)})").dropna().sort_values(by="time")
+        lumi_info.loc[lumi_info["normtag"] == False, ["delivered_lumi", "recorded_lumi"]] = 0, 0
 
         time_vals = lumi_info["time"].to_numpy()*1000 # convert to ms
         lumi_vals = lumi_info["delivered_lumi"].to_numpy() # In units of ub^-1
+        beam_vals = lumi_info["beamstatus"].to_numpy() # beam status, one of FLAT TOP, ADJUST, SQUEEZE, or STABLE BEAMS
 
         lumi_bins = [time_vals[0]]
         delivered_lumi = [lumi_vals[0]]
+        beam_status = [beam_vals[0]]
 
         for i in range(len(time_vals)-1):
 
@@ -228,11 +233,13 @@ def get_run_info(run_cut):
             if time_vals[i+1] - time_vals[i] > 25000:
                 lumi_bins.extend(np.arange(time_vals[i] + 23500, time_vals[i+1], 23500))
                 delivered_lumi.extend([0]*len(np.arange(time_vals[i] + 23500, time_vals[i+1], 23500)))
+                beam_status.extend(["OTHER"]*len(np.arange(time_vals[i] + 23500, time_vals[i+1], 23500)))
 
             lumi_bins.append(time_vals[i+1])
             delivered_lumi.append(lumi_vals[i+1])
-        
-        return lumi_bins, delivered_lumi
+            beam_status.append(beam_vals[i+1])
+
+        return lumi_bins, delivered_lumi, beam_status
 
 
     if commonVars.reference_run != 0:
@@ -241,9 +248,9 @@ def get_run_info(run_cut):
         return 0, None, None
     
     run_time_ms = get_run_time_ms(run)
-    lumi_bins, delivered_lumi = get_lumi_info(get_runs_from_cut(run_cut))
+    lumi_bins, delivered_lumi, beam_status = get_lumi_info(get_runs_from_cut(run_cut))
 
-    return run_time_ms, lumi_bins, delivered_lumi
+    return run_time_ms, lumi_bins, delivered_lumi, beam_status
 
 
 def load_uHTR_data(data_folder_str):
@@ -415,7 +422,7 @@ def load_uHTR_data(data_folder_str):
 
 def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, 
              plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None,
-             lumi_bins=None, delivered_lumi=None):
+             lumi_bins=None, delivered_lumi=None, beam_status=None):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
@@ -452,7 +459,7 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False,
         _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
         _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
 
-    plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi)
+    plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi, beam_status=beam_status)
 
     del _uHTR4 # removing temp variables
     del _uHTR11

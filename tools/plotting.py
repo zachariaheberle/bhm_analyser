@@ -51,7 +51,7 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
     return ax  
 
-def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None):
+def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None, beam_status=None):
     '''
     After analysis step has been completed, and the plots look reasonable, you can get the rate plot
     uHTR4  --> BHM Analyser object for uHTR4 
@@ -59,12 +59,6 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
     Run Level needs to be implemented
 
     '''
-    f,ax = plt.subplots()
-    f.autofmt_xdate()
-    xfmt = mdates.DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(xfmt)
-    lumi_ax = ax.twinx()
-
     if len(uHTR4.run) == 0:
         uHTR4.SR = pd.DataFrame()
         uHTR4.CP = pd.DataFrame()
@@ -78,12 +72,21 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
     unit_labels = {
         1_000_000 : r"CMS Delivered Luminosity [$b^{-1}$]",
         1000 : r"CMS Delivered Luminosity [$mb^{-1}$]",
-        1 : r"CMS Delivered Luminosity [$\mub^{-1}$]",
+        1 : r"CMS Delivered Luminosity [$\mu b^{-1}$]",
         1/1000 : r"CMS Delivered Luminosity [$nb^{-1}$]",
         1/1_000_000 : r"CMS Delivered Luminosity [$pb^{-1}$]",
         1/1_000_000_000 : r"CMS Delivered Luminosity [$fb^{-1}$]",
     }
 
+    beam_status_color_map = {
+        "OTHER" : "#000000",
+        "STABLE BEAMS" : "#00ff00",
+        "FLAT TOP" : "#0000ff",
+        "ADJUST" : "#ff0000",
+        "SQUEEZE" : "#ffff00"
+    }
+
+    beam_status = np.asarray(beam_status)
 
     # get correct binx
     # binx = np.arange(np.min(uHTR4.orbit),np.max(uHTR4.orbit),3564*25*10**-6*25000)# 25 secs
@@ -99,199 +102,108 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None)
             # ax.text(x, 1.2, run, transform=ax.transAxes, fontsize=10,
             #         verticalalignment='top',rotation=90)
 
+    def plot_lumi(ax, x, scale_factor, max_val):
+        ax.plot(x, delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
+        ax.fill_between(x, np.where(beam_status=="STABLE BEAMS", max_val, 1), 1, color=beam_status_color_map["STABLE BEAMS"], alpha=0.1, step="post", label="Stable Beams")
+        ax.fill_between(x, np.where(beam_status=="ADJUST", max_val, 1), 1, color=beam_status_color_map["ADJUST"], alpha=0.1, step="post", label="Adjust")
+        ax.fill_between(x, np.where(beam_status=="SQUEEZE", max_val, 1), 1, color=beam_status_color_map["SQUEEZE"], alpha=0.1, step="post", label="Squeeze")
+        ax.fill_between(x, np.where(beam_status=="FLAT TOP", max_val, 1), 1, color=beam_status_color_map["FLAT TOP"], alpha=0.1, step="post", label="Flat Top")
+        ax.fill_between(x, np.where(beam_status=="OTHER", max_val, 1), 1, color=beam_status_color_map["OTHER"], alpha=0.1, step="post", label="Other")
+        ax.set_ylabel(unit_labels[scale_factor])
+        ax.set_yscale('log')
+        ax.set_ylim(1, max_val*1.05)
+        
+    def plot_bhm(ax, x1, x2, y1, y2, max_val, region):
 
-
-    # plot_runNo(uHTR4)
-    # x,y,_ = uHTR11.get_rate(uHTR11.BR)
-    # plt.plot(x[:N], y[:N],color='k',label="-Z BR")
+        if x1 is not None:
+            ax.plot(x1, y1, color='r',label=f"+Z {region}")
+        if x2 is not None:
+            ax.plot(x2, y2, color='k',label=f"-Z {region}")
+        ax.set_xlabel("Time Approximate")
+        ax.set_ylabel("BHM Event Rate")
+        ax.set_ylim(1, max_val*1.05)
+        ax.set_yscale('log')
+        if start_time != 0:
+            textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
     
     # x,y,_ = uHTR4.get_rate(uHTR4.BR)
     # plt.plot(x[:N], y[:N],color='g',label="+Z BR")
 
+    lumi_time = [dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins]
 
-    if not uHTR4.SR.empty: # basic checks to ensure data isn't empty
-        x1,y1,binx_ = uHTR4.get_rate(uHTR4.SR,bins=lumi_bins,start_time=start_time,uHTR11=False)
-        ax.plot(x1, y1,color='r',label="+Z SR")
-    if not uHTR11.SR.empty:
-        x2,y2,_ = uHTR11.get_rate(uHTR11.SR,bins=lumi_bins,start_time=start_time,uHTR11=True)
-        ax.plot(x2, y2,color='k',label="-Z SR")
-    if lumi_bins is not None:
-        for scale_factor in [10**i for i in range(-9, 6, 3)]:
-            if max(delivered_lumi)*scale_factor > 10:
-                break
-        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
-        lumi_ax.set_ylabel(unit_labels[scale_factor])
-        lumi_ax.set_yscale('log')
-        lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
-        ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
+    i = 0 # index for gui plotting
 
-    # SR plots
-    ax.set_xlabel("Time Approximate ")
-    ax.set_ylabel("BHM Event Rate")
-    if not uHTR4.SR.empty or not uHTR11.SR.empty: 
-        lines, labels = ax.get_legend_handles_labels()
-        lines2, labels2 = lumi_ax.get_legend_handles_labels()
-        ax.legend(lines + lines2, labels + labels2, loc=(1.2,0.8), frameon=1)
-    ax.set_yscale('log')
-    if start_time != 0:
-        textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
+    for region_name, region4, region11 in [("SR", uHTR4.SR, uHTR11.SR), ("CP", uHTR4.CP, uHTR11.CP)]:
 
-        #ax2 = ax#.twinx()
-        # x1 = np.asarray(x1)
-        # x2 = np.asarray(x2)
-        # y1 = np.asarray(y1)
-        # y2 = np.asarray(y2)
-
-        # if x1.size < x2.size:
-        #     x2 = x2[:x1.size]
-        #     y2 = y2[:x1.size]
-        # elif x2.size < x1.size:
-        #     x1 = x1[:x2.size]
-        #     y1 = y1[:x2.size]
-
-    f.savefig(f"{uHTR4.figure_folder}/rates_SR.png",dpi=300)
-
-
-    if commonVars.root: # I'm sure I can implement this better
-        ax = commonVars.rate_fig.add_subplot(121)  
-        commonVars.rate_fig.autofmt_xdate()
+        f,ax = plt.subplots()
+        f.autofmt_xdate()
         xfmt = mdates.DateFormatter('%H:%M')
         ax.xaxis.set_major_formatter(xfmt)
         lumi_ax = ax.twinx()
-        if not uHTR4.SR.empty:
-            ax.plot(x1, y1,color='r',label="+Z SR")
-        if not uHTR11.SR.empty:
-            ax.plot(x2, y2,color='k',label="-Z SR")
+        max_val = 0
+
+        x1 = x2 = y1 = y2 = None # Placeholders to prevent UnboundLocalError
+
+        if not region4.empty:
+            x1,y1,binx_ = uHTR4.get_rate(region4,bins=lumi_bins,start_time=start_time,uHTR11=False)
+            if max(y1) > max_val: max_val = max(y1)
+
+        if not region11.empty:
+            x2,y2,_ = uHTR11.get_rate(region11,bins=lumi_bins,start_time=start_time,uHTR11=True)
+            if max(y2) > max_val: max_val = max(y2)
+
         if lumi_bins is not None:
             for scale_factor in [10**i for i in range(-9, 6, 3)]:
                 if max(delivered_lumi)*scale_factor > 10:
                     break
-            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
-            lumi_ax.set_ylabel(unit_labels[scale_factor])
-            lumi_ax.set_yscale('log')
-            lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
-            ax.set_ylim(1, max(max(delivered_lumi/1000), max(y1), max(y2))*1.05)
-        ax.set_xlabel("Time Approximate ")
-        ax.set_ylabel("BHM Event Rate")
-        if not uHTR4.SR.empty or not uHTR11.SR.empty or lumi_bins is not None:
-            lines, labels = ax.get_legend_handles_labels()
-            lines2, labels2 = lumi_ax.get_legend_handles_labels()
-            ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
-        ax.set_yscale('log')
-        if start_time != 0:
-            textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
+            if max(delivered_lumi)*scale_factor > max_val: max_val = max(delivered_lumi)*scale_factor
 
-    plt.close()
+            plot_lumi(lumi_ax, lumi_time, scale_factor, max_val)
 
-    f,ax = plt.subplots()
-    f.autofmt_xdate()
-    xfmt = mdates.DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(xfmt)
-    lumi_ax = ax.twinx()
+        plot_bhm(ax, x1, x2, y1, y2, max_val, region_name)
 
+        #if not region4.empty or not region11.empty:
+        bhm_lines, bhm_labels = ax.get_legend_handles_labels()
+        lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
 
-    if not uHTR4.CP.empty:
-        x3,y3,_ = uHTR4.get_rate(uHTR4.CP,bins=lumi_bins,start_time=start_time,uHTR11=False)
-        ax.plot(x3, y3,color='r',label="+Z CP")
-    if not uHTR11.CP.empty:
-        x4,y4,_ = uHTR11.get_rate(uHTR11.CP,bins=lumi_bins,start_time=start_time,uHTR11=True)
-        ax.plot(x4, y4,color='k',label="-Z CP")
-    if lumi_bins is not None:
-        for scale_factor in [10**i for i in range(-9, 6, 3)]:
-            if max(delivered_lumi)*scale_factor > 10:
-                break
-        lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
-        lumi_ax.set_ylabel(unit_labels[scale_factor])
-        lumi_ax.set_yscale('log')
-        lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
-        ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
-    
-    # CP plots
-    ax.set_xlabel("Time Approximate ")
-    ax.set_ylabel("BHM Event Rate")
-    if not uHTR4.CP.empty or not uHTR11.CP.empty:
-        lines, labels = ax.get_legend_handles_labels()
-        lines2, labels2 = lumi_ax.get_legend_handles_labels()
-        ax.legend(lines + lines2, labels + labels2, loc=(1.2,0.8), frameon=1)
-    ax.set_yscale('log')
-    if start_time != 0:
-        textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
-
-        # x3 = np.asarray(x3)
-        # x4 = np.asarray(x4)
-        # y3 = np.asarray(y3)
-        # y4 = np.asarray(y4)
-
-        # if x3.size < x4.size:
-        #     x4 = x4[:x3.size]
-        #     y4 = y4[:x3.size]
-        # elif x4.size < x3.size:
-        #     x3 = x3[:x4.size]
-        #     y3 = y3[:x4.size]
+        # Seperate out the color map from the rest of the legend
+        lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                    if label.upper() not in beam_status_color_map.keys()])
+        lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                            if label.upper() in beam_status_color_map.keys()])
         
-
-    f.savefig(f"{uHTR4.figure_folder}/rates_CP.png",dpi=300)
-
-    if commonVars.root: # There's a better way to do this
-        ax = commonVars.rate_fig.add_subplot(122)
-        commonVars.rate_fig.autofmt_xdate()
-        xfmt = mdates.DateFormatter('%H:%M')
-        ax.xaxis.set_major_formatter(xfmt)
-        lumi_ax = ax.twinx()
-        if not uHTR4.CP.empty:
-            ax.plot(x3, y3,color='r',label="+Z CP")
-        if not uHTR11.CP.empty:
-            ax.plot(x4, y4,color='k',label="-Z CP")
+        if not region4.empty or not region11.empty:
+            ax.legend(handles=lines1, labels=labels1, loc=(1.2,0.8), frameon=1)
         if lumi_bins is not None:
-            for scale_factor in [10**i for i in range(-9, 6, 3)]:
-                if max(delivered_lumi)*scale_factor > 10:
-                    break
-            lumi_ax.plot([dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins], delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
-            lumi_ax.set_ylabel(unit_labels[scale_factor])
-            lumi_ax.set_yscale('log')
-            lumi_ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
-            ax.set_ylim(1, max(max(delivered_lumi/1000), max(y3), max(y4))*1.05)
-        ax.set_xlabel("Time Approximate ")
-        ax.set_ylabel("BHM Event Rate")
-        if not uHTR4.CP.empty or not uHTR11.CP.empty or lumi_bins is not None:
-            lines, labels = ax.get_legend_handles_labels()
-            lines2, labels2 = lumi_ax.get_legend_handles_labels()
-            ax.legend(lines + lines2, labels + labels2, loc=(1.1,0.8), frameon=1)
-        ax.set_yscale('log')
-        if start_time != 0:
-            textbox(0.0,1.05, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 15, ax=ax)
+            lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.2, 0), title="LHC Beam Status", frameon=1)
 
-    plt.close()
+        f.savefig(f"{uHTR4.figure_folder}/rates_{region_name}.png",dpi=300)
 
-    # f,ax = plt.subplots()
-    # f.autofmt_xdate()
-    # xfmt = mdates.DateFormatter('%H:%M')
-    # ax.xaxis.set_major_formatter(xfmt)
+        if commonVars.root:
+            i += 1
+            ax = commonVars.rate_fig.add_subplot(2, 1, i)  
+            xfmt = mdates.DateFormatter('%H:%M')
+            ax.xaxis.set_major_formatter(xfmt)
+            lumi_ax = ax.twinx()
 
-    # plt.plot(x2, y1/y2,color='b',label="+Z/-Z BHN Ratio")
-    # plt.plot(x4, y3/y4,color='r',label="+Z/-Z CP Ratio")
-    # plt.legend()
-    # plt.ylabel("Ratios +Z/-Z")
-   
-    # N=-1
-    # binx=300
-    # # x,y = uHTR11.get_rate(uHTR11.SR)
-    # # plt.plot(x[:N], y[:N],color='r',label="-Z SR")
+            if lumi_bins is not None:
+                plot_lumi(lumi_ax, lumi_time, scale_factor, max_val)
 
-    # x,y = uHTR11.get_rate(uHTR11.BR,bins=binx)
-    # ax2.plot(x[:N], y[:N],color='g',label="-Z BR")
+            plot_bhm(ax, x1, x2, y1, y2, max_val, region_name)
 
+            bhm_lines, bhm_labels = ax.get_legend_handles_labels()
+            lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
 
-    # # x,y =uHTR4.get_rate(uHTR4.SR)
-    # # plt.plot(x[:N], y[:N],color='b',label="+Z SR")
-
-    # x,y = uHTR4.get_rate(uHTR4.BR,bins=binx)
-
-
-    # ax2.plot(x[:N], y[:N],color='b',label="+Z BR")
-    # ax2.set_ylabel("Event Rate Coll $\&$ Act [a.u]")
-    # plt.legend(loc=(1.3,0.5),frameon=1)
-    # plt.yscale('log')
-    # plt.savefig(f"{uHTR4.figure_folder}/rates.png",dpi=300)
-    # plt.close()
+            # Seperate out the color map from the rest of the legend
+            lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                if label.upper() not in beam_status_color_map.keys()])
+            lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                if label.upper() in beam_status_color_map.keys()])
+            
+            if not region4.empty or not region11.empty:
+                ax.legend(handles=lines1, labels=labels1, loc=(1.1, 0.7), frameon=1)
+            if lumi_bins is not None:
+                lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.1, 0), title="LHC\nBeam Status", frameon=1)
+        
+        plt.close()
