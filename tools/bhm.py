@@ -527,7 +527,7 @@ class bhm_analyser():
             ch_df = self.df[self.df["ch"].values==ch_num]
             
             sr = ch_df[(ch_df["tdc"].values >= calib.TDC_PEAKS[ch]-tdc_window) & (ch_df["tdc"].values <= calib.TDC_PEAKS[ch]+tdc_window) & (ch_df["peak_ampl"] >= calib.ADC_CUTS[ch])]
-            br = ch_df[((ch_df["tdc"].values < calib.TDC_PEAKS[ch]-tdc_window) | (ch_df["tdc"].values > calib.TDC_PEAKS[ch]+tdc_window)) & (ch_df["peak_ampl"] < calib.ADC_CUTS[ch])]
+            br = ch_df[((ch_df["tdc"].values < calib.TDC_PEAKS[ch]-tdc_window) | (ch_df["tdc"].values > calib.TDC_PEAKS[ch]+tdc_window)) | (ch_df["peak_ampl"] < calib.ADC_CUTS[ch])]
             cp = ch_df[(ch_df["tdc"].values > 28) & (ch_df["tdc"].values < 34) & (ch_df["peak_ampl"].values > 80) & (ch_df["peak_ampl"].values < 140)]
             ar = br[~((br["tdc"].values > 28) & (br["tdc"].values < 34) & (br["peak_ampl"].values > 80) & (br["peak_ampl"].values < 140))]
 
