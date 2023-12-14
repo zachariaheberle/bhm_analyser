@@ -210,9 +210,8 @@ def get_run_info(run_cut):
                 return None, None, None
             lumi_info = get_lumisections(runs)
 
-        finally:
-            if write_to_cache:
-                lumi_info.to_csv("./cache/lumi_info.cache", index=False) # This will overwrite old cache, be careful with this!
+        if write_to_cache:
+            lumi_info.to_csv("./cache/lumi_info.cache", index=False) # This will overwrite old cache, be careful with this!
 
         # Get rid of rows with None entries and only select rows with relevant runs, 
         # set lumi to zero for lumisections without normtag (values cannot be trusted)
