@@ -130,8 +130,11 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
     # x,y,_ = uHTR4.get_rate(uHTR4.BR)
     # plt.plot(x[:N], y[:N],color='g',label="+Z BR")
 
-    lumi_time = [dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins]
-
+    if lumi_bins is not None:
+        lumi_time = [dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins]
+    else:
+        lumi_time = None
+    
     i = 0 # index for gui plotting
 
     for region_name, region4, region11 in [("SR", uHTR4.SR, uHTR11.SR), ("CP", uHTR4.CP, uHTR11.CP)]:
