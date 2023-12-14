@@ -170,15 +170,17 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
         bhm_lines, bhm_labels = ax.get_legend_handles_labels()
         lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
 
-        # Seperate out the color map from the rest of the legend
-        lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                    if label.upper() not in beam_status_color_map.keys()])
-        lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                            if label.upper() in beam_status_color_map.keys()])
         
         if not region4.empty or not region11.empty:
+            # Seperate out the color map from the rest of the legend
+            lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                if label.upper() not in beam_status_color_map.keys()])
             ax.legend(handles=lines1, labels=labels1, loc=(1.2,0.8), frameon=1)
+
         if lumi_bins is not None:
+            # color map stuff
+            lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                if label.upper() in beam_status_color_map.keys()])
             lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.2, 0), title="LHC Beam Status", frameon=1)
 
         f.savefig(f"{uHTR4.figure_folder}/rates_{region_name}.png",dpi=300)
@@ -198,15 +200,16 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
             bhm_lines, bhm_labels = ax.get_legend_handles_labels()
             lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
 
-            # Seperate out the color map from the rest of the legend
-            lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                if label.upper() not in beam_status_color_map.keys()])
-            lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                if label.upper() in beam_status_color_map.keys()])
-            
             if not region4.empty or not region11.empty:
+                # Seperate out the color map from the rest of the legend
+                lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                    if label.upper() not in beam_status_color_map.keys()])
                 ax.legend(handles=lines1, labels=labels1, loc=(1.1, 0.7), frameon=1)
+
             if lumi_bins is not None:
+                # color map stuff
+                lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                    if label.upper() in beam_status_color_map.keys()])
                 lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.1, 0), title="LHC\nBeam Status", frameon=1)
         
         plt.close()
