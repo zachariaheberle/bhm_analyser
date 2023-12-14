@@ -172,6 +172,8 @@ def get_run_info(run_cut):
             if not askyesno("In order to get accurate run time data for rate plots, a valid CMS User account is required."+\
                             " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
                             title="Information Notice"):
+                
+                commonVars.reference_orbit = 0
                 return 0
             
             run_time_ms, _ = query_run(run)
@@ -247,7 +249,12 @@ def get_run_info(run_cut):
         return 0, None, None
     
     run_time_ms = get_run_time_ms(run)
-    lumi_bins, delivered_lumi, beam_status = get_lumi_info(get_runs_from_cut(run_cut))
+
+    # Ignore lumi info if user cannot align with UTC
+    if run_time_ms != 0:
+        lumi_bins, delivered_lumi, beam_status = get_lumi_info(get_runs_from_cut(run_cut))
+    else:
+        lumi_bins, delivered_lumi, beam_status = None, None, None
 
     return run_time_ms, lumi_bins, delivered_lumi, beam_status
 
