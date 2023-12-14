@@ -143,10 +143,21 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
         f.autofmt_xdate()
         xfmt = mdates.DateFormatter('%H:%M')
         ax.xaxis.set_major_formatter(xfmt)
-        lumi_ax = ax.twinx()
         max_val = 0
 
+        i += 1
+
         x1 = x2 = y1 = y2 = None # Placeholders to prevent UnboundLocalError
+
+        if commonVars.root and region4.empty and region11.empty:
+            ax = commonVars.rate_fig.add_subplot(2, 1, i)  
+            xfmt = mdates.DateFormatter('%H:%M')
+            ax.xaxis.set_major_formatter(xfmt)
+            plot_bhm(ax, None, None, None, None, 10, region_name)
+            continue
+
+        elif region4.empty and region11.empty:
+            continue
 
         if not region4.empty:
             x1,y1,binx_ = uHTR4.get_rate(region4,bins=lumi_bins,start_time=start_time,uHTR11=False)
@@ -157,6 +168,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
             if max(y2) > max_val: max_val = max(y2)
 
         if lumi_bins is not None:
+            lumi_ax = ax.twinx()
             for scale_factor in [10**i for i in range(-9, 6, 3)]:
                 if max(delivered_lumi)*scale_factor > 10:
                     break
@@ -168,8 +180,10 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
 
         #if not region4.empty or not region11.empty:
         bhm_lines, bhm_labels = ax.get_legend_handles_labels()
-        lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
-
+        try:
+            lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
+        except UnboundLocalError:
+            lumi_lines, lumi_labels = ([], [])
         
         if not region4.empty or not region11.empty:
             # Seperate out the color map from the rest of the legend
@@ -186,19 +200,21 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
         f.savefig(f"{uHTR4.figure_folder}/rates_{region_name}.png",dpi=300)
 
         if commonVars.root:
-            i += 1
             ax = commonVars.rate_fig.add_subplot(2, 1, i)  
             xfmt = mdates.DateFormatter('%H:%M')
             ax.xaxis.set_major_formatter(xfmt)
-            lumi_ax = ax.twinx()
 
             if lumi_bins is not None:
+                lumi_ax = ax.twinx()
                 plot_lumi(lumi_ax, lumi_time, scale_factor, max_val)
 
             plot_bhm(ax, x1, x2, y1, y2, max_val, region_name)
 
             bhm_lines, bhm_labels = ax.get_legend_handles_labels()
-            lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
+            try:
+                lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
+            except UnboundLocalError:
+                lumi_lines, lumi_labels = ([], [])
 
             if not region4.empty or not region11.empty:
                 # Seperate out the color map from the rest of the legend
