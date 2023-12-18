@@ -772,6 +772,10 @@ class bhm_analyser():
             if bins[-1] < np.max(x): # If lumi data cannot cover all of BHM data, artifically extend it
                 bins = bins[:] # Make a shallow copy if we need to modify the lumi_bins list because we need lumi_bins to be constant in plotting.py
                 bins.extend(np.arange(bins[-1] + 23500, np.max(x)+1, 23500)) # +1 to capture end point
+            if bins[0] > np.min(x): # If BHM data exists before lumi data, add artificial bins
+                early_bins = list(np.arange(np.min(x), bins[0], 23500))
+                bins = early_bins + bins # Add extra bins in beginning
+
             y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=bins)
         # if uHTR11:
         #     y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=np.arange(np.min(x),np.max(x),25000))

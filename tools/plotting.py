@@ -12,6 +12,8 @@ import tools.dt_conv as dt_conv
 import tools.commonVars as commonVars
 import tools.hw_info as hw_info
 import tools.calibration as calib
+import tools.dt_conv as dt_conv
+from tools.bhm import bhm_analyser
 
 beam_side = {
         "4" :"+Z Side",
@@ -77,7 +79,7 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
     return ax  
 
-def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None, beam_status=None):
+def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, start_time=0, lumi_bins=None, delivered_lumi=None, beam_status=None):
     '''
     After analysis step has been completed, and the plots look reasonable, you can get the rate plot
     uHTR4  --> BHM Analyser object for uHTR4 
@@ -111,18 +113,18 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
             # ax.text(x, 1.2, run, transform=ax.transAxes, fontsize=10,
             #         verticalalignment='top',rotation=90)
 
-    def plot_lumi(ax, x, scale_factor, max_val):
-        ax.plot(x, delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
-        ax.fill_between(x, np.where(beam_status=="STABLE BEAMS", max_val, 0), 0, color=beam_status_color_map["STABLE BEAMS"], alpha=0.1, step="post", label="Stable Beams")
-        ax.fill_between(x, np.where(beam_status=="ADJUST", max_val, 0), 0, color=beam_status_color_map["ADJUST"], alpha=0.1, step="post", label="Adjust")
-        ax.fill_between(x, np.where(beam_status=="SQUEEZE", max_val, 0), 0, color=beam_status_color_map["SQUEEZE"], alpha=0.1, step="post", label="Squeeze")
-        ax.fill_between(x, np.where(beam_status=="FLAT TOP", max_val, 0), 0, color=beam_status_color_map["FLAT TOP"], alpha=0.1, step="post", label="Flat Top")
-        ax.fill_between(x, np.where(beam_status=="OTHER", max_val, 0), 0, color=beam_status_color_map["OTHER"], alpha=0.1, step="post", label="Other")
+    def plot_lumi(ax: plt.Axes, lumi_time, scale_factor, max_rate):
+        ax.plot(lumi_time, delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
+        ax.fill_between(lumi_time, np.where(beam_status=="STABLE BEAMS", max_rate, 0), 0, color=beam_status_color_map["STABLE BEAMS"], alpha=0.1, step="post", label="Stable Beams")
+        ax.fill_between(lumi_time, np.where(beam_status=="ADJUST", max_rate, 0), 0, color=beam_status_color_map["ADJUST"], alpha=0.1, step="post", label="Adjust")
+        ax.fill_between(lumi_time, np.where(beam_status=="SQUEEZE", max_rate, 0), 0, color=beam_status_color_map["SQUEEZE"], alpha=0.1, step="post", label="Squeeze")
+        ax.fill_between(lumi_time, np.where(beam_status=="FLAT TOP", max_rate, 0), 0, color=beam_status_color_map["FLAT TOP"], alpha=0.1, step="post", label="Flat Top")
+        ax.fill_between(lumi_time, np.where(beam_status=="OTHER", max_rate, 0), 0, color=beam_status_color_map["OTHER"], alpha=0.1, step="post", label="Other")
         ax.set_ylabel(unit_labels[scale_factor])
         ax.set_yscale('symlog')
-        ax.set_ylim(0.1, max_val*1.05)
+        ax.set_ylim(0.1, max_rate*1.05)
         
-    def plot_bhm(ax, x1, x2, y1, y2, max_val, region):
+    def plot_bhm(ax: plt.Axes, x1, x2, y1, y2, max_rate, region):
 
         if x1 is not None:
             ax.plot(x1, y1, color='r',label=f"+Z {region}")
@@ -130,7 +132,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
             ax.plot(x2, y2, color='k',label=f"-Z {region}")
         ax.set_xlabel("Time Approximate")
         ax.set_ylabel("BHM Event Rate")
-        ax.set_ylim(0.1, max_val*1.05)
+        ax.set_ylim(0.1, max_rate*1.05)
         ax.set_yscale('symlog')
         if start_time != 0:
             textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
@@ -152,8 +154,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
         f.autofmt_xdate()
         xfmt = mdates.DateFormatter('%H:%M')
         ax.xaxis.set_major_formatter(xfmt)
-        max_val = 0
-
+        max_rate = 0
         i += 1
 
         x1 = x2 = y1 = y2 = None # Placeholders to prevent UnboundLocalError
@@ -169,23 +170,23 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
             continue
 
         if not region4.empty:
-            x1,y1,binx_ = uHTR4.get_rate(region4,bins=lumi_bins,start_time=start_time,uHTR11=False)
-            if max(y1) > max_val: max_val = max(y1)
+            x1,y1,binx = uHTR4.get_rate(region4,bins=lumi_bins,start_time=start_time,uHTR11=False)
+            if max(y1) > max_rate: max_rate = max(y1)
 
         if not region11.empty:
             x2,y2,_ = uHTR11.get_rate(region11,bins=lumi_bins,start_time=start_time,uHTR11=True)
-            if max(y2) > max_val: max_val = max(y2)
+            if max(y2) > max_rate: max_rate = max(y2)
 
         if lumi_bins is not None:
             lumi_ax = ax.twinx()
             for scale_factor in [10**i for i in range(-9, 6, 3)]:
                 if np.min(delivered_lumi[np.nonzero(delivered_lumi)])*scale_factor >= 1:
                     break
-            if max(delivered_lumi)*scale_factor > max_val: max_val = max(delivered_lumi)*scale_factor
+            if max(delivered_lumi)*scale_factor > max_rate: max_rate = max(delivered_lumi)*scale_factor
 
-            plot_lumi(lumi_ax, lumi_time, scale_factor, max_val)
+            plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
 
-        plot_bhm(ax, x1, x2, y1, y2, max_val, region_name)
+        plot_bhm(ax, x1, x2, y1, y2, max_rate, region_name)
 
         #if not region4.empty or not region11.empty:
         bhm_lines, bhm_labels = ax.get_legend_handles_labels()
@@ -215,9 +216,9 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
 
             if lumi_bins is not None:
                 lumi_ax = ax.twinx()
-                plot_lumi(lumi_ax, lumi_time, scale_factor, max_val)
+                plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
 
-            plot_bhm(ax, x1, x2, y1, y2, max_val, region_name)
+            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_name)
 
             bhm_lines, bhm_labels = ax.get_legend_handles_labels()
             try:
