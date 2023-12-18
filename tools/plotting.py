@@ -1,13 +1,39 @@
-# Written by Rohith Saradhy rohithsaradhy@gmail.com
+# Written by Rohith Saradhy rohithsaradhy@gmail.com and Zachariah Eberle zachariah.eberle@gmail.com
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 import numpy as np
 import matplotlib.dates as mdates
+import pandas as pd
+import seaborn as sns
+import warnings
+
 import tools.dt_conv as dt_conv
 import tools.commonVars as commonVars
-import pandas as pd
+import tools.hw_info as hw_info
+import tools.calibration as calib
 
+beam_side = {
+        "4" :"+Z Side",
+        "11":"-Z Side"
+    }
 
+unit_labels = {
+    1_000_000 : r"CMS Delivered Luminosity [$b^{-1}$]",
+    1000 : r"CMS Delivered Luminosity [$mb^{-1}$]",
+    1 : r"CMS Delivered Luminosity [$\mu b^{-1}$]",
+    1/1000 : r"CMS Delivered Luminosity [$nb^{-1}$]",
+    1/1_000_000 : r"CMS Delivered Luminosity [$pb^{-1}$]",
+    1/1_000_000_000 : r"CMS Delivered Luminosity [$fb^{-1}$]",
+}
+
+beam_status_color_map = {
+    "OTHER" : "#000000",
+    "STABLE BEAMS" : "#00ff00",
+    "FLAT TOP" : "#0000ff",
+    "ADJUST" : "#ff0000",
+    "SQUEEZE" : "#ffff00"
+}
 
 def textbox(x,y,text,size=14,frameon=False, ax=None):
     if ax == None:
@@ -69,23 +95,6 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
     if delivered_lumi is not None:
         delivered_lumi = np.asarray(delivered_lumi)
 
-    unit_labels = {
-        1_000_000 : r"CMS Delivered Luminosity [$b^{-1}$]",
-        1000 : r"CMS Delivered Luminosity [$mb^{-1}$]",
-        1 : r"CMS Delivered Luminosity [$\mu b^{-1}$]",
-        1/1000 : r"CMS Delivered Luminosity [$nb^{-1}$]",
-        1/1_000_000 : r"CMS Delivered Luminosity [$pb^{-1}$]",
-        1/1_000_000_000 : r"CMS Delivered Luminosity [$fb^{-1}$]",
-    }
-
-    beam_status_color_map = {
-        "OTHER" : "#000000",
-        "STABLE BEAMS" : "#00ff00",
-        "FLAT TOP" : "#0000ff",
-        "ADJUST" : "#ff0000",
-        "SQUEEZE" : "#ffff00"
-    }
-
     beam_status = np.asarray(beam_status)
 
     # get correct binx
@@ -104,14 +113,14 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
 
     def plot_lumi(ax, x, scale_factor, max_val):
         ax.plot(x, delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
-        ax.fill_between(x, np.where(beam_status=="STABLE BEAMS", max_val, 1), 1, color=beam_status_color_map["STABLE BEAMS"], alpha=0.1, step="post", label="Stable Beams")
-        ax.fill_between(x, np.where(beam_status=="ADJUST", max_val, 1), 1, color=beam_status_color_map["ADJUST"], alpha=0.1, step="post", label="Adjust")
-        ax.fill_between(x, np.where(beam_status=="SQUEEZE", max_val, 1), 1, color=beam_status_color_map["SQUEEZE"], alpha=0.1, step="post", label="Squeeze")
-        ax.fill_between(x, np.where(beam_status=="FLAT TOP", max_val, 1), 1, color=beam_status_color_map["FLAT TOP"], alpha=0.1, step="post", label="Flat Top")
-        ax.fill_between(x, np.where(beam_status=="OTHER", max_val, 1), 1, color=beam_status_color_map["OTHER"], alpha=0.1, step="post", label="Other")
+        ax.fill_between(x, np.where(beam_status=="STABLE BEAMS", max_val, 0), 0, color=beam_status_color_map["STABLE BEAMS"], alpha=0.1, step="post", label="Stable Beams")
+        ax.fill_between(x, np.where(beam_status=="ADJUST", max_val, 0), 0, color=beam_status_color_map["ADJUST"], alpha=0.1, step="post", label="Adjust")
+        ax.fill_between(x, np.where(beam_status=="SQUEEZE", max_val, 0), 0, color=beam_status_color_map["SQUEEZE"], alpha=0.1, step="post", label="Squeeze")
+        ax.fill_between(x, np.where(beam_status=="FLAT TOP", max_val, 0), 0, color=beam_status_color_map["FLAT TOP"], alpha=0.1, step="post", label="Flat Top")
+        ax.fill_between(x, np.where(beam_status=="OTHER", max_val, 0), 0, color=beam_status_color_map["OTHER"], alpha=0.1, step="post", label="Other")
         ax.set_ylabel(unit_labels[scale_factor])
-        ax.set_yscale('log')
-        ax.set_ylim(1, max_val*1.05)
+        ax.set_yscale('symlog')
+        ax.set_ylim(0.1, max_val*1.05)
         
     def plot_bhm(ax, x1, x2, y1, y2, max_val, region):
 
@@ -121,8 +130,8 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
             ax.plot(x2, y2, color='k',label=f"-Z {region}")
         ax.set_xlabel("Time Approximate")
         ax.set_ylabel("BHM Event Rate")
-        ax.set_ylim(1, max_val*1.05)
-        ax.set_yscale('log')
+        ax.set_ylim(0.1, max_val*1.05)
+        ax.set_yscale('symlog')
         if start_time != 0:
             textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
@@ -170,7 +179,7 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
         if lumi_bins is not None:
             lumi_ax = ax.twinx()
             for scale_factor in [10**i for i in range(-9, 6, 3)]:
-                if max(delivered_lumi)*scale_factor > 10:
+                if np.min(delivered_lumi[np.nonzero(delivered_lumi)])*scale_factor >= 1:
                     break
             if max(delivered_lumi)*scale_factor > max_val: max_val = max(delivered_lumi)*scale_factor
 
@@ -229,3 +238,227 @@ def rate_plots(uHTR4, uHTR11, start_time=0, lumi_bins=None, delivered_lumi=None,
                 lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.1, 0), title="LHC\nBeam Status", frameon=1)
         
         plt.close()
+
+def get_poly(counts, width, color, label=""):
+    """
+    This saves a very small amount of time, but is *technically* faster. Generates the polygon for a bar chart
+    based on histogram data.
+    """
+    verticies = []
+    bin_edges = [i-width/2 for i in range(21)]
+    for j in range(len(counts)): # Generates the verticies of the new polygon
+        verticies.append((bin_edges[j], 0))
+        verticies.append((bin_edges[j], counts[j]))
+        verticies.append((bin_edges[j] + width, counts[j]))
+        verticies.append((bin_edges[j] + width, 0))
+        if j == len(counts) - 1:
+            verticies.append((bin_edges[0], 0))
+    #print(verticies)
+    return Polygon(verticies, closed=True, facecolor=color, label=label)
+
+
+def plot_lego_gui(uHTR, xbins, ybins, h):
+
+    if uHTR == "4":
+        ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
+    elif uHTR == "11":
+        ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
+    
+    if h is None: # Draw empty plot in gui if data empty
+        ax3d.set_title(f"{beam_side[uHTR]}")
+        ax3d.set_xlabel("TDC [a.u]")
+        ax3d.set_ylabel("Ampl [a.u]")
+        ax3d.set_zlabel("Events")
+        ax3d.set_xlim3d(left=0, right=50)
+        ax3d.set_ylim3d(bottom=0, top=180)
+        return
+    
+    ax = lego(h, xbins, ybins, ax=ax3d)
+    ax3d.set_title(f"{beam_side[uHTR]}")
+    ax3d.set_xlabel("TDC [a.u]")
+    ax3d.set_ylabel("Ampl [a.u]")
+    ax3d.set_zlabel("Events")
+    ax3d.set_xlim3d(left=0, right=50)
+    ax3d.set_ylim3d(bottom=0, top=180)
+    
+    
+def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
+
+    # Very complex way to map from channel name (ie PN01, MF05, PF03, etc. to an index position for subplot)
+    # PN## occupies odd indices from 1 - 19, PF## occupies odd indices from 21 - 39
+    # MN## occupies even indices from 2 - 20, MF## occupies even indices from 22 - 40
+    ax = commonVars.adc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
+                                                    # +20 or +0    |   odd or even index  | -1 or -0 
+
+    if x is None or len(x) == 0:
+        ax.set_xlabel("ADC [a.u]")
+        ax.set_xticks(binx_tick)
+        ax.set_xticklabels(labels=binx_tick, rotation=45)
+        x_val_range = (binx[-1] - binx[0])
+        margin = ((x_val_range/10) - int(x_val_range/10))/2 + (x_val_range/10) // 2 # Cursed 5% margins
+        # matplot lib uses """5%""" margins, but the right margin always seems to be +1 of the left margin
+        # Both still add up to 10% regardless. Cursed but oh well
+        ax.set_xlim(binx[0]-margin, binx[-1]+margin+1)
+        return
+    
+    ax.hist(x,bins=binx+0.5, histtype="stepfilled")
+    textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {adc_plt_tdc_width}", size=15, ax=ax)
+    ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
+    ax.set_xticks(binx_tick)
+    ax.set_xticklabels(labels=binx_tick, rotation=45)
+    ax.set_xlabel("ADC [a.u]")
+    
+
+def plot_tdc_gui(ch, x, peak, delay=0):
+
+    # Cursed index notation, see plot_adc_gui above for explanation
+    ax = commonVars.tdc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
+
+    if x is None or len(x) == 0:
+        margin = ((50/10) - int(50/10))/2 + (50/10) // 2 # Cursed 5% margins
+        # Margins have a -1 on the left rather than a +1 on the right.
+        ax.set_xlim(-margin-1, 50+margin)
+        ax.set_xlabel("TDC [a.u]")
+        return
+
+    ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
+    textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
+    ax.axvline(peak+delay,color='k',linestyle='--')
+    ax.set_xlabel("TDC [a.u]")
+
+
+def plot_occupancy_gui(uHTR, BR_bx, SR_bx):
+
+    if uHTR == "4":
+        ax = commonVars.occupancy_fig.add_subplot(121)
+    elif uHTR == "11":
+        ax = commonVars.occupancy_fig.add_subplot(122)
+
+    if BR_bx is None:
+        
+        x_val_range = (3563.5 - -0.5)
+        margin = x_val_range/20 # Sane 5% margins
+        textbox(0.0,1.05,'Preliminary',15, ax=ax)
+        textbox(0.5,1.05,f'{beam_side[uHTR]} [uHTR-{uHTR}]',15, ax=ax)
+        ax.set_xlabel('BX ID')
+        ax.set_ylabel('Events/1')
+        ax.set_xlim(-0.5-margin, 3563.5+margin)
+        return
+
+    ax.set_yscale('log')
+    textbox(0.0,1.05,'Preliminary',15, ax=ax)
+    textbox(0.5,1.05,f'{beam_side[uHTR]} [uHTR-{uHTR}]',15, ax=ax)
+    ax.set_xlabel('BX ID')
+    ax.set_ylabel('Events/1')
+    ax.hist(BR_bx, bins=np.arange(-0.5,3564,1), color='k', histtype="stepfilled", label="Collision $\&$ Activation")
+    ax.hist(SR_bx, bins=np.arange(-0.5,3564,1), color='r', histtype="stepfilled", label="BIB")
+    ax.legend(loc='upper right',frameon=1)
+    
+    return
+
+
+def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+        
+
+        if uHTR == "4":
+            violin_ax = commonVars.tdc_stability_fig.add_subplot(223)
+            vanilla_ax = commonVars.tdc_stability_fig.add_subplot(221)
+            CMAP = hw_info.get_uHTR4_CMAP()
+        elif uHTR == "11":
+            violin_ax = commonVars.tdc_stability_fig.add_subplot(224)
+            vanilla_ax = commonVars.tdc_stability_fig.add_subplot(222)
+            CMAP = hw_info.get_uHTR11_CMAP()
+        
+        channels = [ch for ch in CMAP.keys()]
+
+        if t_df is None:
+            # Violin filler
+            textbox(0.0,1.11,'Preliminary',15, ax=violin_ax)
+            textbox(0.5,1.11,f'{beam_side[uHTR]} [uHTR-{uHTR}]',15, ax=violin_ax)
+            violin_ax.set_xticks(np.arange(20))
+            violin_ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+            violin_ax.set_ylabel("TDC [a.u]",fontsize=15)
+            violin_ax.set_xlabel("Channels",fontsize=15)
+            margin = 0.5 # fixed margin
+            violin_ax.set_ylim(0,15)
+            violin_ax.set_xlim(-margin, 19+margin)
+            
+            # Vanilla filler
+            textbox(0.0,1.11,'Preliminary',15, ax=vanilla_ax)
+            textbox(0.5,1.11,f'{beam_side[uHTR]} [uHTR-{uHTR}]',15, ax=vanilla_ax)
+            vanilla_ax.set_xticks(np.arange(20))
+            vanilla_ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+            vanilla_ax.set_ylabel("TDC [a.u]",fontsize=15)
+            vanilla_ax.set_xlabel("Channels",fontsize=15)
+            vanilla_ax.set_ylim(0,15)
+            margin = 19/20 # Sane 5% margins
+            vanilla_ax.set_xlim(-margin, 19+margin)
+            return
+
+        # Violin plot
+        sns.violinplot(ax=violin_ax, data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
+        textbox(0.0,1.11,'Preliminary',15, ax=violin_ax)
+        textbox(0.5,1.11,f'{beam_side[uHTR]} [uHTR-{uHTR}]',15, ax=violin_ax)
+        violin_ax.set_xticks(np.arange(20))
+        violin_ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+        violin_ax.set_ylabel("TDC [a.u]",fontsize=15)
+        violin_ax.set_xlabel("Channels",fontsize=15)
+        violin_ax.set_ylim(0,15)
+
+        # Vanilla plot
+        if _mode_val is not None:
+            vanilla_ax.errorbar(channels, _mode, yerr=_std_dev, fmt='r.', ecolor='k', capsize=2, label="MPV of TDC")
+            vanilla_ax.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
+            vanilla_ax.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
+            vanilla_ax.legend(loc='upper right',frameon=True)
+
+        textbox(0.0,1.11,'Preliminary',15, ax=vanilla_ax)
+        textbox(0.5,1.11,f'{beam_side[uHTR]} [uHTR-{uHTR}]',15, ax=vanilla_ax)
+        vanilla_ax.set_xticks(np.arange(20))
+        vanilla_ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
+        vanilla_ax.set_ylabel("TDC [a.u]",fontsize=15)
+        vanilla_ax.set_xlabel("Channels",fontsize=15)
+        vanilla_ax.set_ylim(0,15)
+    
+    return
+
+
+def plot_channel_events_gui(uHTR, channels, SR_events, BR_events):
+
+    if uHTR == "4":
+        ax = commonVars.ch_events_fig.add_subplot(121)
+        CMAP = hw_info.get_uHTR4_CMAP()
+    elif uHTR == "11":
+        ax = commonVars.ch_events_fig.add_subplot(122)
+        CMAP = hw_info.get_uHTR11_CMAP()
+
+    if channels is None:
+        
+        textbox(0.0,1.05,'Preliminary', 15, ax=ax)
+        textbox(0.5,1.05,f'{beam_side[uHTR]} [uHTR-{uHTR}]', 15, ax=ax)
+        ax.set_xticks(np.arange(20))
+        ax.set_xticklabels(labels=[ch for ch in CMAP.keys()], rotation=45, ha="center", fontsize=8)
+        ax.set_xlabel("Channels", fontsize=15)
+        ax.set_ylabel("Events/1", fontsize=15)
+        ax.set_xlim(-1, 20)
+        return
+
+    width = 0.9
+    sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB") # You cannot just copy the same Artist into different axes because reasons (? matplotlib black magic ?)
+    br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation") # Not a big deal, generating polygons is very quick
+    ax.add_patch(br_poly)
+    ax.add_patch(sr_poly)
+    textbox(0.0,1.05,'Preliminary', 15, ax=ax)
+    textbox(0.5,1.05,f'{beam_side[uHTR]} [uHTR-{uHTR}]', 15, ax=ax)
+    ax.set_xticks(np.arange(20))
+    ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=8)
+    ax.set_xlabel("Channels", fontsize=15)
+    ax.set_ylabel("Events/1", fontsize=15)
+    ax.set_yscale("log")
+    ax.set_xlim(-1, 20)
+    ax.legend(loc='upper right', frameon=True)
+    
+    return

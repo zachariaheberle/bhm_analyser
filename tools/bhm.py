@@ -16,7 +16,6 @@ import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from matplotlib.patches import Polygon
 import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
@@ -233,16 +232,7 @@ class bhm_analyser():
         Lego Plot of peak ampl vs tdc
         '''
         if len(self.run) == 0 and commonVars.root: # Draw empty plot in gui if data empty
-            if self.uHTR == "4":
-                ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
-            elif self.uHTR == "11":
-                ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
-            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
-            ax3d.set_xlabel("TDC [a.u]")
-            ax3d.set_ylabel("Ampl [a.u]")
-            ax3d.set_zlabel("Events")
-            ax3d.set_xlim3d(left=0, right=50)
-            ax3d.set_ylim3d(bottom=0, top=180)
+            plotting.plot_lego_gui(self.uHTR, None, None, None)
             return
         
         xdata = self.tdc#[self.ch_mapped == self.CMAP["MN05"]]
@@ -265,25 +255,15 @@ class bhm_analyser():
         plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
 
         if commonVars.root:
-            if self.uHTR == "4":
-                ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
-            elif self.uHTR == "11":
-                ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
-            ax = plotting.lego(h, xbins, ybins, ax=ax3d)
-            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
-            ax3d.set_xlabel("TDC [a.u]")
-            ax3d.set_ylabel("Ampl [a.u]")
-            ax3d.set_zlabel("Events")
-            ax3d.set_xlim3d(left=0, right=50)
-            ax3d.set_ylim3d(bottom=0, top=180)
+            plotting.plot_lego_gui(self.uHTR, xbins, ybins, h)
 
         plt.close()
 
     def saveADCplots(self,binx=None,binx_tick=None):
         if binx is None:
-            binx = np.arange(120,180,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
+            binx = np.arange(120,181,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
         if binx_tick is None:    
-            binx_tick = np.arange(120,180,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
+            binx_tick = np.arange(120,181,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
         self.ADC_Cuts = {}
 
         f, ax = plt.subplots()        
@@ -291,19 +271,7 @@ class bhm_analyser():
         for i, ch in enumerate(self.CMAP.keys()):
 
             if len(self.run) == 0 and commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
-
-                gui_ax.set_xlabel("ADC [a.u]")
-                gui_ax.set_xticks(binx_tick)
-                gui_ax.set_xticklabels(labels=binx_tick, rotation=45)
-                x_val_range = (binx[-1] - binx[0])
-                margin = ((x_val_range/10) - int(x_val_range/10))/2 + (x_val_range/10) // 2 # Cursed 5% margins
-                # matplot lib uses """5%""" margins, but the right margin always seems to be +1 of the left margin
-                # Both still add up to 10% regardless. Cursed but oh well
-                gui_ax.set_xlim(binx[0]-margin, binx[-1]+margin+1)
+                plotting.plot_adc_gui(ch, None, binx, binx_tick, self.adc_plt_tdc_width)
                 continue
 
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
@@ -380,16 +348,7 @@ class bhm_analyser():
             #print(f"Render time: {(end-start)*1000:.3f}ms")
 
             if commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.adc_fig.add_subplot(20, 2, (2*i + 2))
-                gui_ax.hist(x,bins=binx+0.5, histtype="stepfilled")
-                plotting.textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}", size=15, ax=gui_ax)
-                gui_ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-                gui_ax.set_xticks(binx_tick)
-                gui_ax.set_xticklabels(labels=binx_tick, rotation=45)
-                gui_ax.set_xlabel("ADC [a.u]")
+                plotting.plot_adc_gui(ch, x, binx, binx_tick, self.adc_plt_tdc_width)
 
         plt.close()
         #print(f"Initial Render time: {time_list[0]:.3f}ms")
@@ -406,15 +365,7 @@ class bhm_analyser():
         for i, ch in enumerate(self.CMAP.keys()):
 
             if len(self.run) == 0 and commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
-                
-                margin = ((50/10) - int(50/10))/2 + (50/10) // 2 # Cursed 5% margins
-                # Margins have a -1 on the left rather than a +1 on the right.
-                gui_ax.set_xlim(-margin-1, 50+margin)
-                gui_ax.set_xlabel("TDC [a.u]")
+                plotting.plot_tdc_gui(ch, None, None)
                 continue
 
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
@@ -471,14 +422,7 @@ class bhm_analyser():
             #     print(f"Extra render {(end-start)*1000:.3f}ms")
 
             if commonVars.root:
-                if self.uHTR == "4":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 1))
-                elif self.uHTR == "11":
-                    gui_ax = commonVars.tdc_fig.add_subplot(20, 2, (2*i + 2))
-                gui_ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
-                plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=gui_ax)
-                gui_ax.axvline(peak+delay,color='k',linestyle='--')
-                gui_ax.set_xlabel("TDC [a.u]")
+                plotting.plot_tdc_gui(ch, x, peak, delay)
 
             plt.close()
             # if self.TDC_Peaks[ch] != calib.TDC_PEAKS[ch]:
@@ -550,17 +494,7 @@ class bhm_analyser():
         # print(f"self.BR.bx: {self.BR.bx}")
         # print(f"self.SR.bx: {self.SR.bx}")
         if len(self.run) == 0 and commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.occupancy_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.occupancy_fig.add_subplot(122)
-            x_val_range = (3563.5 - -0.5)
-            margin = x_val_range/20 # Sane 5% margins
-            plotting.textbox(0.0,1.05,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xlabel('BX ID')
-            ax.set_ylabel('Events/1')
-            ax.set_xlim(-0.5-margin, 3563.5+margin)
+            plotting.plot_occupancy_gui(self.uHTR, None, None)
             return
         
         f, ax = plt.subplots()
@@ -575,18 +509,7 @@ class bhm_analyser():
         plt.savefig(f"{self.figure_folder}/occupancy_uHTR{self.uHTR}.png",dpi=300)
 
         if commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.occupancy_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.occupancy_fig.add_subplot(122)
-            ax.set_yscale('log')
-            plotting.textbox(0.0,1.05,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xlabel('BX ID')
-            ax.set_ylabel('Events/1')
-            ax.hist(self.BR.bx, bins=np.arange(-0.5,3564,1), color='k', histtype="stepfilled", label="Collision $\&$ Activation")
-            ax.hist(self.SR.bx, bins=np.arange(-0.5,3564,1), color='r', histtype="stepfilled", label="BIB")
-            ax.legend(loc='upper right',frameon=1)
+            plotting.plot_occupancy_gui(self.uHTR, self.BR.bx, self.SR.bx)
 
         plt.close()
 
@@ -600,36 +523,7 @@ class bhm_analyser():
         #Should only apply ADC cuts
 
         if len(self.run) == 0 and commonVars.root:
-            # Violin filler
-            if self.uHTR == "4":
-                    ax = commonVars.tdc_stability_fig.add_subplot(223)
-            elif self.uHTR == "11":
-                ax = commonVars.tdc_stability_fig.add_subplot(224)
-            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            channels = [ch for ch in self.CMAP.keys()]
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-            ax.set_ylabel("TDC [a.u]",fontsize=15)
-            ax.set_xlabel("Channels",fontsize=15)
-            margin = 0.5 # fixed margin
-            ax.set_ylim(0,15)
-            ax.set_xlim(-margin, 19+margin)
-            
-            # Vanilla filler
-            if self.uHTR == "4":
-                ax = commonVars.tdc_stability_fig.add_subplot(221)
-            elif self.uHTR == "11":
-                ax = commonVars.tdc_stability_fig.add_subplot(222)
-            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-            ax.set_ylabel("TDC [a.u]",fontsize=15)
-            ax.set_xlabel("Channels",fontsize=15)
-            ax.set_ylim(0,15)
-            margin = 19/20 # Sane 5% margins
-            ax.set_xlim(-margin, 19+margin)
+            plotting.plot_tdc_stability_gui(self.uHTR, None, None, None, None, None)
             return
         
         if "df" not in self.__dict__.keys():
@@ -693,21 +587,6 @@ class bhm_analyser():
             plt.xlabel("Channels",fontsize=30)
             plt.ylim(0,15)
             plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
-
-            if commonVars.root:
-                if self.uHTR == "4":
-                    ax = commonVars.tdc_stability_fig.add_subplot(223)
-                elif self.uHTR == "11":
-                    ax = commonVars.tdc_stability_fig.add_subplot(224)
-                sns.violinplot(ax=ax, data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
-                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-                ax.set_xticks(np.arange(20))
-                ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-                ax.set_ylabel("TDC [a.u]",fontsize=15)
-                ax.set_xlabel("Channels",fontsize=15)
-                ax.set_ylim(0,15)
-
             plt.close()
 
 
@@ -748,27 +627,9 @@ class bhm_analyser():
             plt.legend(loc='upper right',frameon=True)
             plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
 
-            if commonVars.root:
-                if self.uHTR == "4":
-                    ax = commonVars.tdc_stability_fig.add_subplot(221)
-                elif self.uHTR == "11":
-                    ax = commonVars.tdc_stability_fig.add_subplot(222)
-                try:
-                    ax.errorbar(channels, _mode, yerr=_std_dev, fmt='r.', ecolor='k', capsize=2, label="MPV of TDC")
-                    ax.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
-                    ax.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
-                    ax.legend(loc='upper right',frameon=True)
-                except UnboundLocalError: # Empty data check using whether or not _mode_val is defined
-                    pass
-                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-                ax.set_xticks(np.arange(20))
-                ax.set_xticklabels(labels=channels, rotation=45, ha='center',fontsize=8)
-                ax.set_ylabel("TDC [a.u]",fontsize=15)
-                ax.set_xlabel("Channels",fontsize=15)
-                ax.set_ylim(0,15)
+        if commonVars.root:
+            plotting.plot_tdc_stability_gui(self.uHTR, t_df, _mode, _mode_val, _std_dev, _sig)
             
-
         plt.close()
 
     def plot_channel_events(self):
@@ -777,17 +638,7 @@ class bhm_analyser():
         """
 
         if len(self.run) == 0 and commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.ch_events_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.ch_events_fig.add_subplot(122)
-            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=[ch for ch in self.CMAP.keys()], rotation=45, ha="center", fontsize=8)
-            ax.set_xlabel("Channels", fontsize=15)
-            ax.set_ylabel("Events/1", fontsize=15)
-            ax.set_xlim(-1, 20)
+            plotting.plot_channel_events_gui(self.uHTR, None, None, None)
             return
         
         if "df" not in self.__dict__.keys():
@@ -795,22 +646,6 @@ class bhm_analyser():
             self.get_SR_BR_AR_CP()
 
         f, ax = plt.subplots()
-
-        def get_poly(counts, width, color, label=""):
-            """
-            This saves a very small amount of time, but is *technically* faster
-            """
-            verticies = []
-            bin_edges = [i-width/2 for i in range(21)]
-            for j in range(len(counts)): # Generates the verticies of the new polygon
-                verticies.append((bin_edges[j], 0))
-                verticies.append((bin_edges[j], counts[j]))
-                verticies.append((bin_edges[j] + width, counts[j]))
-                verticies.append((bin_edges[j] + width, 0))
-                if j == len(counts) - 1:
-                    verticies.append((bin_edges[0], 0))
-            #print(verticies)
-            return Polygon(verticies, closed=True, facecolor=color, label=label)
 
         channels = [ch for ch in self.CMAP.keys()]
         SR_events = self.SR["ch"].value_counts(sort=False)#.to_numpy()
@@ -825,8 +660,8 @@ class bhm_analyser():
         BR_events.sort_index(inplace=True)
 
         width = 0.9
-        sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB")
-        br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
+        sr_poly = plotting.get_poly(SR_events.to_numpy(), width, "r", label="BIB")
+        br_poly = plotting.get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
         ax.add_patch(br_poly)
         ax.add_patch(sr_poly)
         # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
@@ -844,25 +679,7 @@ class bhm_analyser():
         plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
 
         if commonVars.root:
-            if self.uHTR == "4":
-                ax = commonVars.ch_events_fig.add_subplot(121)
-            elif self.uHTR == "11":
-                ax = commonVars.ch_events_fig.add_subplot(122)
-            sr_poly = get_poly(SR_events.to_numpy(), width, "r", label="BIB") # You cannot just copy the same Artist into different axes because reasons (? matplotlib black magic ?)
-            br_poly = get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation") # Not a big deal, generating polygons is very quick
-            ax.add_patch(br_poly)
-            ax.add_patch(sr_poly)
-            # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
-            # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
-            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
-            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=8)
-            ax.set_xlabel("Channels", fontsize=15)
-            ax.set_ylabel("Events/1", fontsize=15)
-            ax.set_yscale("log")
-            ax.set_xlim(-1, 20)
-            ax.legend(loc='upper right', frameon=True)
+            plotting.plot_channel_events_gui(self.uHTR, channels, SR_events, BR_events)
             
         plt.close()
         
