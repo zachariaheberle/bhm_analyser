@@ -291,6 +291,8 @@ def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
     ax = commonVars.adc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
                                                     # +20 or +0    |   odd or even index  | -1 or -0 
 
+    textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {adc_plt_tdc_width}", size=15, ax=ax)
+
     if x is None or len(x) == 0:
         ax.set_xlabel("ADC [a.u]")
         ax.set_xticks(binx_tick)
@@ -303,7 +305,6 @@ def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
         return
     
     ax.hist(x,bins=binx+0.5, histtype="stepfilled")
-    textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {adc_plt_tdc_width}", size=15, ax=ax)
     ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
     ax.set_xticks(binx_tick)
     ax.set_xticklabels(labels=binx_tick, rotation=45)
@@ -315,6 +316,8 @@ def plot_tdc_gui(ch, x, peak, delay=0):
     # Cursed index notation, see plot_adc_gui above for explanation
     ax = commonVars.tdc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
 
+    textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax) 
+
     if x is None or len(x) == 0:
         margin = ((50/10) - int(50/10))/2 + (50/10) // 2 # Cursed 5% margins
         # Margins have a -1 on the left rather than a +1 on the right.
@@ -323,7 +326,6 @@ def plot_tdc_gui(ch, x, peak, delay=0):
         return
 
     ax.hist(x, bins=np.arange(-0.5, 50, 1), histtype="step", color="r")
-    textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
     ax.axvline(peak+delay,color='k',linestyle='--')
     ax.set_xlabel("TDC [a.u]")
 
