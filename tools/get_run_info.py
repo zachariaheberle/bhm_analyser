@@ -84,7 +84,7 @@ def get_lumisections(runs: list = [375000]):
         process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
 
     except (FileNotFoundError, OSError):
-        cmd = f"ssh lxplus \"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)} && " +\
+        cmd = f"ssh lxplus7 \"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)} && " +\
             f"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --begin {min(runs)} --end {max(runs)}\""
         process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
             
