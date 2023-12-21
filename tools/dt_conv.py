@@ -31,3 +31,14 @@ def utc_to_string(utc_code):
     t = get_date_time(utc_code)
     return t.strftime("%d %B, %Y")
 
+def tz_to_utc_ms(year, month, day, hour, minute, second):
+    """
+    Converts year, month, day, etc... to unix timestamp (ms)
+    """
+    return int(dt.datetime.timestamp(dt.datetime(year, month, day, hour, minute, second, tzinfo=pytz.timezone("UTC"))) * 1000)
+
+def utc_ms_to_orbit(utc_ms, start_time, reference_orbit):
+    """
+    Converts a utc ms timestamp to an orbit number (given a reference start time (utc ms) and orbit)
+    """
+    return int((utc_ms - start_time)/3564/25/10**-6 + reference_orbit)

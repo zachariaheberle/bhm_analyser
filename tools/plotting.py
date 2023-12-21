@@ -160,7 +160,10 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, start_time=0, lumi_bin
         x1 = x2 = y1 = y2 = None # Placeholders to prevent UnboundLocalError
 
         if commonVars.root and region4.empty and region11.empty:
-            ax = commonVars.rate_fig.add_subplot(2, 1, i)  
+            try:
+                ax = commonVars.rate_fig.axes[i-1]
+            except IndexError:
+                ax = commonVars.rate_fig.add_subplot(2, 1, i)  
             xfmt = mdates.DateFormatter('%H:%M')
             ax.xaxis.set_major_formatter(xfmt)
             plot_bhm(ax, None, None, None, None, 10, region_name)
@@ -210,12 +213,18 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, start_time=0, lumi_bin
         f.savefig(f"{uHTR4.figure_folder}/rates_{region_name}.png",dpi=300)
 
         if commonVars.root:
-            ax = commonVars.rate_fig.add_subplot(2, 1, i)  
+            try:
+                ax = commonVars.rate_fig.axes[2*(i-1)]
+            except IndexError:
+                ax = commonVars.rate_fig.add_subplot(2, 1, i)  
             xfmt = mdates.DateFormatter('%H:%M')
             ax.xaxis.set_major_formatter(xfmt)
 
             if lumi_bins is not None:
-                lumi_ax = ax.twinx()
+                try:
+                    lumi_ax = commonVars.rate_fig.axes[2*i-1]
+                except:
+                    lumi_ax = ax.twinx()
                 plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
 
             plot_bhm(ax, x1, x2, y1, y2, max_rate, region_name)
@@ -261,9 +270,15 @@ def get_poly(counts, width, color, label=""):
 def plot_lego_gui(uHTR, xbins, ybins, h):
 
     if uHTR == "4":
-        ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
+        try:
+            ax3d = commonVars.lego_fig.axes[0]
+        except IndexError:
+            ax3d = commonVars.lego_fig.add_subplot(121, azim=50, elev=30, projection="3d", proj_type="persp")
     elif uHTR == "11":
-        ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
+        try:
+            ax3d = commonVars.lego_fig.axes[1]
+        except:
+            ax3d = commonVars.lego_fig.add_subplot(122, azim=50, elev=30, projection="3d", proj_type="persp")
     
     if h is None: # Draw empty plot in gui if data empty
         ax3d.set_title(f"{beam_side[uHTR]}")
@@ -285,11 +300,17 @@ def plot_lego_gui(uHTR, xbins, ybins, h):
     
 def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
 
-    # Very complex way to map from channel name (ie PN01, MF05, PF03, etc. to an index position for subplot)
-    # PN## occupies odd indices from 1 - 19, PF## occupies odd indices from 21 - 39
-    # MN## occupies even indices from 2 - 20, MF## occupies even indices from 22 - 40
-    ax = commonVars.adc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
-                                                    # +20 or +0    |   odd or even index  | -1 or -0 
+    try:
+        # More complex ord mapping
+        ax = commonVars.adc_fig.axes[int(20*(80 - ord(ch[0]))/3 + 10*(78-ord(ch[1]))/8 + int(ch[2:]) - 1)]
+        #                                           +20 or +0   |      +10 or +0       |  + digits at end - 1   
+
+        # Very complex way to map from channel name (ie PN01, MF05, PF03, etc. to an index position for subplot)
+        # PN## occupies odd indices from 1 - 19, PF## occupies odd indices from 21 - 39
+        # MN## occupies even indices from 2 - 20, MF## occupies even indices from 22 - 40
+    except IndexError:
+        ax = commonVars.adc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
+                                                    # +20 or +0    |   odd or even index  | -1 or -0
 
     textbox(0.6,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {adc_plt_tdc_width}", size=15, ax=ax)
 
@@ -313,8 +334,11 @@ def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
 
 def plot_tdc_gui(ch, x, peak, delay=0):
 
-    # Cursed index notation, see plot_adc_gui above for explanation
-    ax = commonVars.tdc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3)) 
+    try:
+        ax = commonVars.tdc_fig.axes[int(20*(80 - ord(ch[0]))/3 + 10*(78-ord(ch[1]))/8 + int(ch[2:]) - 1)]
+    except IndexError:
+        # Cursed index notation, see plot_adc_gui above for explanation
+        ax = commonVars.tdc_fig.add_subplot(20, 2, int((78-ord(ch[1]))*2.5 + 2*int(ch[2:]) - (ord(ch[0])-77)/3))
 
     textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax) 
 
@@ -333,9 +357,15 @@ def plot_tdc_gui(ch, x, peak, delay=0):
 def plot_occupancy_gui(uHTR, BR_bx, SR_bx):
 
     if uHTR == "4":
-        ax = commonVars.occupancy_fig.add_subplot(121)
+        try:
+            ax = commonVars.occupancy_fig.axes[0]
+        except IndexError:
+            ax = commonVars.occupancy_fig.add_subplot(121)
     elif uHTR == "11":
-        ax = commonVars.occupancy_fig.add_subplot(122)
+        try:
+            ax = commonVars.occupancy_fig.axes[1]
+        except IndexError:
+            ax = commonVars.occupancy_fig.add_subplot(122)
 
     if BR_bx is None:
         
@@ -367,12 +397,20 @@ def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
         
 
         if uHTR == "4":
-            violin_ax = commonVars.tdc_stability_fig.add_subplot(223)
-            vanilla_ax = commonVars.tdc_stability_fig.add_subplot(221)
+            try:
+                violin_ax = commonVars.tdc_stability_fig.axes[0]
+                vanilla_ax = commonVars.tdc_stability_fig.axes[1]
+            except IndexError:
+                violin_ax = commonVars.tdc_stability_fig.add_subplot(223)
+                vanilla_ax = commonVars.tdc_stability_fig.add_subplot(221)
             CMAP = hw_info.get_uHTR4_CMAP()
         elif uHTR == "11":
-            violin_ax = commonVars.tdc_stability_fig.add_subplot(224)
-            vanilla_ax = commonVars.tdc_stability_fig.add_subplot(222)
+            try:
+                violin_ax = commonVars.tdc_stability_fig.axes[2]
+                vanilla_ax = commonVars.tdc_stability_fig.axes[3]
+            except IndexError:
+                violin_ax = commonVars.tdc_stability_fig.add_subplot(224)
+                vanilla_ax = commonVars.tdc_stability_fig.add_subplot(222)
             CMAP = hw_info.get_uHTR11_CMAP()
         
         channels = [ch for ch in CMAP.keys()]
@@ -432,10 +470,16 @@ def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
 def plot_channel_events_gui(uHTR, channels, SR_events, BR_events):
 
     if uHTR == "4":
-        ax = commonVars.ch_events_fig.add_subplot(121)
+        try:
+            ax = commonVars.ch_events_fig.axes[0]
+        except IndexError:
+            ax = commonVars.ch_events_fig.add_subplot(121)
         CMAP = hw_info.get_uHTR4_CMAP()
     elif uHTR == "11":
-        ax = commonVars.ch_events_fig.add_subplot(122)
+        try:
+            ax = commonVars.ch_events_fig.axes[1]
+        except IndexError:
+            ax = commonVars.ch_events_fig.add_subplot(122)
         CMAP = hw_info.get_uHTR11_CMAP()
 
     if channels is None:

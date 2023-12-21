@@ -10,7 +10,6 @@ from tools.libs import * # Importing all necessary libraries
 from tools.analysis_helpers import *
 import os
 matplotlib.use('agg')
-from matplotlib import backend_bases
 
 
 def nogui_analysis():
@@ -207,14 +206,4 @@ if __name__ == "__main__":
         nogui_analysis()
     else:
         import tools.tkinter_gui as gui
-        backend_bases.NavigationToolbar2.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
-        ('Home', 'Reset original view', 'home', 'home'),
-        ('Back', 'Back to  previous view', 'back', 'back'),
-        ('Forward', 'Forward to next view', 'forward', 'forward'),
-        (None, None, None, None),
-        ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
-        ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
-        (None, None, None, None),
-        ('Save', 'Save the figure', 'filesave', 'save_figure'),
-        )
         gui.gui()

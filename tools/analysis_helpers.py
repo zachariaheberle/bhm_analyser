@@ -426,13 +426,17 @@ def load_uHTR_data(data_folder_str):
 
     return uHTR4, uHTR11, loaded_runs
 
-def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False, 
+def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=None, custom_range=False, 
              plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None,
              lumi_bins=None, delivered_lumi=None, beam_status=None):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
     commonVars.folder_name = (f"figures/{figure_folder}")
+    commonVars.start_time_utc_ms = start_time
+
+    if start_time == 0:
+        commonVars.reference_orbit = min(min(uHTR4.orbit, default=float("inf")), min(uHTR11.orbit, default=float("inf")))
 
     if uHTR4 is not None:
         uHTR4.create_figure_folder()
@@ -455,17 +459,14 @@ def analysis(uHTR4, uHTR11, figure_folder, run_cut=None, custom_range=False,
         calib.ADC_CUTS = calib.ADC_CUTS_v2
         calib.TDC_PEAKS = calib.TDC_PEAKS_v2
 
-    _uHTR4 = deepcopy(uHTR4) # create copies so multiple analyses can be run without having to reload data
-    _uHTR11 = deepcopy(uHTR11)
+    commonVars.uHTR4 = deepcopy(uHTR4) # create copies so multiple analyses can be run without having to reload data
+    commonVars.uHTR11 = deepcopy(uHTR11) # Also allows us to access uHTR objects outside of analysis
 
     if manual_calib:
-        _uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
-        _uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
     else:
-        _uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
-        _uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
 
-    plotting.rate_plots(_uHTR4, _uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi, beam_status=beam_status)
-
-    del _uHTR4 # removing temp variables
-    del _uHTR11
+    plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi, beam_status=beam_status)

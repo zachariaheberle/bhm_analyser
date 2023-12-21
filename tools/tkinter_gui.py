@@ -12,10 +12,11 @@ import tools.analysis_helpers as analysis_helpers
 import tools.hw_info as hw_info
 import tools.calibration as calib
 from tools.parser import CorruptionError
+from tools.tkinter_tools import *
 import os
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import json
 import numpy as np
 
@@ -40,40 +41,6 @@ def gui():
             raise_frame(CustomRun)
         else:
             raise_frame(BlankFrame)
-
-    def raise_frame(frame):
-        """
-        Raises a frame to be visible from hidden
-        """
-        frame.tkraise()
-    
-    def disable_frame(frame):
-        """
-        Disables all buttons in the frame and in all child frames
-        """
-        for child in frame.winfo_children():
-            wtype = child.winfo_class()
-            if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe"):
-                try:
-                    child.state(["disabled"])
-                except:
-                    child.configure(state="disabled")
-            else:
-                disable_frame(child)
-    
-    def enable_frame(frame):
-        """
-        Enables all buttons in the frame and in all child frames
-        """
-        for child in frame.winfo_children():
-            wtype = child.winfo_class()
-            if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe"):
-                try:
-                    child.state(["!disabled"])
-                except AttributeError:
-                    child.configure(state="normal")
-            else:
-                enable_frame(child)
     
     def load_data():
         """
@@ -240,6 +207,10 @@ def gui():
             # Main data analysis section
             if start_time is not None:
                 data_status_message.set("Analysing and Plotting uHTR Data, Please Wait...")
+
+                # Load time data into toolbars
+                initialize_toolbars(start_time, lumi_bins)
+
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, 
                                           plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, 
                                           manual_calib=manual_calib, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi,
@@ -277,6 +248,24 @@ def gui():
         finally:
             enable_frame(MainPage)
             return
+    
+    def initialize_toolbars(start_time=0, lumi_bins=None):
+        """
+        Sets the minimum and maximum time values into the toolbars if they have
+        a date/time entry in their settings panel
+        """
+
+        min_orbit = min(min(uHTR4.orbit, default=float("inf")), min(uHTR11.orbit, default=float("inf")))
+        max_orbit = max(max(uHTR4.orbit, default=-float("inf")), max(uHTR11.orbit, default=-float("inf")))
+
+        for toolbar in toolbar_list:
+            if hasattr(toolbar, "start_time"):
+                if lumi_bins is not None:
+                    toolbar.start_time.set_time(min(min(lumi_bins), (min_orbit.astype(np.float64) - commonVars.reference_orbit)*3564*25*10**-6 + start_time))
+                    toolbar.end_time.set_time(max(max(lumi_bins), (max_orbit.astype(np.float64) - commonVars.reference_orbit)*3564*25*10**-6 + start_time))
+                else:
+                    toolbar.start_time.set_time(0)
+                    toolbar.end_time.set_time((max_orbit-min_orbit)*3564*25*10**-6)
 
     #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
 
@@ -333,8 +322,8 @@ def gui():
     #@@@@@@@@@@@@@@@@@ FONT SETUP @@@@@@@@@@@@@@@@@@@@@
 
     # Font Stuff
-    default_font = ("Segoe UI", 12)
-    label_font = ("Segoe UI", 15)
+    default_font = commonVars.default_font = ("Segoe UI", 12)
+    label_font = commonVars.label_font = ("Segoe UI", 15)
     s = ttk.Style()
     s.configure(".", font=default_font) # Applies default font to all widgets, can be manually changed for an individual widget later
     root.option_add('*TCombobox*Listbox.font', default_font) # combobox is dumb, this line is necessary to make drop down list have font applied
@@ -572,95 +561,6 @@ def gui():
 
     #@@@@@@@@@@@@@@@ BEGIN OPTIONS PAGE @@@@@@@@@@@@@@@@@@
 
-    class EntryPopup(ttk.Entry):
-        """
-        tk.Treeview isn't inherently editable, this subclass of entry is meant to
-        create a popup box so the user can edit the values in the tree.
-        """
-
-        def __init__(self, parent, item, columnid, **kwargs):
-            super().__init__(parent, **kwargs)
-            self.parent = parent
-            self.item = item
-            self.columnid = columnid
-
-            self.insert(0, parent.item(self.item)["values"][columnid])
-            self.focus_force()
-
-            self.bind("<Return>", self.on_return)
-            self.bind("<Escape>", lambda event : self.destroy())
-            self.bind("<FocusOut>", self.on_return)
-
-            vcmd = (self.register(self.validate), "%S") # valid command
-            ivcmd = (self.register(self.on_invalid),) # invalid command
-            self.config(validate="key", validatecommand=vcmd, invalidcommand=ivcmd)
-        
-        def on_return(self, event):
-            """
-            Changes the values of the tkinter treeview when hitting enter or
-            closing entry box by unfocusing the window.
-            """
-            if self.get() == "":
-                self.bell()
-                return
-            values = self.parent.item(self.item)["values"]
-            values[self.columnid] = self.get()
-            self.parent.item(self.item, values=values)
-            self.destroy()
-        
-        def validate(self, value):
-            """
-            Checks if the next user input is an integer
-            """
-            if value.isdigit():
-                return True
-            else:
-                return False
-        
-        def on_invalid(self):
-            """
-            Makes a noise when the user tries to type in a non-integer value into the entry window
-            """
-            self.bell()
-            
-
-    def _on_double_click(event):
-        """
-        Event handler for when the user double clicks to edut a tkinter treeview.
-        Destroys any entry windows if there are any before trying to edit any others.
-        """
-        for child in event.widget.winfo_children():
-            child.destroy()
-        if "disabled" in event.widget.state():
-            return
-        edit_entries(event.widget, event.x, event.y)
-
-
-    def edit_entries(tree, event_x, event_y):
-        """
-        Pulls up a popup entry box for the user to change entry values of a tkinter treeview
-        """
-        try:
-            selected_item = tree.selection()[0]
-        except IndexError:
-            pass
-        else:
-            x, y, width, height = tree.bbox(selected_item)
-
-            total_column_width = 0
-            for i, column in enumerate(tree["columns"]):
-                column_width = tree.column(column)["width"]
-                total_column_width += column_width
-                if event_x < total_column_width and i == 0:
-                    return
-                elif event_x < total_column_width:
-                    relx = (total_column_width - column_width) / width
-                    break
-
-            relwidth = column_width / width
-
-            popup = EntryPopup(data_cuts_tree, selected_item, i, font=default_font)
-            popup.place(relx=relx, y=y, anchor=NW, relwidth=relwidth, height=height)
     
     def toggle_widgets(widgets, bool_var):
         """
@@ -737,7 +637,7 @@ def gui():
     DataCutsFrame = tk.Frame(DataCutsLabel)
 
     # Treeview of all detectors and their default ADC cuts and TDC peaks
-    data_cuts_tree = ttk.Treeview(DataCutsFrame, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
+    data_cuts_tree = EntryTreeview(DataCutsFrame, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
     data_cuts_tree.heading("detector", text="Detector")
     data_cuts_tree.heading("tdc_peak", text="TDC Peak")
     data_cuts_tree.heading("adc_cut", text="ADC Cut")
@@ -748,17 +648,11 @@ def gui():
         data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
     for ch_name in hw_info.get_uHTR11_CMAP():
         data_cuts_tree.insert("", END, values=[ch_name, calib.TDC_PEAKS_v2[ch_name], calib.ADC_CUTS_v2[ch_name]])
-    data_cuts_tree.bind("<Double-Button-1>", _on_double_click)
-    data_cuts_tree.bind("<FocusOut>", lambda event : clear_selection(data_cuts_tree))
     data_cuts_tree.state(["disabled"])
-
-    # Scrollbar for data cuts treeview
-    data_cuts_scrollbar = ttk.Scrollbar(DataCutsFrame, orient=VERTICAL, command=data_cuts_tree.yview)
-    data_cuts_tree['yscrollcommand'] =data_cuts_scrollbar.set
 
     # Placing everything into subframe
     DataCutsFrame.pack(side=LEFT)
-    data_cuts_scrollbar.pack(side=RIGHT, fill=Y)
+    # data_cuts_scrollbar.pack(side=RIGHT, fill=Y)
     data_cuts_tree.pack(side=LEFT, fill=BOTH, ipadx=0, ipady=0, padx=5, pady=5)
 
     #@@@@@@@@@@@@@@@@@ LOAD/SAVE SUBFRAME @@@@@@@@@@@@@@@@@@@@@@@@
@@ -790,34 +684,14 @@ def gui():
     def erase_all_figures():
         """
         Removes all drawn axes from figures if they exist. We use this so that if multiple
-        data sets are analysed, then figures don't corrupt each other.
+        data sets are analysed, then figures don't corrupt each other. 
+        Additionally reset toolbar memory
         """
         for fig in figure_list:
             for ax in fig.axes:
-                ax.remove()
-    
-    def _configure_canvas(event, interior, interior_id, canvas):
-        """
-        Updates the inner frame's width to fill the canvas
-        """
-        if interior.winfo_reqwidth() != canvas.winfo_width():
-            canvas.itemconfigure(interior_id, width=canvas.winfo_width())
-
-    def _configure_interior(event, interior, canvas):
-        """ 
-        Updates the scrollbars to match the size of the inner frame
-        """
-        size = (interior.winfo_reqwidth(), interior.winfo_reqheight())
-        canvas.config(scrollregion=f"0 0 {size[0]} {size[1]}")
-        if interior.winfo_reqwidth() != canvas.winfo_width(): # Update the canvas's width to fit the interior frame
-            canvas.config(width=interior.winfo_reqwidth())
-    
-    def _on_mousescroll(event, canvas):
-        """
-        Allows using the scrollwheel when hovering over a figure
-        """
-        canvas.yview_scroll(int(-1*(event.delta/25)), "units")
-
+                ax.clear()
+        for toolbar in toolbar_list:
+            toolbar.update()
 
     #@@@@@@@@@@@@@@@ FIGURE WINDOW FRAME CREATION @@@@@@@@@@@@@@@@
 
@@ -860,55 +734,25 @@ def gui():
     #@@@@@@@@@@@@@@@@@@@@ EMBEDDING MATPLOTLIB PLOTS IN TKINTER FRAMES @@@@@@@@@@@@@@@@@@@@@@
 
     # ADC plots
-    ADCPlotFrame = tk.Frame(ADCPage)
-    ADCToolbarFrame = tk.Frame(ADCPage)
+    ADCPlotFrame = ScrollableFrame(ADCPage)
     ADCPlotFrame.pack(side=TOP, fill=BOTH, expand=True)
-    ADCToolbarFrame.pack(side=BOTTOM, fill=X, expand=False)
 
-    adc_scrollbar = ttk.Scrollbar(ADCPlotFrame, orient=VERTICAL)
-    adc_scrollbar.pack(side=RIGHT, fill=Y, expand=False)
-    adc_scroll_canvas = tk.Canvas(ADCPlotFrame, bd=0, highlightthickness=0, yscrollcommand=adc_scrollbar.set)
-    adc_scroll_canvas.pack(side=LEFT, fill=BOTH, expand=True)
-    adc_scroll_canvas.bind('<Configure>', lambda event : _configure_canvas(event, adc_interior, adc_interior_id, adc_scroll_canvas))
-    adc_scroll_canvas.xview_moveto(0)
-    adc_scroll_canvas.yview_moveto(0)
-    adc_scrollbar.config(command=adc_scroll_canvas.yview)
-
-    adc_interior = tk.Frame(adc_scroll_canvas)
-    adc_interior_id = adc_scroll_canvas.create_window(0, 0, window=adc_interior, anchor=NW)
-    adc_interior.bind('<Configure>', lambda event : _configure_interior(event, adc_interior, adc_scroll_canvas))
-
-    adc_canvas = FigureCanvasTkAgg(commonVars.adc_fig, adc_interior)
+    adc_canvas = FigureCanvasTkAgg(commonVars.adc_fig, ADCPlotFrame.interior_frame)
     adc_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    adc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : _on_mousescroll(event, adc_scroll_canvas))
-    adc_toolbar = NavigationToolbar2Tk(adc_canvas, ADCToolbarFrame, pack_toolbar=False)
+    adc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : ADCPlotFrame._on_mousescroll(event))
+    adc_toolbar = ADCToolbar(adc_canvas, ADCPage, commonVars.adc_fig, pack_toolbar=False)
     adc_toolbar.update()
     adc_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
 
     # TDC Plots
-    TDCPlotFrame = tk.Frame(TDCPage)
-    TDCToolbarFrame = tk.Frame(TDCPage)
+    TDCPlotFrame = ScrollableFrame(TDCPage)
     TDCPlotFrame.pack(side=TOP, fill=BOTH, expand=True)
-    TDCToolbarFrame.pack(side=BOTTOM, fill=X, expand=False)
 
-    tdc_scrollbar = ttk.Scrollbar(TDCPlotFrame, orient=VERTICAL)
-    tdc_scrollbar.pack(side=RIGHT, fill=Y, expand=False)
-    tdc_scroll_canvas = tk.Canvas(TDCPlotFrame, bd=0, highlightthickness=0, yscrollcommand=tdc_scrollbar.set)
-    tdc_scroll_canvas.pack(side=LEFT, fill=BOTH, expand=True)
-    tdc_scroll_canvas.bind('<Configure>', lambda event : _configure_canvas(event, tdc_interior, tdc_interior_id, tdc_scroll_canvas))
-    tdc_scroll_canvas.xview_moveto(0)
-    tdc_scroll_canvas.yview_moveto(0)
-    tdc_scrollbar.config(command=tdc_scroll_canvas.yview)
-
-    tdc_interior = tk.Frame(tdc_scroll_canvas)
-    tdc_interior_id = tdc_scroll_canvas.create_window(0, 0, window=tdc_interior, anchor=NW)
-    tdc_interior.bind('<Configure>', lambda event : _configure_interior(event, tdc_interior, tdc_scroll_canvas))
-
-    tdc_canvas = FigureCanvasTkAgg(commonVars.tdc_fig, tdc_interior)
+    tdc_canvas = FigureCanvasTkAgg(commonVars.tdc_fig, TDCPlotFrame.interior_frame)
     tdc_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    tdc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : _on_mousescroll(event, tdc_scroll_canvas))
-    tdc1_toolbar = NavigationToolbar2Tk(tdc_canvas, TDCToolbarFrame, pack_toolbar=False)
+    tdc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : TDCPlotFrame._on_mousescroll(event))
+    tdc1_toolbar = TDCToolbar(tdc_canvas, TDCPage, commonVars.tdc_fig, pack_toolbar=False)
     tdc1_toolbar.update()
     tdc1_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
@@ -916,7 +760,7 @@ def gui():
     # TDC Stability Plots
     tdc_stability_canvas = FigureCanvasTkAgg(commonVars.tdc_stability_fig, TDCStabilityPage)
     tdc_stability_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    tdc2_toolbar = NavigationToolbar2Tk(tdc_stability_canvas, TDCStabilityPage, pack_toolbar=False)
+    tdc2_toolbar = TDCStabilityToolbar(tdc_stability_canvas, TDCStabilityPage, commonVars.tdc_stability_fig, pack_toolbar=False)
     tdc2_toolbar.update()
     tdc2_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
@@ -924,7 +768,7 @@ def gui():
     # Occupancy Plots
     occupancy_canvas = FigureCanvasTkAgg(commonVars.occupancy_fig, OccupancyPage)
     occupancy_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    occupancy_toolbar = NavigationToolbar2Tk(occupancy_canvas, OccupancyPage, pack_toolbar=False)
+    occupancy_toolbar = OccupancyToolbar(occupancy_canvas, OccupancyPage, commonVars.occupancy_fig, pack_toolbar=False)
     occupancy_toolbar.update()
     occupancy_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
@@ -932,7 +776,7 @@ def gui():
     # Rate Plots
     rate_canvas = FigureCanvasTkAgg(commonVars.rate_fig, RatePage)
     rate_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    rate_toolbar = NavigationToolbar2Tk(rate_canvas, RatePage, pack_toolbar=False)
+    rate_toolbar = RateToolbar(rate_canvas, RatePage, commonVars.rate_fig, pack_toolbar=False)
     rate_toolbar.update()
     rate_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
@@ -940,7 +784,7 @@ def gui():
     # Lego Plots
     lego_canvas = FigureCanvasTkAgg(commonVars.lego_fig, LegoPage)
     lego_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    lego_toolbar = NavigationToolbar2Tk(lego_canvas, LegoPage, pack_toolbar=False)
+    lego_toolbar = LegoToolbar(lego_canvas, LegoPage, commonVars.lego_fig, pack_toolbar=False)
     lego_toolbar.update()
     lego_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
@@ -948,11 +792,12 @@ def gui():
     # Channel Event Plots
     ch_events_canvas = FigureCanvasTkAgg(commonVars.ch_events_fig, ChannelEventsPage)
     ch_events_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    ch_events_toolbar = NavigationToolbar2Tk(ch_events_canvas, ChannelEventsPage, pack_toolbar=False)
+    ch_events_toolbar = ChannelEventsToolbar(ch_events_canvas, ChannelEventsPage, commonVars.ch_events_fig, pack_toolbar=False)
     ch_events_toolbar.update()
     ch_events_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
-    canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas, ch_events_canvas]
+    commonVars.canvas_list = canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas, ch_events_canvas]
+    commonVars.toolbar_list = toolbar_list = [adc_toolbar, tdc1_toolbar, tdc2_toolbar, occupancy_toolbar, rate_toolbar, lego_toolbar, ch_events_toolbar]
 
     fig_window.withdraw()
 
