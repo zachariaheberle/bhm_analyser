@@ -370,17 +370,24 @@ class PlotToolbar(NavigationToolbar2Tk):
         Set variables to be used for data cutting. Each of these getters have their own internal way 
         of handling errors from their respecitive widgets.
         """
-        try:
-            if hasattr(self, "start_time"):
+        valid_state = True
+        if hasattr(self, "start_time"):
+            try:
                 self.start_utc = self.start_time.get_time()
                 self.end_utc = self.end_time.get_time()
-            if hasattr(self, "channel_select"):
-                self.draw_channels = self.channel_select.get_selected_channels()
-            if hasattr(self, "region_select"):
+            except AssertionError:
+                valid_state = False
+
+        if hasattr(self, "channel_select"):
+            self.draw_channels = self.channel_select.get_selected_channels()
+
+        if hasattr(self, "region_select"):
+            try:
                 self.region_settings = self.region_select.get_region_settings()
-        except AssertionError:
-            return False
-        return True
+            except AssertionError:
+                valid_state = False
+        
+        return valid_state
 
     
     def clear_plot(self):
