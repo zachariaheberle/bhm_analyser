@@ -485,7 +485,7 @@ def gui():
     # Placing Items in Run Selection Frame
     RunSelectionLabel.grid(row=0, column=0, columnspan=3, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
 
-    RadioLabel.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=N+EW)
+    RadioLabel.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=NSEW)
     RadioLabel.grid_propagate(False)
 
     RunSelectionBox.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=NSEW)
