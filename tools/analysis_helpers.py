@@ -435,6 +435,10 @@ def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=N
     commonVars.folder_name = (f"figures/{figure_folder}")
     commonVars.start_time_utc_ms = start_time
 
+    commonVars.lumi_bins = lumi_bins
+    commonVars.delivered_lumi = delivered_lumi
+    commonVars.beam_status = beam_status
+
     if start_time == 0:
         commonVars.reference_orbit = min(min(uHTR4.orbit, default=float("inf")), min(uHTR11.orbit, default=float("inf")))
 

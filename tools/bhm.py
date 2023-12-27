@@ -747,8 +747,8 @@ class bhm_analyser():
 
 
 
-
-    def get_rate(self,df,start_time=0,bins=None,uHTR11=False, ch=None):
+    @staticmethod
+    def get_rate(df, start_time=0, bins=None, ch=None):
         '''
         start_time --> Offset for the run (time in UTC millisecond)
         '''

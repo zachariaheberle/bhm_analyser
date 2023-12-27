@@ -680,21 +680,198 @@ class OccupancyToolbar(PlotToolbar):
 
 
 class RateToolbar(PlotToolbar):
-    # Placeholder, requires much more work to integrate than other plots, currently a WIP
+    """
+    Because the rate plots rely on BOTH uHTR4 and uHTR11 and comes in a pair of plots including elements from both uHTR's, we have
+    to make an entirely new toolbar just for the rate plots
+    """
 
-    def __init__(self, canvas, window, figure, **kwargs):
-        self.toolitems = (
-        ('Home', 'Reset original view', 'home', 'home'),
-        ('Back', 'Back to  previous view', 'back', 'back'),
-        ('Forward', 'Forward to next view', 'forward', 'forward'),
-        (None, None, None, None),
-        ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
-        ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
-        (None, None, None, None),
-        ('Save', 'Save the figure', 'filesave', 'save_figure'),
-        )
-        super(PlotToolbar, self).__init__(canvas, window, **kwargs)
+    def __init__(self, canvas, window, figure, pack_toolbar=False):
+        self.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
+                        ('Home', 'Reset original view', 'home', 'home'),
+                        ('Back', 'Back to  previous view', 'back', 'back'),
+                        ('Forward', 'Forward to next view', 'forward', 'forward'),
+                        (None, None, None, None),
+                        ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+                        ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+                        (None, None, None, None),
+                        ('Save', 'Save the figure', 'filesave', 'save_figure'),
+                        (None, None, None, None),
+                        ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings")
+                        )
+
+        super(PlotToolbar, self).__init__(canvas, window, pack_toolbar=pack_toolbar)
         self.figure = figure
+        self.window = window #(from super init)
+        self.canvas = canvas #(from super init)
+
+        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightthickness=2) # Plot Settings frame
+        self.frame.lift()
+
+        self.scroll_frame = ScrollableFrame(self.frame, canvas_height=461)
+        self.scroll_frame.pack(side="top", fill="both", expand=True)
+
+        self.style = ttk.Style()
+        self.style.configure("settings.TLabel.Label", font=commonVars.default_font, foreground="#000000")
+        # This is simply meant to control the color of LabelFrames when the settings page is disabled/enabled
+        
+        # Add channel cut selection
+        self.channel_select_label1 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Upper Plot)", style="settings.TLabel.Label")
+        self.channel_select1 = ChannelSelection(self.scroll_frame.interior_frame, labelwidget=self.channel_select_label1)
+        self.channel_select_label2 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Lower Plot)", style="settings.TLabel.Label")
+        self.channel_select2 = ChannelSelection(self.scroll_frame.interior_frame, labelwidget=self.channel_select_label2)
+
+        self.channel_select1.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+        self.channel_select2.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+        
+        # Add region cut selection
+        self.region_select_label1 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Upper Plot)", style="settings.TLabel.Label")
+        self.region_select1 = RegionSelection(self.scroll_frame.interior_frame, labelwidget=self.region_select_label1)
+        self.region_select_label2 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Lower Plot)", style="settings.TLabel.Label")
+        self.region_select2 = RegionSelection(self.scroll_frame.interior_frame, labelwidget=self.region_select_label2)
+
+        self.region_select1.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+        self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+            
+        # Plot redraw button
+        self.draw_button = ttk.Button(self.frame, text="Redraw Plots", command=lambda : Thread(target=self._redraw, daemon=True).start())
+        self.draw_button.pack(side="bottom", fill="x", expand=True, ipadx=5, ipady=5, padx=5, pady=5)
+    
+    def _validate(self):
+        """
+        Set variables to be used for data cutting. Each of these getters have their own internal way
+        of handling errors from their respecitive widgets.
+        """
+        valid_state = True
+        self.draw_channels1 = self.channel_select1.get_selected_channels()
+        self.draw_channels2 = self.channel_select2.get_selected_channels()
+
+        try:
+            self.region_settings1 = self.region_select1.get_region_settings()
+        except AssertionError:
+            valid_state = False
+
+        try:
+            self.region_settings2 = self.region_select2.get_region_settings()
+        except AssertionError:
+            valid_state = False
+        
+        return valid_state
+
+    def _get_data_cut(self):
+
+        theCuts = []
+        region_names = []
+        
+        for plot_index in (1, 2):
+
+            theCut = None
+            chCut = ""
+            channels = [channel for channel in getattr(self, f"draw_channels{plot_index}")]
+
+            if len(channels) < 40:
+                for i, ch_name in enumerate(channels):
+                    if i == 0:
+                        chCut = f"(ch_name == '{ch_name}')"
+                    else:
+                        chCut = f"{chCut} | (ch_name == '{ch_name}')"
+
+                if chCut != "":
+                    theCut = f"({chCut})"
+                else:
+                    theCuts.append("run == -1")
+                    continue
+
+            if getattr(self, f"region_settings{plot_index}")["Custom Region"]:
+                if theCut is not None:
+                    theCut = f"{theCut} & {getattr(self, f'region_select{plot_index}').query_string}"
+                else:
+                    theCut = getattr(self, f'region_select{plot_index}').query_string
+                region_name = "df"
+            
+            else:
+
+                SR = getattr(self, f"region_settings{plot_index}")["Signal Region"]
+                AR = getattr(self, f"region_settings{plot_index}")["Activation Region"]
+                CP = getattr(self, f"region_settings{plot_index}")["Collision Products"]
+
+                if SR and not AR and not CP: # Ugly and inefficient, but oh well, there's only 8 combos anyway
+                    region_name = "SR"
+                
+                elif AR and not SR and not CP:
+                    region_name = "AR"
+                
+                elif CP and not SR and not AR:
+                    region_name = "CP"
+                
+                elif AR and CP and not SR:
+                    region_name = "BR"
+                
+                elif SR and AR and not CP:
+                    region_name = "SR \& AR"
+                
+                elif SR and CP and not AR:
+                    region_name = "SR \& CP"
+                
+                elif not (SR and CP and AR): # Empty
+                    theCut = "run == -1"
+                    region_name = "df" 
+                
+                else: # All events
+                    region_name = "df"
+            
+
+            theCuts.append(theCut)
+            region_names.append(region_name)
+                
+        return theCuts, region_names
+
+    def _set_loading_state(self, state):
+        """
+        Method to set the state of the settings frame. This will disable/enable the entire frame and change a few colors and what not, mostly taken from
+        PlotToolbar._set_loading_state with modifications for the rate plots specifically
+        """
+        if state == True:
+            disable_frame(self.frame)
+            self.style.configure("settings.TLabel.Label", foreground="#6D6D6D") # Change text color of labels within plot settings
+            self.loading_text = ttk.Label(self.frame, text="Redrawing plots...", font=commonVars.label_font) # Plop some loading text on our frame
+            self.loading_text.place(relx=0.5, y=self.frame.winfo_height()/2 - self.draw_button.winfo_height() + 16, anchor="center")
+
+        elif state == False:
+            self.loading_text.destroy() # Remove loading text
+            enable_frame(self.frame)
+            self.region_select1._update_region_display() # Update our region displays so we disable the correct sub-widgets
+            self.region_select2._update_region_display()
+            self.style.configure("settings.TLabel.Label", foreground="#000000") # Change text color back to black
+    
+    def _redraw(self):
+        """
+        Initialization for draw_plot method
+        """
+        is_valid = self._validate()
+        if is_valid:
+            self._set_loading_state(True)
+            self.clear_plot()
+        else:
+            return
+
+        try:
+            theCuts, region_names = self._get_data_cut()
+            self.draw_plot(theCuts, region_names)
+
+        except Exception as err: # Make sure we re-enable the settings frame if something goes wrong!
+            analysis_helpers.error_handler(err)
+            messagebox.showerror("Error", "An unknown exception has occured! Traceback information has been written to error.log")
+            self._set_loading_state(False)
+            return
+
+        self.canvas.draw_idle() # Redraw new canvas
+        self.update() # Update toolbar memory, basically makes sure the "home", "back" and "forward" buttons all work properly
+        self._set_loading_state(False)
+    
+    def draw_plot(self, theCuts, region_names):
+        plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, plot_regions=region_names, start_time=commonVars.start_time_utc_ms, 
+                            lumi_bins=commonVars.lumi_bins, delivered_lumi=commonVars.delivered_lumi, beam_status=commonVars.beam_status,
+                            theCuts=theCuts, save_fig=False)
         
 
 class ChannelEventsToolbar(PlotToolbar):
