@@ -233,6 +233,8 @@ class ValidatedEntry(tk.Entry):
         self.valid = True
         self.tooltip = ToolTip(master) # Tooltip to send a message of what specifically went wrong during validation, WIP
 
+        self.config = self.configure # Adding config alias to remap to overridden configure function
+
     def _on_enter(self, event):
         if self.cget("state") == "normal":
             if self.valid:
@@ -246,6 +248,26 @@ class ValidatedEntry(tk.Entry):
                 self.config(highlightbackground="#7a7a7a")
             else:
                 self.config(highlightbackground="#ff7069")
+    
+    def _on_disable(self):
+        self.config(highlightbackground="#cccccc")
+    
+    def _on_enable(self):
+        if self.valid:
+            self.config(highlightbackground="#7a7a7a", highlightcolor="#0078d7")
+        else:
+            self.config(highlightbackground="#ff7069", highlightcolor="#ff0000")
+    
+    def configure(self, *args, **kwargs):
+        """
+        Overriding the configure function so that the entry will properly grey out when disabled
+        """
+        super().configure(*args, **kwargs)
+        if "state" in kwargs:
+            if kwargs["state"] == "disabled":
+                self._on_disable()
+            elif kwargs["state"] == "normal":
+                self._on_enable()
 
     def set_valid(self, valid_state):
         self.valid = valid_state
