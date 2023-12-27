@@ -235,17 +235,21 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, start_time=0, lumi_bin
             except UnboundLocalError:
                 lumi_lines, lumi_labels = ([], [])
 
+            ax_bbox = ax.get_position()
+
             if not region4.empty or not region11.empty:
                 # Seperate out the color map from the rest of the legend
                 lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
                                     if label.upper() not in beam_status_color_map.keys()])
-                ax.legend(handles=lines1, labels=labels1, loc=(1.1, 0.7), frameon=1)
+                ax.legend(handles=lines1, labels=labels1, loc="upper left", bbox_to_anchor=(ax_bbox.x0+ax_bbox.width+0.05, ax_bbox.y0+ax_bbox.height), 
+                          bbox_transform=commonVars.rate_fig.transFigure, frameon=1)
 
             if lumi_bins is not None:
                 # color map stuff
                 lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
                                     if label.upper() in beam_status_color_map.keys()])
-                lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.1, 0), title="LHC\nBeam Status", frameon=1)
+                lumi_ax.legend(handles=lines2, labels=labels2, loc="lower left", bbox_to_anchor=(ax_bbox.x0+ax_bbox.width+0.05, ax_bbox.y0), 
+                          bbox_transform=commonVars.rate_fig.transFigure, title="LHC\nBeam Status", frameon=1)
         
         plt.close()
 
