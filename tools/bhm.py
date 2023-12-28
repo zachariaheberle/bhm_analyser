@@ -34,6 +34,8 @@ class bhm_analyser():
         #print(f"Initialized {self.beam_side[uHTR]}")
         self.uHTR=uHTR
         self.figure_folder = "./figures"
+        self.save_fig = True # Default value to prevent stuff from breaking
+        # during testing
 
         self.adc_plt_tdc_width = 1
 
@@ -240,19 +242,21 @@ class bhm_analyser():
         h, xbins, ybins = np.histogram2d(xdata,ydata, bins=(np.arange(-0.5,50,1),np.arange(0,180,1)))
         # if you want to create your 3d axes in the current figure (plt.gcf()):
 
-        f = plt.figure()
+        if self.save_fig:
 
-        ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
+            f = plt.figure()
 
-        # lego plot
-        ax = plotting.lego(h, xbins, ybins, ax=ax3d)
-        ax3d.set_xlabel("TDC [a.u]")
-        ax3d.set_ylabel("Ampl [a.u]")
-        ax3d.set_zlabel("Events")
-        ax3d.set_title(f"{self.beam_side[self.uHTR]}")
-        ax3d.set_xlim3d(left=0, right=50)
-        ax3d.set_ylim3d(bottom=0, top=180)
-        plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
+            ax3d = Axes3D(fig=f, rect=None, azim=50, elev=30, proj_type='persp')
+
+            # lego plot
+            ax = plotting.lego(h, xbins, ybins, ax=ax3d)
+            ax3d.set_xlabel("TDC [a.u]")
+            ax3d.set_ylabel("Ampl [a.u]")
+            ax3d.set_zlabel("Events")
+            ax3d.set_title(f"{self.beam_side[self.uHTR]}")
+            ax3d.set_xlim3d(left=0, right=50)
+            ax3d.set_ylim3d(bottom=0, top=180)
+            plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_lego.png",dpi=300)
 
         if commonVars.root:
             plotting.plot_lego_gui(self.uHTR, xbins, ybins, h)
@@ -266,7 +270,8 @@ class bhm_analyser():
             binx_tick = np.arange(120,181,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
         self.ADC_Cuts = {}
 
-        f, ax = plt.subplots()        
+        if self.save_fig:
+            f, ax = plt.subplots()        
         #time_list = []
         for i, ch in enumerate(self.CMAP.keys()):
 
@@ -275,49 +280,51 @@ class bhm_analyser():
                 continue
 
             x = self.peak_ampl[(np.abs(self.tdc-calib.TDC_PEAKS[ch]) < self.adc_plt_tdc_width)&(self.ch_mapped == self.CMAP[ch])]
-            if i == 0:
-                #start = time.time()
-                line = ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
-                if min(binx) < 120:
-                    ax.set_xticks(binx_tick)
-                    ax.set_xticklabels(labels=binx_tick, rotation=45, fontsize=5)
-                else:
-                    ax.set_xticks(binx_tick)
-                    ax.set_xticklabels(labels=binx_tick, rotation=45)
-                ax.set_xlabel("ADC [a.u]")
-                text_obj = plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
-                counts, bins, polygon = ax.hist(x,bins=binx+0.5, histtype="stepfilled")
-                if max(counts) > 0:
-                    ax.set_ylim(top=max(counts)/.95)
-                else:
-                    ax.set_ylim(top=1)
-            else:
-                """
-                It is *ever* so slightly faster (about 30-40ms faster per render on my machine) to change only the things we need to
-                (textbox, ylimits, histogram) on each iteration of the loop
-                """
-                #start = time.time()
-                hist, bin_edges = np.histogram(x, bins=binx)
-                verticies = []
-                for j in range(len(hist)): # Generates the verticies of the new histogram polygon
-                    if j == 0:
-                        verticies.append((bin_edges[0]+0.5, 0))
-                        verticies.append((bin_edges[0]+0.5, hist[1]))
-                    elif j == len(hist) - 1:
-                        verticies.append((bin_edges[j]+0.5, hist[j]))
-                        verticies.append((bin_edges[j+1]+0.5, hist[j]))
-                        verticies.append((bin_edges[j+1]+0.5, 0))
-                        verticies.append((bin_edges[0]+0.5, 0))
+
+            if self.save_fig:
+                if i == 0:
+                    #start = time.time()
+                    line = ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
+                    if min(binx) < 120:
+                        ax.set_xticks(binx_tick)
+                        ax.set_xticklabels(labels=binx_tick, rotation=45, fontsize=5)
                     else:
-                        verticies.append((bin_edges[j]+0.5, hist[j]))
-                        verticies.append((bin_edges[j]+0.5, hist[j+1]))
-                polygon[0].set_xy(verticies)
-                line.set_xdata([calib.ADC_CUTS[ch]]*2)
-                text_obj.set_text(f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
-                if max(hist) > 0:
-                    ax.set_ylim(top=max(hist)/.95)
+                        ax.set_xticks(binx_tick)
+                        ax.set_xticklabels(labels=binx_tick, rotation=45)
+                    ax.set_xlabel("ADC [a.u]")
+                    text_obj = plotting.textbox(0.5,0.8,f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
+                    counts, bins, polygon = ax.hist(x,bins=binx+0.5, histtype="stepfilled")
+                    if max(counts) > 0:
+                        ax.set_ylim(top=max(counts)/.95)
+                    else:
+                        ax.set_ylim(top=1)
                 else:
-                    ax.set_ylim(top=1)
+                    """
+                    It is *ever* so slightly faster (about 30-40ms faster per render on my machine) to change only the things we need to
+                    (textbox, ylimits, histogram) on each iteration of the loop
+                    """
+                    #start = time.time()
+                    hist, bin_edges = np.histogram(x, bins=binx)
+                    verticies = []
+                    for j in range(len(hist)): # Generates the verticies of the new histogram polygon
+                        if j == 0:
+                            verticies.append((bin_edges[0]+0.5, 0))
+                            verticies.append((bin_edges[0]+0.5, hist[1]))
+                        elif j == len(hist) - 1:
+                            verticies.append((bin_edges[j]+0.5, hist[j]))
+                            verticies.append((bin_edges[j+1]+0.5, hist[j]))
+                            verticies.append((bin_edges[j+1]+0.5, 0))
+                            verticies.append((bin_edges[0]+0.5, 0))
+                        else:
+                            verticies.append((bin_edges[j]+0.5, hist[j]))
+                            verticies.append((bin_edges[j]+0.5, hist[j+1]))
+                    polygon[0].set_xy(verticies)
+                    line.set_xdata([calib.ADC_CUTS[ch]]*2)
+                    text_obj.set_text(f"CH:{ch} \n $|$TDC - {calib.TDC_PEAKS[ch]} $| <$ {self.adc_plt_tdc_width}")
+                    if max(hist) > 0:
+                        ax.set_ylim(top=max(hist)/.95)
+                    else:
+                        ax.set_ylim(top=1)
 
             # peak_index = np.argmax(counts)
             # area_ratio = 0
@@ -341,7 +348,7 @@ class bhm_analyser():
             #plt.axvline(vals[peak_index] + 0.5, color="k", linestyle="--")
             # end placeholders
 
-            f.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
+                f.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
 
             #end = time.time()
             #time_list.append((end-start)*1000)
@@ -361,7 +368,9 @@ class bhm_analyser():
             TDC distance of the peak from 0; This can be used if there is a activation peak that shadows the BH peak
         '''
         self.TDC_Peaks = {}
-        f,ax = plt.subplots()
+        if self.save_fig:
+            f,ax = plt.subplots()
+
         for i, ch in enumerate(self.CMAP.keys()):
 
             if len(self.run) == 0 and commonVars.root:
@@ -370,51 +379,57 @@ class bhm_analyser():
 
             x = self.tdc[(self.peak_ampl > calib.ADC_CUTS[ch])&(self.ch_mapped == self.CMAP[ch])]
             binx = np.arange(-.5,50,1)
-            if i == 0:
-                # start = time.time()
-                text_obj = plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
-                plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-                ax.set_xlabel("TDC [a.u]")
-                counts, bins, polygon = ax.hist(x,bins=binx,histtype='step',color='r')
-                peak = np.argmax(counts[delay:])
-                line = ax.axvline(peak+delay,color='k',linestyle='--')
-                if max(counts) > 0:
-                    ax.set_ylim(top=max(counts)/.95)
-                else:
-                    ax.set_ylim(top=1)
-            else:
-                """
-                It is *ever* so slightly faster (about 50-100ms faster per render on my machine) to change only the things we need to
-                (textboxes, ylimits, histogram) on each iteration of the loop
-                """
-                # start = time.time()
-                hist, bin_edges = np.histogram(x, bins=binx)
-                verticies = []
-                for j in range(len(hist)): # Generates the verticies of the new histogram polygon
-                    if j == 0:
-                        verticies.append((bin_edges[0], 0))
-                        verticies.append((bin_edges[0], hist[1]))
-                    elif j == len(hist) - 1:
-                        verticies.append((bin_edges[j], hist[j]))
-                        verticies.append((bin_edges[j+1], hist[j]))
-                        verticies.append((bin_edges[j+1], 0))
-                        verticies.append((bin_edges[0], 0))
-                    else:
-                        verticies.append((bin_edges[j], hist[j]))
-                        verticies.append((bin_edges[j], hist[j+1]))
-                polygon[0].set_xy(verticies)
-                peak = np.argmax(hist[delay:])
-                line.set_xdata([peak+delay-1]*2)
-                text_obj.set_text(f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}')
-                if max(hist) > 0:
-                    ax.set_ylim(top=max(hist)/.95)
-                else:
-                    ax.set_ylim(top=1)
-            
-            self.TDC_Peaks[ch] = peak+delay
 
-            f.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
+            if self.save_fig:
+                if i == 0:
+                    # start = time.time()
+                    text_obj = plotting.textbox(0.5,.8,f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}',15, ax=ax)
+                    plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+                    plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+                    ax.set_xlabel("TDC [a.u]")
+                    counts, bins, polygon = ax.hist(x,bins=binx,histtype='step',color='r')
+                    peak = np.argmax(counts[delay:])
+                    line = ax.axvline(peak+delay,color='k',linestyle='--')
+                    if max(counts) > 0:
+                        ax.set_ylim(top=max(counts)/.95)
+                    else:
+                        ax.set_ylim(top=1)
+                else:
+                    """
+                    It is *ever* so slightly faster (about 50-100ms faster per render on my machine) to change only the things we need to
+                    (textboxes, ylimits, histogram) on each iteration of the loop
+                    """
+                    # start = time.time()
+                    hist, bin_edges = np.histogram(x, bins=binx)
+                    verticies = []
+                    for j in range(len(hist)): # Generates the verticies of the new histogram polygon
+                        if j == 0:
+                            verticies.append((bin_edges[0], 0))
+                            verticies.append((bin_edges[0], hist[1]))
+                        elif j == len(hist) - 1:
+                            verticies.append((bin_edges[j], hist[j]))
+                            verticies.append((bin_edges[j+1], hist[j]))
+                            verticies.append((bin_edges[j+1], 0))
+                            verticies.append((bin_edges[0], 0))
+                        else:
+                            verticies.append((bin_edges[j], hist[j]))
+                            verticies.append((bin_edges[j], hist[j+1]))
+                    polygon[0].set_xy(verticies)
+                    peak = np.argmax(hist[delay:])
+                    line.set_xdata([peak+delay-1]*2)
+                    text_obj.set_text(f'All BX, \n {ch} \n Ampl $>$ {calib.ADC_CUTS[ch]}')
+                    if max(hist) > 0:
+                        ax.set_ylim(top=max(hist)/.95)
+                    else:
+                        ax.set_ylim(top=1)
+                
+                self.TDC_Peaks[ch] = peak+delay
+
+                f.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
+            
+            else:
+                hist, bin_edges = np.histogram(x, bins=binx)
+                peak = np.argmax(hist[delay:])
             # end = time.time()
             # if i == 0:
             #     print(f"Initial {(end-start)*1000:.3f}ms")
@@ -497,16 +512,17 @@ class bhm_analyser():
             plotting.plot_occupancy_gui(self.uHTR, None, None)
             return
         
-        f, ax = plt.subplots()
-        ax.set_yscale('log')
-        plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
-        plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
-        ax.set_xlabel('BX ID')
-        ax.set_ylabel('Events/1')
-        ax.hist(self.BR.bx, bins=np.arange(-0.5,3564,1), color='k', histtype="stepfilled", label="Collision $\&$ Activation")
-        ax.hist(self.SR.bx, bins=np.arange(-0.5,3564,1), color='r', histtype="stepfilled", label="BIB")
-        ax.legend(loc='upper right',frameon=1)
-        plt.savefig(f"{self.figure_folder}/occupancy_uHTR{self.uHTR}.png",dpi=300)
+        if self.save_fig:
+            f, ax = plt.subplots()
+            ax.set_yscale('log')
+            plotting.textbox(0.0,1.11,'Preliminary',15, ax=ax)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15, ax=ax)
+            ax.set_xlabel('BX ID')
+            ax.set_ylabel('Events/1')
+            ax.hist(self.BR.bx, bins=np.arange(-0.5,3564,1), color='k', histtype="stepfilled", label="Collision $\&$ Activation")
+            ax.hist(self.SR.bx, bins=np.arange(-0.5,3564,1), color='r', histtype="stepfilled", label="BIB")
+            ax.legend(loc='upper right',frameon=1)
+            plt.savefig(f"{self.figure_folder}/occupancy_uHTR{self.uHTR}.png",dpi=300)
 
         if commonVars.root:
             plotting.plot_occupancy_gui(self.uHTR, self.BR.bx, self.SR.bx)
@@ -570,62 +586,53 @@ class bhm_analyser():
 
 
         t_df = pd.concat(t_df)
-        #print(t_df)
 
-        # print(f"sr: {sr}")
-        # print(f"t_df:\n{t_df}")
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
-            
-            #Violin Plot
-            f,ax = plt.subplots(figsize=(8,6))
-            sns.violinplot(data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
-            plt.xticks(rotation=45, ha='center',fontsize=15)
-            plotting.textbox(0.0,1.11,'Preliminary',30)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',30)
-            plt.ylabel("TDC [a.u]",fontsize=30)
-            plt.xlabel("Channels",fontsize=30)
-            plt.ylim(0,15)
-            plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
-            plt.close()
+        try:
+            _mode_val = t_df.tdc.mode()[0]
+        except KeyError: # If we get a KeyError, this means the data is empty
+            pass
+        else:
 
-
-            #MVP Vanilla Stability Plots
-            f,ax = plt.subplots()
-            ax.errorbar(channels, _mode,yerr=_std_dev
-                        ,fmt='r.',ecolor='k',capsize=2
-                        ,label="MPV of TDC"
-                    )
-            try:
-                _mode_val = t_df.tdc.mode()[0]
-            except KeyError: # If we get a KeyError, this means the data is empty
-                pass
+            if len(t_df.tdc) == 1: # ensure std() doesn't break due to only one entry existing
+                _sig = 0
             else:
+                _sig = t_df.tdc.std()
 
-                if len(t_df.tdc) == 1: # ensure std() doesn't break due to only one entry existing
-                    _sig = 0
-                else:
-                    _sig = t_df.tdc.std()
+        if self.save_fig:
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+
+                #Violin Plot
+                f,ax = plt.subplots(figsize=(8,6))
+                sns.violinplot(data = t_df,x='ch_name',y='tdc',cut=0,bw=.15,scale='count')
+                plt.xticks(rotation=45, ha='center',fontsize=15)
+                plotting.textbox(0.0,1.11,'Preliminary',30)
+                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',30)
+                plt.ylabel("TDC [a.u]",fontsize=30)
+                plt.xlabel("Channels",fontsize=30)
+                plt.ylim(0,15)
+                plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability_violin.png",dpi=300)
+                plt.close()
+
+
+                #MVP Vanilla Stability Plots
+                f,ax = plt.subplots()
+                ax.errorbar(channels, _mode,yerr=_std_dev
+                            ,fmt='r.',ecolor='k',capsize=2
+                            ,label="MPV of TDC"
+                        )
 
                 plt.axhline(_mode_val,color='black',linewidth=2,linestyle='-.',label=r"MVP All Channels")
                 plt.fill_between(channels, _mode_val+_sig, _mode_val-_sig,color='orange',alpha=.5,label=r"$\sigma$ All Channels")
-
-            # print(f"tdc length: {len(t_df.tdc)}")
-            # print(f"Is len == 1: {len(t_df.tdc) == 1}")
-            # print(type(_mode))
-            # print(f"_mode:\n{_mode}")
-            # print(type(_sig))
-            # print(f"_sig: {_sig}")
-
-            
-            plotting.textbox(0.0,1.11,'Preliminary',15)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15)
-            plt.xticks(rotation=45, ha='center',fontsize=5)
-            plt.ylabel("TDC [a.u]",fontsize=15)
-            plt.xlabel("Channels",fontsize=15)
-            plt.ylim(0,15)
-            plt.legend(loc='upper right',frameon=True)
-            plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
+                
+                plotting.textbox(0.0,1.11,'Preliminary',15)
+                plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]',15)
+                plt.xticks(rotation=45, ha='center',fontsize=5)
+                plt.ylabel("TDC [a.u]",fontsize=15)
+                plt.xlabel("Channels",fontsize=15)
+                plt.ylim(0,15)
+                plt.legend(loc='upper right',frameon=True)
+                plt.savefig(f"{self.figure_folder}/tdc_uHTR{self.uHTR}_stability.png",dpi=300)
 
         if commonVars.root:
             plotting.plot_tdc_stability_gui(self.uHTR, t_df, _mode, _mode_val, _std_dev, _sig)
@@ -645,8 +652,6 @@ class bhm_analyser():
             print("df not found: Calling get_SR_BR_CP_AR()")
             self.get_SR_BR_AR_CP()
 
-        f, ax = plt.subplots()
-
         channels = [ch for ch in self.CMAP.keys()]
         SR_events = self.SR["ch"].value_counts(sort=False)#.to_numpy()
         BR_events = self.BR["ch"].value_counts(sort=False)#.to_numpy()
@@ -659,24 +664,27 @@ class bhm_analyser():
         SR_events.sort_index(inplace=True)
         BR_events.sort_index(inplace=True)
 
-        width = 0.9
-        sr_poly = plotting.get_poly(SR_events.to_numpy(), width, "r", label="BIB")
-        br_poly = plotting.get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
-        ax.add_patch(br_poly)
-        ax.add_patch(sr_poly)
-        # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
-        # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
-        plotting.textbox(0.0,1.11,'Preliminary', 15, ax=ax)
-        plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
-        ax.set_xticks(np.arange(20))
-        ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
-        ax.set_xlabel("Channels", fontsize=15)
-        ax.set_ylabel("Events/1", fontsize=15)
-        ax.set_yscale("log")
-        ax.set_xlim(-1, 20)
-        ax.legend(loc='upper right', frameon=True)
+        if self.save_fig:
 
-        plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
+            f, ax = plt.subplots()
+            width = 0.9
+            sr_poly = plotting.get_poly(SR_events.to_numpy(), width, "r", label="BIB")
+            br_poly = plotting.get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
+            ax.add_patch(br_poly)
+            ax.add_patch(sr_poly)
+            # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
+            # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
+            plotting.textbox(0.0,1.11,'Preliminary', 15, ax=ax)
+            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
+            ax.set_xticks(np.arange(20))
+            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
+            ax.set_xlabel("Channels", fontsize=15)
+            ax.set_ylabel("Events/1", fontsize=15)
+            ax.set_yscale("log")
+            ax.set_xlim(-1, 20)
+            ax.legend(loc='upper right', frameon=True)
+
+            plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
 
         if commonVars.root:
             plotting.plot_channel_events_gui(self.uHTR, channels, SR_events, BR_events)
@@ -794,12 +802,14 @@ class bhm_analyser():
         self.convert2pandas()
         print(f"print values for uHTR{self.uHTR}:\n{self.df}")
 
-    def analyse(self, reAdjust=True, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False):
+    def analyse(self, reAdjust=True, run_cut=None, custom_range=False, plot_lego=False, plot_ch_events=False, save_fig=True):
         '''
         Runs the steps in sequence
         Make sure you set the correct ADC Cuts & TDC Cuts in calib.ADC_CUTS & calib.TDC_PEAKS
         Make sure you run self.clean_data() before running analysis!!!
         '''
+        self.save_fig = save_fig # Sets a flag of whether or not we should be saving any figures to disk
+
         # select runs if applicable
         if run_cut:
             self.select_runs(run_cut, custom_range=custom_range)
@@ -845,10 +855,11 @@ class bhm_analyser():
 
         # combine all the plots into pdfs
         if len(self.run) != 0:
-            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}F*.png  {self.figure_folder}/adc_{detector_side}F.pdf")
-            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
-            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
-            os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
+            if save_fig:
+                os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}F*.png  {self.figure_folder}/adc_{detector_side}F.pdf")
+                os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
+                os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")
+                os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}N*.png  {self.figure_folder}/tdc_{detector_side}N.pdf")
 
             self.get_SR_BR_AR_CP()# separates the data into signal region, background region, activation region, and collision products
         

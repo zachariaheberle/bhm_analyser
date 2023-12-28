@@ -141,7 +141,11 @@ def gui():
         custom_run = [int(custom_run_var.get()[i]) for i in custom_run_display_box.curselection()]
         plot_lego = bool(lego_check_var.get())
         plot_ch_events = bool(channel_event_check_var.get())
-        figure_folder = folder_name_var.get()
+        if FolderLabel.winfo_ismapped():
+            figure_folder = folder_name_var.get()
+        else:
+            figure_folder = None
+        save_fig = not gui_only_check_var.get()
         loaded_data_folder_str = loaded_data_folder.get()
         custom_range = False
 
@@ -173,7 +177,7 @@ def gui():
             if not proceed:
                 return
             
-        elif not figure_folder.replace("_", "").isalnum(): # is folder alphanumeric w/ underscores
+        elif isinstance(figure_folder, str) and not figure_folder.replace("_", "").isalnum(): # is folder alphanumeric w/ underscores
             data_status_message.set("Please ensure folder names are alphanumeric with underscores as the only special character.")
             messagebox.showwarning("Folder Name Invalid", "Please ensure folder names are alphanumeric with underscores as the only special character.")
             return
@@ -189,10 +193,10 @@ def gui():
         disable_frame(MainPage)
         data_status.state(["!disabled"])
 
-        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib), daemon=True)
+        analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib, save_fig), daemon=True)
         analysis_thread.start()
 
-    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib):
+    def do_analysis_thread(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib, save_fig):
         """
         Data analysis thread, sets up folder and cuts and analyses the data
         """
@@ -214,7 +218,7 @@ def gui():
                 analysis_helpers.analysis(uHTR4, uHTR11, figure_folder, run_cut=run_cut, custom_range=custom_range, 
                                           plot_lego=plot_lego, plot_ch_events=plot_ch_events, start_time=start_time, 
                                           manual_calib=manual_calib, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi,
-                                          beam_status=beam_status)
+                                          beam_status=beam_status, save_fig=save_fig)
             else:
                 raise KeyboardInterrupt
             data_status_message.set("Loading figure window...")
@@ -231,7 +235,10 @@ def gui():
 
             FigurePage.select(ADCPage)
             fig_window.deiconify()
-            data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
+            if figure_folder is not None:
+                data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
+            else:
+                data_status_message.set(f"Analysis complete, figures drawn in figure window.")
         
         except KeyboardInterrupt:
             data_status_message.set(f"Currently Loaded Data Folder: {loaded_data_folder.get()}")
@@ -362,6 +369,9 @@ def gui():
     RunSelection.grid_columnconfigure(0, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(1, weight=1, uniform="RunSelection")
     RunSelection.grid_columnconfigure(2, weight=1, uniform="RunSelection")
+
+    OptionsPage.grid_columnconfigure(0, weight=1)
+    OptionsPage.grid_columnconfigure(1, weight=1)
 
     #@@@@@@@@@@@@@@@@@ BEGIN MAIN PAGE @@@@@@@@@@@@@@@@@@@@
 
@@ -611,7 +621,22 @@ def gui():
             if str(err) == "__enter__": # occurs if the user cancels or closes the file select
                 return
             raise err
-        
+    
+    def set_analysis_type(state):
+        """
+        Changes whether or not we are saving figures to disk or only analysing data within the GUI.
+        Disables/enables the Entry widget responsible for entering the folder name.
+        """
+        if state == True:
+            FolderLabel.pack_forget()
+        else:
+            analyse_button.pack_forget()
+            show_figures_button.pack_forget()
+            # Unpack and repack everything since we need to reorder the widgets
+            FolderLabel.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
+            analyse_button.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
+            show_figures_button.pack(side=TOP, fill=X, ipadx=5, ipady=5, padx=5, pady=5)
+            
 
 
     #@@@@@@@@@@@@@@@@@@ DATA CUTS FRAME @@@@@@@@@@@@@@@@@@@@
@@ -626,7 +651,7 @@ def gui():
                         command=lambda : toggle_widgets([data_cuts_tree, save_data_cuts_button, load_data_cuts_button], data_cuts_check_var))
 
     # Placing items into frame
-    DataCutsLabel.pack(side=TOP)
+    DataCutsLabel.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=NSEW)
     data_cuts_check.pack(side=TOP, anchor=W, ipadx=5, ipady=5, padx=5, pady=5)
 
 
@@ -673,7 +698,24 @@ def gui():
     
 
 
+    #@@@@@@@@@@@@@@@@@ GUI OPTIONS FRAME @@@@@@@@@@@@@@@@@@@
 
+    # Label frame for gui settings
+    GUIOptionsLabelFrame = ttk.LabelFrame(OptionsPage, text="GUI Options")
+
+    # Enables/disables saving figures to disk/showing plots only in the GUI
+    gui_only_check_var = BooleanVar()
+    gui_only_check_var.set(0)
+    gui_only_check = ttk.Checkbutton(GUIOptionsLabelFrame, text="Enable GUI Only\nAnalysis", variable=gui_only_check_var, onvalue=True, offvalue=False, 
+                                     command=lambda : set_analysis_type(gui_only_check_var.get()))
+    
+    # Placing items into frame
+    gui_only_check.pack(side=TOP, anchor=N, ipadx=5, ipady=5, padx=5, pady=5)
+    GUIOptionsLabelFrame.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky=NSEW)
+
+
+
+    
 
     #@@@@@@@@@@@@@@@ BEGIN FIGURE WINDOW @@@@@@@@@@@@@@@@@@@
 

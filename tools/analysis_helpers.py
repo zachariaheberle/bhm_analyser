@@ -428,11 +428,14 @@ def load_uHTR_data(data_folder_str):
 
 def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=None, custom_range=False, 
              plot_lego=False, plot_ch_events=False, start_time=0, manual_calib=None,
-             lumi_bins=None, delivered_lumi=None, beam_status=None):
+             lumi_bins=None, delivered_lumi=None, beam_status=None, save_fig=True):
     """
     Performs the data analysis given the current run selection and other plotting options
     """
-    commonVars.folder_name = (f"figures/{figure_folder}")
+    if figure_folder is not None:
+        commonVars.folder_name = (f"figures/{figure_folder}")
+    else:
+        commonVars.folder_name = ""
     commonVars.start_time_utc_ms = start_time
 
     commonVars.lumi_bins = lumi_bins
@@ -442,9 +445,8 @@ def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=N
     if start_time == 0:
         commonVars.reference_orbit = min(min(uHTR4.orbit, default=float("inf")), min(uHTR11.orbit, default=float("inf")))
 
-    if uHTR4 is not None:
+    if save_fig:
         uHTR4.create_figure_folder()
-    if uHTR11 is not None:
         uHTR11.create_figure_folder()
 
     if run_cut == None:
@@ -454,7 +456,8 @@ def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=N
     else:
         analysed_runs = run_cut
 
-    run_handler(analysed_runs)
+    if figure_folder is not None:
+        run_handler(analysed_runs)
 
     if manual_calib:
         calib.ADC_CUTS = {detector : int(cuts["ADC Cut"]) for detector, cuts in manual_calib.items()}
@@ -467,10 +470,11 @@ def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=N
     commonVars.uHTR11 = deepcopy(uHTR11) # Also allows us to access uHTR objects outside of analysis
 
     if manual_calib:
-        commonVars.uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
-        commonVars.uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.uHTR4.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, save_fig=save_fig)
+        commonVars.uHTR11.analyse(reAdjust=False, run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, save_fig=save_fig)
     else:
-        commonVars.uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
-        commonVars.uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events)
+        commonVars.uHTR4.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, save_fig=save_fig)
+        commonVars.uHTR11.analyse(run_cut=run_cut, custom_range=custom_range, plot_lego=plot_lego, plot_ch_events=plot_ch_events, save_fig=save_fig)
 
-    plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, start_time=start_time, lumi_bins=lumi_bins, delivered_lumi=delivered_lumi, beam_status=beam_status)
+    plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, start_time=start_time, lumi_bins=lumi_bins, 
+                        delivered_lumi=delivered_lumi, beam_status=beam_status, save_fig=save_fig)
