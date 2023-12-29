@@ -5,6 +5,7 @@ The purpose of this script is to hold all of the custom tkinter tools / widgets 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from PIL import Image, ImageTk
 
 import os
 import matplotlib.pyplot as plt
@@ -32,11 +33,14 @@ def disable_frame(frame):
     """
     for child in frame.winfo_children():
         wtype = child.winfo_class()
-        if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe", "Canvas"):
+        if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe"):
             try:
                 child.state(["disabled"])
             except:
                 child.configure(state="disabled")
+        elif wtype == "Canvas":
+            child.configure(state="disabled")
+            disable_frame(child)
         else:
             disable_frame(child)
 
@@ -46,11 +50,14 @@ def enable_frame(frame):
     """
     for child in frame.winfo_children():
         wtype = child.winfo_class()
-        if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe", "Canvas"):
+        if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe"):
             try:
                 child.state(["!disabled"])
             except AttributeError:
                 child.configure(state="normal")
+        elif wtype == "Canvas":
+            child.configure(state="disabled")
+            disable_frame(child)
         else:
             enable_frame(child)
 
@@ -1139,7 +1146,13 @@ class RegionSelection(ttk.LabelFrame):
         self.region_sel_var = tk.IntVar()
         self.region_sel_var.set(0)
         self.preset_radiobutton = ttk.Radiobutton(self, text="Preset Region", value=0, variable=self.region_sel_var, command=self._update_region_display)
-        self.custom_radiobutton = ttk.Radiobutton(self, text="Custom Region", value=1, variable=self.region_sel_var, command=self._update_region_display)
+
+        self.custom_radiobutton_frame = tk.Frame(self)
+        self.custom_radiobutton = ttk.Radiobutton(self.custom_radiobutton_frame, text="Custom Region", value=1, variable=self.region_sel_var, command=self._update_region_display)
+        self.custom_radiobutton_tooltip = ToolTip(self.custom_radiobutton_frame, text="Custom regions can be defined by entering a valid pandas dataframe query. "+ \
+                                                  "The allowed variables are: bx, tdc, tdc_2, ch, ch_name, orbit, run, peak_ampl, adc (An alias for peak_ampl)", 
+                                                  max_width=190)
+
         self.custom_entry = ValidatedEntry(self, justify="left", font=commonVars.default_font)
         self.custom_entry.config(state="disabled")
 
@@ -1152,7 +1165,10 @@ class RegionSelection(ttk.LabelFrame):
             check_button.pack(side="top", fill="x", padx=(25, 5), pady=5)
             self.checkbutton_info[region] = [check_button, check_var]
         
-        self.custom_radiobutton.pack(side="top", fill="x", padx=5, pady=5)
+        self.custom_radiobutton_frame.pack(side="top", fill="x")
+        self.custom_radiobutton.pack(side="left", fill="x", padx=5, pady=5)
+        self.custom_radiobutton_tooltip.pack(side="left")
+
         self.custom_entry.pack(side="top", fill="x", padx=(25, 5), pady=5, ipadx=1, ipady=1)
 
         vcmd = (self.register(self._validate), "%P", "%V") # valid command
@@ -1219,10 +1235,43 @@ class RegionSelection(ttk.LabelFrame):
         return region_dict
 
 
-class ToolTip(tk.Frame):
+class ToolTip(tk.Canvas):
     """
-    Tooltip popup class. Creates a little text info box, WIP
+    Tooltip popup class. Creates a text info box when hovering over with the mouse.
     """
 
-    def __init__(self, master, *args, **kwargs):
-        super().__init__(master=master, *args, **kwargs)
+    def __init__(self, master, text="", icon_size=12, height=None, img_x=0, img_y=0, img_anchor="nw", tooltip_anchor="sw", max_width=float("inf"), **canvas_kwargs):
+
+        if height is None:
+            height = icon_size
+
+        super().__init__(master=master, highlightthickness=0, width=icon_size, height=height, **canvas_kwargs)
+
+        # Load image icons
+        self.icon_normal = ImageTk.PhotoImage(Image.open("./img/tooltips/tooltip_info_normal.png").resize((icon_size, icon_size), resample=Image.Resampling.LANCZOS))
+        self.icon_disabled = ImageTk.PhotoImage(Image.open("./img/tooltips/tooltip_info_disabled.png").resize((icon_size, icon_size), resample=Image.Resampling.LANCZOS))
+
+        self.create_image(img_x, img_y, anchor=img_anchor, image=self.icon_normal, disabledimage=self.icon_disabled)
+
+        self.tooltip_anchor = tooltip_anchor
+
+        self.tooltip_label = tk.Label(self.winfo_toplevel(), text=text, justify="left", wraplength=max_width, bd=0, bg="#cecece", highlightthickness=1, relief="solid", highlightbackground="#555555")
+        
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+
+    def _on_enter(self, event):
+        """
+        Create popup textbox when mouse is hovering over icon
+        """
+        # Since the label object's parent is the toplevel window, we need to find the upper right corner of the canvas widget relative to toplevel, rather than relative to its parent
+        x = self.winfo_rootx() - self.winfo_toplevel().winfo_rootx() + self.winfo_width()
+        y =  self.winfo_rooty() - self.winfo_toplevel().winfo_rooty()
+
+        self.tooltip_label.place(x=x, y=y, anchor=self.tooltip_anchor)
+    
+    def _on_leave(self, event):
+        """
+        Hide popup textbox when mouse is no longer hovering over icon
+        """
+        self.tooltip_label.place_forget()
