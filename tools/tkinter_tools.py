@@ -56,8 +56,8 @@ def enable_frame(frame):
             except AttributeError:
                 child.configure(state="normal")
         elif wtype == "Canvas":
-            child.configure(state="disabled")
-            disable_frame(child)
+            child.configure(state="normal")
+            enable_frame(child)
         else:
             enable_frame(child)
 
