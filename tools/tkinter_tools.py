@@ -27,39 +27,31 @@ def raise_frame(frame):
     """
     frame.tkraise()
     
-def disable_frame(frame):
+def disable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
     """
-    Disables all buttons in the frame and in all child frames
+    Disables the widget and all child widgets, can specify only disabling child widgets instead of parent + children
     """
-    for child in frame.winfo_children():
-        wtype = child.winfo_class()
-        if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe"):
-            try:
-                child.state(["disabled"])
-            except:
-                child.configure(state="disabled")
-        elif wtype == "Canvas":
-            child.configure(state="disabled")
-            disable_frame(child)
-        else:
-            disable_frame(child)
+    if widget.winfo_class() not in ("Frame", "TFrame") and not only_children:
+        try:
+            widget.state(["disabled"])
+        except AttributeError:
+            widget.configure(state="disabled")
 
-def enable_frame(frame):
+    for child in widget.winfo_children():
+        disable_widget(child)
+
+def enable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
     """
-    Enables all buttons in the frame and in all child frames
+    Disables the widget and all child widgets, can specify only disabling child widgets instead of parent + children
     """
-    for child in frame.winfo_children():
-        wtype = child.winfo_class()
-        if wtype not in ("Frame", "Labelframe", "TFrame", "TLabelframe"):
-            try:
-                child.state(["!disabled"])
-            except AttributeError:
-                child.configure(state="normal")
-        elif wtype == "Canvas":
-            child.configure(state="normal")
-            enable_frame(child)
-        else:
-            enable_frame(child)
+    if widget.winfo_class() not in ("Frame", "TFrame") and not only_children:
+        try:
+            widget.state(["!disabled"])
+        except AttributeError:
+            widget.configure(state="normal")
+
+    for child in widget.winfo_children():
+        enable_widget(child)
 
 class ScrollableFrame(tk.Frame):
     """
@@ -313,29 +305,20 @@ class PlotToolbar(NavigationToolbar2Tk):
         self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightthickness=2) # Plot Settings frame
         self.frame.lift()
 
-        self.style = ttk.Style()
-        self.style.configure("settings.TLabel.Label", font=commonVars.default_font, foreground="#000000")
-        # This is simply meant to control the color of LabelFrames when the settings page is disabled/enabled
-
         if time_sel: # Add time cut selection
-            self.start_time_label = ttk.Label(self.frame, text="Start Date/Time", style="settings.TLabel.Label")
-            self.start_time = DateEntry(self.frame, labelwidget=self.start_time_label)
-
-            self.end_time_label = ttk.Label(self.frame, text="End Date/Time", style="settings.TLabel.Label")
-            self.end_time = DateEntry(self.frame, labelwidget=self.end_time_label)
+            self.start_time = DateEntry(self.frame, text="Start Date/Time")
+            self.end_time = DateEntry(self.frame, text="End Date/Time")
 
             self.start_time.grid(row=0, column=0, columnspan=2, ipadx=5, ipady=5, padx=5, pady=5, sticky="ew")
             self.end_time.grid(row=1, column=0, columnspan=2, ipadx=5, ipady=5, padx=5, pady=5, sticky="ew")
         
         if ch_sel: # Add channel cut selection
-            self.channel_select_label = ttk.Label(self.frame, text="BHM Channel Selection", style="settings.TLabel.Label")
-            self.channel_select = ChannelSelection(self.frame, labelwidget=self.channel_select_label)
+            self.channel_select = ChannelSelection(self.frame, text="BHM Channel Selection")
 
             self.channel_select.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         
         if region_sel: # Add region cut selection
-            self.region_select_label = ttk.Label(self.frame, text="BHM Region Selection", style="settings.TLabel.Label")
-            self.region_select = RegionSelection(self.frame, labelwidget=self.region_select_label)
+            self.region_select = RegionSelection(self.frame, text="BHM Region Selection")
 
             self.region_select.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
             
@@ -349,18 +332,15 @@ class PlotToolbar(NavigationToolbar2Tk):
         Method to set the state of the settings frame. This will disable/enable the entire frame and change a few colors and what not
         """
         if state == True:
-            disable_frame(self.frame)
-            self.style.configure("settings.TLabel.Label", foreground="#6D6D6D") # Change text color of labels within plot settings
-            # ttk, doesn't normally change the label text color when disabled, so we do so manually for better visual clarity
+            disable_widget(self.frame)
             self.loading_text = ttk.Label(self.frame, text="Redrawing plots...", font=commonVars.label_font) # Plop some loading text on our frame
             self.loading_text.place(relx=0.5, y=self.frame.winfo_height()/2 - self.draw_button.winfo_height() + 16, anchor="center")
 
         elif state == False:
             self.loading_text.destroy() # Remove loading text
-            enable_frame(self.frame)
+            enable_widget(self.frame)
             if hasattr(self, "region_select"):
                 self.region_select._update_region_display() # Update our region display so we disable the correct sub-widgets
-            self.style.configure("settings.TLabel.Label", foreground="#000000") # Change text color back to black
 
     def toggle_settings(self):
         """
@@ -716,25 +696,17 @@ class RateToolbar(PlotToolbar):
 
         self.scroll_frame = ScrollableFrame(self.frame, canvas_height=461)
         self.scroll_frame.pack(side="top", fill="both", expand=True)
-
-        self.style = ttk.Style()
-        self.style.configure("settings.TLabel.Label", font=commonVars.default_font, foreground="#000000")
-        # This is simply meant to control the color of LabelFrames when the settings page is disabled/enabled
         
         # Add channel cut selection
-        self.channel_select_label1 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Upper Plot)", style="settings.TLabel.Label")
-        self.channel_select1 = ChannelSelection(self.scroll_frame.interior_frame, labelwidget=self.channel_select_label1)
-        self.channel_select_label2 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Lower Plot)", style="settings.TLabel.Label")
-        self.channel_select2 = ChannelSelection(self.scroll_frame.interior_frame, labelwidget=self.channel_select_label2)
+        self.channel_select1 = ChannelSelection(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Upper Plot)")
+        self.channel_select2 = ChannelSelection(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Upper Plot)")
 
         self.channel_select1.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.channel_select2.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         
         # Add region cut selection
-        self.region_select_label1 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Upper Plot)", style="settings.TLabel.Label")
-        self.region_select1 = RegionSelection(self.scroll_frame.interior_frame, labelwidget=self.region_select_label1)
-        self.region_select_label2 = ttk.Label(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Lower Plot)", style="settings.TLabel.Label")
-        self.region_select2 = RegionSelection(self.scroll_frame.interior_frame, labelwidget=self.region_select_label2)
+        self.region_select1 = RegionSelection(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Upper Plot)")
+        self.region_select2 = RegionSelection(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Upper Plot)")
 
         self.region_select1.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
@@ -838,17 +810,15 @@ class RateToolbar(PlotToolbar):
         PlotToolbar._set_loading_state with modifications for the rate plots specifically
         """
         if state == True:
-            disable_frame(self.frame)
-            self.style.configure("settings.TLabel.Label", foreground="#6D6D6D") # Change text color of labels within plot settings
+            enable_widget(self.frame)
             self.loading_text = ttk.Label(self.frame, text="Redrawing plots...", font=commonVars.label_font) # Plop some loading text on our frame
             self.loading_text.place(relx=0.5, y=self.frame.winfo_height()/2 - self.draw_button.winfo_height() + 16, anchor="center")
 
         elif state == False:
             self.loading_text.destroy() # Remove loading text
-            enable_frame(self.frame)
+            disable_widget(self.frame)
             self.region_select1._update_region_display() # Update our region displays so we disable the correct sub-widgets
             self.region_select2._update_region_display()
-            self.style.configure("settings.TLabel.Label", foreground="#000000") # Change text color back to black
     
     def _redraw(self):
         """
@@ -1255,7 +1225,9 @@ class ToolTip(tk.Canvas):
 
         self.tooltip_anchor = tooltip_anchor
 
-        self.tooltip_label = tk.Label(self.winfo_toplevel(), text=text, justify="left", wraplength=max_width, bd=0, bg="#cecece", highlightthickness=1, relief="solid", highlightbackground="#555555")
+        self.tooltip_label = tk.Label(self.winfo_toplevel(), text=text, justify="left", wraplength=max_width, bd=0, 
+                                      bg="#cecece", highlightthickness=1, relief="solid", highlightbackground="#555555",
+                                      font=("Segoe UI", 10))
         
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)

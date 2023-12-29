@@ -52,9 +52,9 @@ def gui():
             data_status_message.set(f"{data_folder_str} not found in data folder.")
             return
         
-        disable_frame(RunSelection)
-        disable_frame(DataSelectionLabel)
-        disable_frame(FolderLabel)
+        disable_widget(RunSelection)
+        disable_widget(DataSelectionLabel)
+        disable_widget(FolderLabel)
         data_load_button.state(["disabled"])
         analyse_button.state(["disabled"])
         show_figures_button.state(["disabled"])
@@ -104,12 +104,12 @@ def gui():
             update_runs(loaded_runs)
             data_status_message.set(f"Currently Loaded Data Folder: {data_folder_str}")
 
-            enable_frame(RunSelection)
+            enable_widget(RunSelection)
             analyse_button.state(["!disabled"])
-            enable_frame(FolderLabel)
+            enable_widget(FolderLabel)
 
         finally:
-            enable_frame(DataSelectionLabel)
+            enable_widget(DataSelectionLabel)
             data_load_button.state(["!disabled"])
 
         return
@@ -190,7 +190,7 @@ def gui():
         else:
             manual_calib = None
         
-        disable_frame(MainPage)
+        disable_widget(MainPage)
         data_status.state(["!disabled"])
 
         analysis_thread = Thread(target=do_analysis_thread, args=(figure_folder, run_cut, custom_range, plot_lego, plot_ch_events, manual_calib, save_fig), daemon=True)
@@ -253,7 +253,7 @@ def gui():
             messagebox.showerror("Error", "An unknown exception has occured! Traceback information has been written to error.log")
         
         finally:
-            enable_frame(MainPage)
+            enable_widget(MainPage)
             return
     
     def initialize_toolbars(start_time=0, lumi_bins=None):
@@ -549,8 +549,8 @@ def gui():
     
     folder_name.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
 
-    disable_frame(RunSelection)
-    disable_frame(FolderLabel)
+    disable_widget(RunSelection)
+    disable_widget(FolderLabel)
 
     #@@@@@@@@@@@@@@@@ ANALYSIS BUTTON @@@@@@@@@@@@@@@@@@@@@
 
