@@ -56,11 +56,20 @@ def enable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
 class ScrollableFrame(tk.Frame):
     """
     tk.Frame with an attached scrollbar that can scroll through a canvas. This is (currently) used for displaying either long lists of items
-    or very large plots that require a scrollbar to view.
+    or very large plots that require a scrollbar to view. 
+
+    Returns the innermost frame of the widget stack, which is as follows:
+    self.frame (outermost frame, essentially the master of this widget stack)
+        children : self.canvas, self.scrollbar
+
+    self.canvas (widget that allows the scrolling of the inner frame)
+        children: self
+
+    self.scrollbar (self-explanatory, it's the physical scrollbar widgets)
+        children: None
     """
 
     def __init__(self, master, orient="vertical", canvas_height=None, **kwargs):
-        super().__init__(master, **kwargs)
 
         if orient == "vertical":
             canvas_side = "left"
@@ -71,34 +80,55 @@ class ScrollableFrame(tk.Frame):
             scrollbar_side = "bottom"
             scrollbar_fill = "x"
 
-        self.scrollbar = ttk.Scrollbar(self, orient=orient)
+        self.frame = tk.Frame(master=master)
+        self.scrollbar = ttk.Scrollbar(self.frame, orient=orient)
         self.scrollbar.pack(side=scrollbar_side, fill=scrollbar_fill, expand=False)
-        self.canvas = tk.Canvas(self, height=canvas_height, bd=0, highlightthickness=0, yscrollcommand=self.scrollbar.set)
+        self.canvas = tk.Canvas(self.frame, height=canvas_height, bd=0, highlightthickness=0, yscrollcommand=self.scrollbar.set)
         self.canvas.pack(side=canvas_side, fill="both", expand=True)
         self.canvas.bind('<Configure>', lambda event : self._configure_canvas(event))
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
         self.scrollbar.config(command=self.canvas.yview)
 
-        self.interior_frame = tk.Frame(self.canvas)
-        self.interior_frame_id = self.canvas.create_window(0, 0, window=self.interior_frame, anchor="nw")
-        self.interior_frame.bind('<Configure>', lambda event : self._configure_interior(event))
+        super().__init__(self.canvas, **kwargs)
+
+        self.id = self.canvas.create_window(0, 0, window=self, anchor="nw")
+        self.bind('<Configure>', lambda event : self._configure_interior(event))
+    
+    def pack(self, *args, **kwargs):
+        """
+        Since self is actually the innermost frame, we want to pack the outermost frame when we call pack, override the pack
+        method so we're packing self.frame
+        """
+        self.frame.pack(*args, **kwargs)
+
+    def grid(self, *args, **kwargs):
+        """
+        Overridden grid method, see self.pack for explanation
+        """
+        self.frame.grid(*args, **kwargs)
+    
+    def place(self, *args, **kwargs):
+        """
+        Overridden place method, see self.pack for explanation
+        """
+        self.frame.place(*args, **kwargs)
 
     def _configure_canvas(self, event):
         """
         Updates the inner frame's width to fill the canvas
         """
-        if self.interior_frame.winfo_reqwidth() != self.canvas.winfo_width():
-            self.canvas.itemconfigure(self.interior_frame_id, width=self.canvas.winfo_width())
+        if self.winfo_reqwidth() != self.canvas.winfo_width():
+            self.canvas.itemconfigure(self.id, width=self.canvas.winfo_width())
     
     def _configure_interior(self, event):
         """ 
         Updates the scrollbars to match the size of the inner frame
         """
-        size = (self.interior_frame.winfo_reqwidth(), self.interior_frame.winfo_reqheight())
+        size = (self.winfo_reqwidth(), self.winfo_reqheight())
         self.canvas.config(scrollregion=f"0 0 {size[0]} {size[1]}")
-        if self.interior_frame.winfo_reqwidth() != self.canvas.winfo_width(): # Update the canvas's width to fit the interior frame
-            self.canvas.config(width=self.interior_frame.winfo_reqwidth())
+        if self.winfo_reqwidth() != self.canvas.winfo_width(): # Update the canvas's width to fit the interior frame
+            self.canvas.config(width=self.winfo_reqwidth())
     
     def _on_mousescroll(self, event):
         """
@@ -698,15 +728,15 @@ class RateToolbar(PlotToolbar):
         self.scroll_frame.pack(side="top", fill="both", expand=True)
         
         # Add channel cut selection
-        self.channel_select1 = ChannelSelection(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Upper Plot)")
-        self.channel_select2 = ChannelSelection(self.scroll_frame.interior_frame, text="BHM Channel Selection\n(Upper Plot)")
+        self.channel_select1 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Upper Plot)")
+        self.channel_select2 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Upper Plot)")
 
         self.channel_select1.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.channel_select2.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         
         # Add region cut selection
-        self.region_select1 = RegionSelection(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Upper Plot)")
-        self.region_select2 = RegionSelection(self.scroll_frame.interior_frame, text="BHM Region Selection\n(Upper Plot)")
+        self.region_select1 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
+        self.region_select2 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
 
         self.region_select1.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
@@ -1077,7 +1107,7 @@ class ChannelSelection(ttk.LabelFrame):
             column = i//20
             check_var = tk.BooleanVar()
             check_var.set(1)
-            check_button = ttk.Checkbutton(self.frame.interior_frame, text=ch_name, variable=check_var, onvalue=True, offvalue=False)
+            check_button = ttk.Checkbutton(self.frame, text=ch_name, variable=check_var, onvalue=True, offvalue=False)
             check_button.grid(row=row, column=column, padx=5, pady=5, sticky="w")
             self.checkbutton_info[ch_name] = [check_button, check_var]
     

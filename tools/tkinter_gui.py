@@ -779,7 +779,7 @@ def gui():
     ADCPlotFrame = ScrollableFrame(ADCPage)
     ADCPlotFrame.pack(side=TOP, fill=BOTH, expand=True)
 
-    adc_canvas = FigureCanvasTkAgg(commonVars.adc_fig, ADCPlotFrame.interior_frame)
+    adc_canvas = FigureCanvasTkAgg(commonVars.adc_fig, ADCPlotFrame)
     adc_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
     adc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : ADCPlotFrame._on_mousescroll(event))
     adc_toolbar = ADCToolbar(adc_canvas, ADCPage, commonVars.adc_fig, pack_toolbar=False)
@@ -791,7 +791,7 @@ def gui():
     TDCPlotFrame = ScrollableFrame(TDCPage)
     TDCPlotFrame.pack(side=TOP, fill=BOTH, expand=True)
 
-    tdc_canvas = FigureCanvasTkAgg(commonVars.tdc_fig, TDCPlotFrame.interior_frame)
+    tdc_canvas = FigureCanvasTkAgg(commonVars.tdc_fig, TDCPlotFrame)
     tdc_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
     tdc_canvas.get_tk_widget().bind("<MouseWheel>", lambda event : TDCPlotFrame._on_mousescroll(event))
     tdc1_toolbar = TDCToolbar(tdc_canvas, TDCPage, commonVars.tdc_fig, pack_toolbar=False)
