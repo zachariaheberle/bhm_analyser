@@ -1097,10 +1097,19 @@ class ChannelSelection(ttk.LabelFrame):
         super().__init__(master, **kwargs)
 
         self.checkbutton_info = {}
-        self.frame = ScrollableFrame(self, canvas_height=222)
+        self.frame = ScrollableFrame(self, canvas_height=160)
         self.frame.pack(fill="both", expand=True)
 
         self.channels = {**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()} # Get CMAPs for both uHTR4 and uHTR11
+
+        # self.button_frame = tk.Frame(self, bg="#ff00ff")
+        # self.button_frame.pack(fill="x", expand=True)
+
+        self.select_button = ttk.Button(self, text="Select all", command=self.select_all)
+        self.deselect_button = ttk.Button(self, text="Deselect all", command=self.deselect_all)
+        
+        self.select_button.pack(fill="x", expand=True)
+        self.deselect_button.pack(fill="x", expand=True)
 
         for i, ch_name in enumerate(self.channels):
             row = i % 20
@@ -1110,6 +1119,14 @@ class ChannelSelection(ttk.LabelFrame):
             check_button = ttk.Checkbutton(self.frame, text=ch_name, variable=check_var, onvalue=True, offvalue=False)
             check_button.grid(row=row, column=column, padx=5, pady=5, sticky="w")
             self.checkbutton_info[ch_name] = [check_button, check_var]
+    
+    def deselect_all(self):
+        for check_button, check_var in self.checkbutton_info.values():
+            check_var.set(False)
+
+    def select_all(self):
+        for check_button, check_var in self.checkbutton_info.values():
+            check_var.set(True)
     
     def get_selected_channels(self):
         """
