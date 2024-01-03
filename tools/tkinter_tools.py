@@ -379,6 +379,11 @@ class PlotToolbar(NavigationToolbar2Tk):
         if not self.frame.winfo_ismapped():
             self.frame.place(x=5, rely=(self.master.winfo_height()-self.winfo_height()-5)/self.master.winfo_height(),
                                 anchor="sw")
+            if hasattr(self, "region_select") and hasattr(self, "channel_select"):
+                height_diff = self.region_select.winfo_height() - self.channel_select.winfo_height()
+                if height_diff:
+                    new_height = int(self.channel_select.frame.canvas.cget("height")) + height_diff
+                    self.channel_select.frame.canvas.config(height=new_height)
         else:
             self.frame.place_forget()
     
@@ -1093,11 +1098,11 @@ class ChannelSelection(ttk.LabelFrame):
     LabelFrame widget that contains a scrollable list of checkboxes that will enable/disable the display of channels
     """
 
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, canvas_height=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.checkbutton_info = {}
-        self.frame = ScrollableFrame(self, canvas_height=160)
+        self.frame = ScrollableFrame(self, canvas_height=canvas_height)
         self.frame.pack(fill="both", expand=True)
 
         self.channels = {**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()} # Get CMAPs for both uHTR4 and uHTR11
