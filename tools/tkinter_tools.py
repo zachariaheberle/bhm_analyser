@@ -1108,8 +1108,8 @@ class ChannelSelection(ttk.LabelFrame):
         self.select_button = ttk.Button(self, text="Select all", command=self.select_all)
         self.deselect_button = ttk.Button(self, text="Deselect all", command=self.deselect_all)
         
-        self.select_button.pack(fill="x", expand=True)
-        self.deselect_button.pack(fill="x", expand=True)
+        self.select_button.pack(fill="x", expand=True, padx=5)
+        self.deselect_button.pack(fill="x", expand=True, padx=5)
 
         for i, ch_name in enumerate(self.channels):
             row = i % 20
