@@ -268,11 +268,9 @@ class bhm_analyser():
             binx = np.arange(120,181,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
         if binx_tick is None:    
             binx_tick = np.arange(120,181,5) # Changed 119.5 to 120 to remove .5 from x-axis scale.
-        self.ADC_Cuts = {}
 
         if self.save_fig:
-            f, ax = plt.subplots()        
-        #time_list = []
+            f, ax = plt.subplots()
         for i, ch in enumerate(self.CMAP.keys()):
 
             if len(self.run) == 0 and commonVars.root:
@@ -283,7 +281,6 @@ class bhm_analyser():
 
             if self.save_fig:
                 if i == 0:
-                    #start = time.time()
                     line = ax.axvline(calib.ADC_CUTS[ch],color='r',linestyle='--')
                     if min(binx) < 120:
                         ax.set_xticks(binx_tick)
@@ -303,7 +300,6 @@ class bhm_analyser():
                     It is *ever* so slightly faster (about 30-40ms faster per render on my machine) to change only the things we need to
                     (textbox, ylimits, histogram) on each iteration of the loop
                     """
-                    #start = time.time()
                     hist, bin_edges = np.histogram(x, bins=binx)
                     verticies = []
                     for j in range(len(hist)): # Generates the verticies of the new histogram polygon
@@ -326,48 +322,17 @@ class bhm_analyser():
                     else:
                         ax.set_ylim(top=1)
 
-            # peak_index = np.argmax(counts)
-            # area_ratio = 0
-            # left_bound = right_bound = peak_index
-            # total_counts = sum(counts)
-            # while area_ratio < .68 and len(x) != 0:
-            #     if left_bound > 0:
-            #         left_bound -= 1
-            #     if right_bound < len(counts):
-            #         right_bound += 1
-            #     area_ratio = sum(counts[left_bound:right_bound + 1]) / total_counts # + 1 on right bound because of the way slicing works
-
-            # if int(total_counts) == 0:
-            #     self.ADC_Cuts[ch] = 120 # if channel is empty, we don't want this to break, set cut to 120 (lowest value on ADC graphs)
-            # else:
-            #     self.ADC_Cuts[ch] = int(vals[left_bound])
-
-            # the following lines are place holders
-            #plt.axvline(vals[left_bound] - 0.5, color="magenta", linestyle="--")
-            #plt.axvline(vals[right_bound] + 1.5, color="magenta", linestyle="--")
-            #plt.axvline(vals[peak_index] + 0.5, color="k", linestyle="--")
-            # end placeholders
-
                 f.savefig(f"{self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{ch}.png",dpi=300)
-
-            #end = time.time()
-            #time_list.append((end-start)*1000)
-            #print(f"Render time: {(end-start)*1000:.3f}ms")
 
             if commonVars.root:
                 plotting.plot_adc_gui(ch, x, binx, binx_tick, self.adc_plt_tdc_width)
 
         plt.close()
-        #print(f"Initial Render time: {time_list[0]:.3f}ms")
-        #print(f"Avg Extra Render time: {np.mean(time_list[1:]):.3f}ms")
-            # if self.ADC_Cuts[ch] != calib.ADC_CUTS[ch]:
-            #     print(f"For channel {ch} the left cut is at {self.ADC_Cuts[ch]} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
 
     def saveTDCplots(self,delay=10):
         '''
             TDC distance of the peak from 0; This can be used if there is a activation peak that shadows the BH peak
         '''
-        self.TDC_Peaks = {}
         if self.save_fig:
             f,ax = plt.subplots()
 
@@ -422,26 +387,65 @@ class bhm_analyser():
                         ax.set_ylim(top=max(hist)/.95)
                     else:
                         ax.set_ylim(top=1)
-                
-                self.TDC_Peaks[ch] = peak+delay
 
                 f.savefig(f"{self.figure_folder}/tdc_peaks/{ch}.png",dpi=300)
             
             else:
                 hist, bin_edges = np.histogram(x, bins=binx)
                 peak = np.argmax(hist[delay:])
-            # end = time.time()
-            # if i == 0:
-            #     print(f"Initial {(end-start)*1000:.3f}ms")
-            # else:
-            #     print(f"Extra render {(end-start)*1000:.3f}ms")
 
             if commonVars.root:
                 plotting.plot_tdc_gui(ch, x, peak, delay)
 
             plt.close()
-            # if self.TDC_Peaks[ch] != calib.TDC_PEAKS[ch]:
-            #     print(f"For channel {ch} the peak is at {peak} with ADC_CUTS at {calib.ADC_CUTS[ch]}")
+    
+
+    def auto_align_adc_tdc(self):
+        """
+        Automatically determines the peak TDC value and ADC Cut value
+
+        TDC peak is determined by the adc array that has the largest peak value within the region of adc > 127 and tdc < 15
+
+        ADC Cut is determined by finding the approximate standard deviation (~68% of area within +/- 15 bins of peak adc value) 
+        of the peak_ampl array at tdc == tdc peak value
+        """
+
+        for ch in self.CMAP.keys():
+            adc = self.peak_ampl[self.ch_mapped == self.CMAP[ch]]
+            tdc = self.tdc[self.ch_mapped == self.CMAP[ch]]
+
+            # We set the tdc peak as the max value of the tdc/adc lego plot with the region tdc < 15 and adc > 127, since the signal region should be there,
+            # given that the detectors are properly aligned (hardware level)
+            h, tdc_bins, adc_bins = np.histogram2d(tdc, adc, bins=(np.arange(-0.5,15,1),np.arange(128,180,1)))
+            max_index = list(h.flatten()).index(np.max(h))
+            tdc_peak, adc_peak = int(max_index / h.shape[1]), max_index % h.shape[1] # Note, adc peak is offset by -128 here and does not reflect the actual adc value
+
+            calib.TDC_PEAKS[ch] = tdc_peak
+            adc_vals = h[tdc_peak]
+
+            area_ratio = 0
+            left_bound = right_bound = adc_peak
+            min_index = max(0, adc_peak-15) # prevent index errors by establishing max and min values for index bounds
+            max_index = min(50, adc_peak + 16)
+            total_counts = sum(adc_vals[min_index:max_index])
+
+            while area_ratio < .68 and total_counts != 0: # Use ~1 sigma bounds as the adc cut
+                if left_bound > min_index + 1:
+                    left_bound -= 1
+                if right_bound < max_index:
+                    right_bound += 1
+                area_ratio = sum(adc_vals[left_bound+1:right_bound]) / total_counts # non-inclusive cut of endpoints
+
+            if total_counts == 0: 
+                calib.ADC_CUTS[ch] = calib.ADC_CUTS_v2[ch] # if channel is empty, we don't want this to break, set cut to manually derived approximations
+            else:
+                while adc_vals[left_bound+1] == 0:# If left bound is hovering over a data void (ie a hardware cut that is greater than it),
+                # then move left bound next to nearest non-zero point (this is primarily a visual thing, and should have no effect on analysis) 
+                        left_bound += 1
+                
+                calib.ADC_CUTS[ch] = left_bound + 128
+        
+        
 
 
     def convert2pandas(self):
@@ -823,30 +827,14 @@ class bhm_analyser():
         #plotting lego, ADC, and TDC plots
         if plot_lego:
             self.get_legoPlt()
-    
-        if not reAdjust: 
-            adc_binx = np.arange(min(120, min(calib.ADC_CUTS.values())), 181, 1)
-            adc_binx_tick = np.arange(min(120, min(calib.ADC_CUTS.values())//5*5), 181, 5)
-            self.saveADCplots(binx=adc_binx, binx_tick=adc_binx_tick)
 
+        if reAdjust and len(self.run) != 0:
+            self.auto_align_adc_tdc()
+
+        adc_binx = np.arange(min(120, min(calib.ADC_CUTS.values())), 181, 1)
+        adc_binx_tick = np.arange(min(120, min(calib.ADC_CUTS.values())//5*5), 181, 5)
+        self.saveADCplots(binx=adc_binx, binx_tick=adc_binx_tick)
         self.saveTDCplots(delay=0) # this derives the MVP for the beam halo peaks
-        #Readjusting the TDC Peaks to specific values # Run after saveTDCplots()
-        ## self.saveADCplots() # this derivates the 68% cuts from MVP for ADC plots
-        if reAdjust:
-            """
-            There is definitely a more efficient way of doing this, will do later
-            """
-            i = 0
-            while i == 0:#not (all([calib.TDC_PEAKS[key] == self.TDC_Peaks[key] for key in self.TDC_Peaks]) and all([calib.ADC_CUTS[key] == self.ADC_Cuts[key] for key in self.ADC_Cuts])) and i < 5:
-                # Loops over and over trying to get best possible adjustment, limited to 5 loops to avoid infinite looping
-                for key in self.TDC_Peaks:
-                    calib.TDC_PEAKS[key] = self.TDC_Peaks[key]
-                # for key in self.ADC_Cuts:
-                #     calib.ADC_CUTS[key] = self.ADC_Cuts[key] 
-                
-                #self.saveTDCplots(delay=0)
-                self.saveADCplots() # Running again to derive the 
-                i += 1
 
         if self.uHTR == '4':
             detector_side='P'
