@@ -340,19 +340,19 @@ def gui():
 
     # Frames to hold various gui elements
     BasePage = ttk.Notebook(root)
-    MainPage = tk.Frame(BasePage, width=700, height=600)#, bg="#00FF00")
-    OptionsPage = tk.Frame(BasePage, width=700, height=600)
+    MainPage = ttk.Frame(BasePage, width=700, height=600)#, bg="#00FF00")
+    OptionsPage = ttk.Frame(BasePage, width=700, height=600)
 
     # Adding frames to BasePage
     BasePage.add(MainPage, text="Analysis")
     BasePage.add(OptionsPage, text="Advanced Options")
 
-    DataSelection = tk.Frame(MainPage)#, bg="#FF00FF")
+    DataSelection = ttk.Frame(MainPage)#, bg="#FF00FF")
     DataSelectionLabel = ttk.LabelFrame(DataSelection, text="BHM Data Folder Location")
 
     Seperator1 = ttk.Separator(MainPage)
     
-    RunSelection = tk.Frame(MainPage)#, bg="#FF0000")
+    RunSelection = ttk.Frame(MainPage)#, bg="#FF0000")
 
     # Placing Frames within window
     BasePage.grid(row=0, column=0, sticky=NSEW)
@@ -439,7 +439,7 @@ def gui():
     RunSelectionBox = ttk.LabelFrame(RunSelection, text="Selected Run(s)")
 
     # I have to do an individual frame for each of the run selection options
-    BlankFrame = tk.Frame(RunSelectionBox)#, bg="#123456")
+    BlankFrame = ttk.Frame(RunSelectionBox)#, bg="#123456")
 
 
 
@@ -447,7 +447,7 @@ def gui():
     #@@@@@@@@@@@@@@@@@@ RUN DISPLAY SUBFRAME @@@@@@@@@@@@@@@@@@@@
 
     # All runs display
-    AllRuns = tk.Frame(RunSelectionBox)#, bg="#000000")
+    AllRuns = ttk.Frame(RunSelectionBox)#, bg="#000000")
     all_runs_display_box = ttk.Label(AllRuns, text="All Runs Selected!")
     show_all_runs = ttk.Treeview(AllRuns, columns=["all_runs"], show="headings", height=2, selectmode=NONE)
     show_all_runs.heading("all_runs", text="All Available Runs", anchor=W)
@@ -458,14 +458,14 @@ def gui():
     show_all_runs['yscrollcommand'] = all_runs_scrollbar.set
 
     # display for picking individual run
-    IndividualRun = tk.Frame(RunSelectionBox)#, bg="#00FFFF")
+    IndividualRun = ttk.Frame(RunSelectionBox)#, bg="#00FFFF")
     individual_run_var = StringVar()
     individual_run_var.set("Please select a run")
     individual_run_display_box = ttk.Combobox(IndividualRun, textvariable=individual_run_var, font=default_font, values=loaded_runs, height=4)
 
     # display for picking a custom set of runs
-    CustomRun = tk.Frame(RunSelectionBox)#, bg="#0000FF")
-    CustomRunSubFrame = tk.Frame(CustomRun)#, bg="#AAAAAF")
+    CustomRun = ttk.Frame(RunSelectionBox)#, bg="#0000FF")
+    CustomRunSubFrame = ttk.Frame(CustomRun)#, bg="#AAAAAF")
     custom_run_var = Variable()
     custom_run_var.set(loaded_runs)
     custom_run_display_box = tk.Listbox(CustomRunSubFrame, listvariable=custom_run_var, font=default_font, height=2, selectmode=MULTIPLE, activestyle=NONE)
@@ -659,7 +659,7 @@ def gui():
     #@@@@@@@@@@@@@@@@@@@@ DATA CUTS TREEVIEW SUBFRAME @@@@@@@@@@@@@@@@@@@@
 
     # Frame to hold treeview and its scrollbar
-    DataCutsFrame = tk.Frame(DataCutsLabel)
+    DataCutsFrame = ttk.Frame(DataCutsLabel)
 
     # Treeview of all detectors and their default ADC cuts and TDC peaks
     data_cuts_tree = EntryTreeview(DataCutsFrame, columns=["detector", "tdc_peak", "adc_cut"], show="headings", height=10, selectmode="browse")
@@ -682,7 +682,7 @@ def gui():
 
     #@@@@@@@@@@@@@@@@@ LOAD/SAVE SUBFRAME @@@@@@@@@@@@@@@@@@@@@@@@
 
-    SaveLoadFrame = tk.Frame(DataCutsLabel)
+    SaveLoadFrame = ttk.Frame(DataCutsLabel)
 
     # Save button to save cuts to use at a later date
     save_data_cuts_button = ttk.Button(SaveLoadFrame, text="Save Data Cuts", state="disabled", command=save_data_cuts)
@@ -752,13 +752,13 @@ def gui():
     FigurePage = ttk.Notebook(fig_window)
 
     # Each frame will handle a different set of graphs
-    ADCPage = tk.Frame(FigurePage)
-    TDCPage = tk.Frame(FigurePage)
-    TDCStabilityPage = tk.Frame(FigurePage)
-    OccupancyPage = tk.Frame(FigurePage)
-    RatePage = tk.Frame(FigurePage)
-    LegoPage = tk.Frame(FigurePage)
-    ChannelEventsPage = tk.Frame(FigurePage)
+    ADCPage = ttk.Frame(FigurePage)
+    TDCPage = ttk.Frame(FigurePage)
+    TDCStabilityPage = ttk.Frame(FigurePage)
+    OccupancyPage = ttk.Frame(FigurePage)
+    RatePage = ttk.Frame(FigurePage)
+    LegoPage = ttk.Frame(FigurePage)
+    ChannelEventsPage = ttk.Frame(FigurePage)
 
     # Adding each frame to notebook
     FigurePage.add(ADCPage, text="ADC Peaks")

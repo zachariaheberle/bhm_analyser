@@ -53,9 +53,9 @@ def enable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
     for child in widget.winfo_children():
         enable_widget(child)
 
-class ScrollableFrame(tk.Frame):
+class ScrollableFrame(ttk.Frame):
     """
-    tk.Frame with an attached scrollbar that can scroll through a canvas. This is (currently) used for displaying either long lists of items
+    ttk.Frame with an attached scrollbar that can scroll through a canvas. This is (currently) used for displaying either long lists of items
     or very large plots that require a scrollbar to view. 
 
     Returns the innermost frame of the widget stack, which is as follows:
@@ -80,7 +80,7 @@ class ScrollableFrame(tk.Frame):
             scrollbar_side = "bottom"
             scrollbar_fill = "x"
 
-        self.frame = tk.Frame(master=master)
+        self.frame = ttk.Frame(master=master)
         self.scrollbar = ttk.Scrollbar(self.frame, orient=orient)
         self.scrollbar.pack(side=scrollbar_side, fill=scrollbar_fill, expand=False)
         self.canvas = tk.Canvas(self.frame, height=canvas_height, bd=0, highlightthickness=0, yscrollcommand=self.scrollbar.set)
@@ -332,7 +332,7 @@ class PlotToolbar(NavigationToolbar2Tk):
         self.window = window #(from super init)
         self.canvas = canvas #(from super init)
 
-        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2) # Plot Settings frame
+        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Plot Settings frame
         self.frame.lift()
 
         if time_sel: # Add time cut selection
@@ -726,7 +726,7 @@ class RateToolbar(PlotToolbar):
         self.window = window #(from super init)
         self.canvas = canvas #(from super init)
 
-        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2) # Plot Settings frame
+        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Plot Settings frame
         self.frame.lift()
 
         self.scroll_frame = ScrollableFrame(self.frame, canvas_height=461)
@@ -1169,7 +1169,7 @@ class RegionSelection(ttk.LabelFrame):
         self.region_sel_var.set(0)
         self.preset_radiobutton = ttk.Radiobutton(self, text="Preset Region", value=0, variable=self.region_sel_var, command=self._update_region_display)
 
-        self.custom_radiobutton_frame = tk.Frame(self)
+        self.custom_radiobutton_frame = ttk.Frame(self)
         self.custom_radiobutton = ttk.Radiobutton(self.custom_radiobutton_frame, text="Custom Region", value=1, variable=self.region_sel_var, command=self._update_region_display)
         self.custom_radiobutton_tooltip = ToolTip(self.custom_radiobutton_frame, text="Custom regions can be defined by entering a valid pandas dataframe query. "+ \
                                                   "The allowed variables are: bx, tdc, tdc_2, ch, ch_name, orbit, run, peak_ampl, adc (An alias for peak_ampl)", 
