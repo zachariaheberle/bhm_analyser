@@ -332,7 +332,7 @@ class PlotToolbar(NavigationToolbar2Tk):
         self.window = window #(from super init)
         self.canvas = canvas #(from super init)
 
-        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightthickness=2) # Plot Settings frame
+        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2) # Plot Settings frame
         self.frame.lift()
 
         if time_sel: # Add time cut selection
@@ -726,7 +726,7 @@ class RateToolbar(PlotToolbar):
         self.window = window #(from super init)
         self.canvas = canvas #(from super init)
 
-        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightthickness=2) # Plot Settings frame
+        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2) # Plot Settings frame
         self.frame.lift()
 
         self.scroll_frame = ScrollableFrame(self.frame, canvas_height=461)
