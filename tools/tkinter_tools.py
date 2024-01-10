@@ -261,7 +261,10 @@ class ValidatedEntry(tk.Entry):
         self.bind("<Leave>", self._on_leave)
 
         self.valid = True
-        self.tooltip = ToolTip(master) # Tooltip to send a message of what specifically went wrong during validation, WIP
+        self.message = tk.StringVar()
+        self.message_label = tk.Label(self.winfo_toplevel(), textvariable=self.message, justify="left", bd=0, 
+                                      bg="#ffffff", highlightthickness=1, relief="solid", highlightbackground="#ff0000",
+                                      font=("Segoe UI", 10)) # label to show a message of what specifically went wrong during validation
 
         self.config = self.configure # Adding config alias to remap to overridden configure function
 
@@ -281,12 +284,15 @@ class ValidatedEntry(tk.Entry):
     
     def _on_disable(self):
         self.config(highlightbackground="#cccccc")
+        self._remove_message()
     
     def _on_enable(self):
         if self.valid:
             self.config(highlightbackground="#7a7a7a", highlightcolor="#0078d7")
+            self._remove_message()
         else:
             self.config(highlightbackground="#ff7069", highlightcolor="#ff0000")
+            self._show_message()
     
     def configure(self, *args, **kwargs):
         """
@@ -304,8 +310,19 @@ class ValidatedEntry(tk.Entry):
 
         if self.valid == True:
             self.config(highlightbackground="#7a7a7a", highlightcolor="#0078d7")
+            self._remove_message()
         else:
             self.config(highlightbackground="#ff7069", highlightcolor="#ff0000")
+            self._show_message()
+    
+    def _show_message(self):
+        if not self.message_label.winfo_ismapped():
+            self.message_label.config(wraplength=self.winfo_width())
+            self.message_label.place(in_=self, x=-1, y=-2, anchor="sw")
+
+    def _remove_message(self):
+        if self.message_label.winfo_ismapped():
+            self.message_label.place_forget()
 
 class PlotToolbar(NavigationToolbar2Tk):
     """
@@ -944,9 +961,6 @@ class DateEntry(ttk.LabelFrame):
         self.date.config(validate=["all"], validatecommand=vcmd, invalidcommand=ivcmd)
         self.time.config(validate=["all"], validatecommand=vcmd, invalidcommand=ivcmd)
 
-        self.date_tooltip_message = ""
-        self.time_tooltip_message = ""
-
         self.utc_time = None
     
     def _validate(self, widget, entry, validation_type):
@@ -964,44 +978,44 @@ class DateEntry(ttk.LabelFrame):
                     month = int(entry[5:7])
                     day = int(entry[8:10])
                 except:
-                    self.date_tooltip_message = "Invalid date format!"
+                    self.date.message.set("Invalid date format!")
                     return False
                 
                 if not all(char.isdigit() or char == "/" for char in entry): # Basic formatting check
-                    self.date_tooltip_message = "Invalid date format!"
+                    self.date.message.set("Invalid date format!")
                     return False
                 
                 if entry[4] != "/" or entry[7] != "/": # Checks for mandatory / character between year/month/day
-                    self.date_tooltip_message = "'/' character missing in date format!"
+                    self.date.message.set("'/' character missing in date format!")
                     return False
                 
                 if year < 0: # Checks for valid year
-                    self.date_tooltip_message = "Invalid year value!"
+                    self.date.message.set("Invalid year value!")
                     return False
                 
                 if month > 12 or month < 1: # Checks for valid month number
-                    self.date_tooltip_message = "Invalid month value!"
+                    self.date.message.set("Invalid month value!")
                     return False
                 
                 if month in [1, 3, 5, 7, 8, 10, 12] and (day > 31 or day < 1): # Checks for valid day number (excluding february)
-                    self.date_tooltip_message = "Invalid day value!"
+                    self.date.message.set("Invalid day value!")
                     return False
                 elif month in [4, 6, 9, 11] and (day > 30 or day < 1):
-                    self.date_tooltip_message = "Invalid day value!"
+                    self.date.message.set("Invalid day value!")
                     return False
                 elif month == 2:
                     if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0): # leap year check
                         if (day > 29 or day < 1): 
-                            self.date_tooltip_message = "Invalid day value!"
+                            self.date.message.set("Invalid day value!")
                             return False
                         return True
                     elif (day > 28 or day < 1):
-                        self.date_tooltip_message = "Invalid day value!"
+                        self.date.message.set("Invalid day value!")
                         return False
                     
             elif validation_type == "key":
                 if len(entry) > 10:
-                    self.date_tooltip_message = "Date entry too long!"
+                    self.date.message.set("Date entry too long!")
                     return False
                 
             else:
@@ -1018,32 +1032,32 @@ class DateEntry(ttk.LabelFrame):
                     minute = int(entry[3:5])
                     second = int(entry[6:8])
                 except:
-                    self.time_tooltip_message = "Invalid time format!"
+                    self.time.message.set("Invalid time format!")
                     return False
                 
                 if not all(char.isdigit() or char == ":" for char in entry): # Basic formatting check
-                    self.time_tooltip_message = "Invalid time format!"
+                    self.time.message.set("Invalid time format!")
                     return False
                 
                 if entry[2] != ":" or entry[5] != ":": # Checks for mandatory : character between hour:minute:second
-                    self.time_tooltip_message = "':' character missing in time format!"
+                    self.time.message.set("':' character missing in time format!")
                     return False
             
                 if hour < 0 or hour > 23: # Check for valid hour
-                    self.time_tooltip_message = "Invalid hour value!"
+                    self.time.message.set("Invalid hour value!")
                     return False
                 
                 if minute < 0 or minute > 59: # Check for valid minute
-                    self.time_tooltip_message = "Invalid minute value!"
+                    self.time.message.set("Invalid minute value!")
                     return False
                 
                 if second < 0 or second > 59: # Check for valid second
-                    self.time_tooltip_message = "Invalid second value!"
+                    self.time.message.set("Invalid second value!")
                     return False
             
             elif validation_type == "key":
                 if len(entry) > 8:
-                    self.time_tooltip_message = "Time entry too long!"
+                    self.time.message.set("Time entry too long!")
                     return False
             
             else:
@@ -1181,6 +1195,8 @@ class RegionSelection(ttk.LabelFrame):
 
         self.custom_entry = ValidatedEntry(self, justify="left", font=commonVars.default_font)
         self.custom_entry.config(state="disabled")
+
+        self.custom_entry.message.set("Invalid dataframe query!") # Set this message once since it doesn't change, only shows if entry is actually invalidated
 
         self.preset_radiobutton.pack(side="top", fill="x", padx=5, pady=5)
 
