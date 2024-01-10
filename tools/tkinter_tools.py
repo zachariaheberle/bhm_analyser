@@ -255,7 +255,8 @@ class ValidatedEntry(tk.Entry):
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, relief="solid", insertwidth=1, border=0, highlightbackground="#7a7a7a", 
-                         highlightcolor="#0078d7", highlightthickness=1, **kwargs)
+                         highlightcolor="#0078d7", highlightthickness=1, selectbackground="#0078d7", 
+                         selectforeground="#ffffff", disabledbackground="#f0f0f0", **kwargs)
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)
 
@@ -328,6 +329,9 @@ class PlotToolbar(NavigationToolbar2Tk):
                             # Turns into some goofy (/path/to/matplotlib/../../../../../desired/image/path) looking string
 
         super().__init__(canvas, window, pack_toolbar=pack_toolbar)
+        self.config(bg="#f0f0f0") # Setting toolbar frame background
+        for child in self.winfo_children():
+            child.config(bg="#f0f0f0") # Setting button and label colors
         self.figure = figure
         self.window = window #(from super init)
         self.canvas = canvas #(from super init)
@@ -1299,3 +1303,265 @@ class ToolTip(tk.Canvas):
         Hide popup textbox when mouse is no longer hovering over icon
         """
         self.tooltip_label.place_forget()
+
+class _ListboxFrame(tk.Frame):
+    """
+    Special frame class that is purely used to identify listbox frames using type()
+
+    Only designed for use in Combobox
+    """
+    pass
+
+class _Canvas(tk.Canvas):
+    """
+    tk.Canvas meant to simply override the configure method so we can properly "disable"
+    the canvas by recoloring the border lines. I could make a truly custom class for this, but this is easier
+
+    Only designed for use in Combobox
+    """
+    def configure(self, *args, **kwargs):
+        super().configure(*args, **kwargs)
+        if "state" in kwargs:
+            if kwargs["state"] == "disabled":
+                self.master._canvas_on_disable()
+            elif kwargs["state"] == "normal":
+                self.master._canvas_on_enable()
+
+class Combobox(tk.Frame):
+    """
+    A combobox that's meant to look like ttk.Combobox (on windows), but is made entirely of tk widgets
+    to look the same across platforms.
+    """
+
+    def __init__(self, master=None, values=[], height=10, font=None, **kwargs):
+
+        super().__init__(master)
+
+        height = min(height, len(values))
+
+        self.button_image_normal = ImageTk.PhotoImage(Image.open("./img/buttons/chevron_down_normal.png"))
+        self.button_image_disabled = ImageTk.PhotoImage(Image.open("./img/buttons/chevron_down_disabled.png"))
+
+        self.entry = ValidatedEntry(self, font=font, **kwargs)
+        self.entry.pack(side="left", fill="both", expand=True, padx=(0, 16), ipadx=1, ipady=1)
+
+        # the drop down button is a canvas because we don't want the relief to change on button press (among other visual things I don't like)
+        self.canvas = _Canvas(self, borderwidth=0, background="#ffffff", border=0, highlightthickness=0, 
+                                width=17, height=self.entry.winfo_reqheight())
+        
+        self.canvas_image = self.canvas.create_image(8, self.entry.winfo_reqheight()/2, anchor="center", image=self.button_image_normal, disabledimage=self.button_image_disabled)
+        self.outline1 = self.canvas.create_line(0, 0, 16, 0, 16, self.entry.winfo_reqheight()-1, -1, self.entry.winfo_reqheight()-1, fill="#7a7a7a")
+        self.outline2 = self.canvas.create_line(0, 1, 0, self.entry.winfo_reqheight()-1, fill="#ffffff")
+
+        self.listbox_frame = _ListboxFrame(self.winfo_toplevel(), bg="#ffffff", borderwidth=0, highlightthickness=1, 
+                                      highlightbackground="#7a7a7a", highlightcolor="#7a7a7a")
+        
+        self.listbox = tk.Listbox(self.listbox_frame, relief="flat", activestyle="none", height=height, 
+                                  selectmode="single", selectbackground="#0078D7", selectforeground="#ffffff",
+                                  borderwidth=0, highlightthickness=0, font=font)
+
+        self.listbox_scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+        self.listbox['yscrollcommand'] = self.listbox_scrollbar.set
+
+        self.listbox.pack(side="left", fill="both", expand=True)
+        self.listbox_scrollbar.pack(side="right", fill="y")
+        
+        # A bunch of bindings to make everything look and work properly, this is why I typically use ttk...
+        self.winfo_toplevel().bind("<Button-1>", self._on_focusout)
+        self.winfo_toplevel().bind("<Escape>", self._on_focusout) # WARNING, The toplevel bindings CAN be overwritten, see self._on_focusout for more detail
+
+        self.entry.bind("<Enter>", self._entry_on_enter)
+        self.entry.bind("<Leave>", self._entry_on_leave)
+        self.entry.bind("<FocusIn>", self._entry_on_focusin)
+        self.entry.bind("<FocusOut>", self._entry_on_focusout)
+        self.entry.bind("<Configure>", self._configure_canvas)
+
+        self.canvas.bind("<Button-1>", self._canvas_on_click)
+        self.canvas.bind("<Enter>", self._canvas_on_enter)
+        self.canvas.bind("<Leave>", self._canvas_on_leave)
+
+        self.listbox.bind("<Button-1>", self._listbox_on_click)
+        self.listbox.bind("<Motion>", self._listbox_on_mouse_motion)
+        
+
+        self.sel_index = -1 # Set an internal index, it's faster to access this variable than to do a function call to tk
+        self.listbox.selection_set(0)
+
+        self.canvas.place(in_=self.entry, x=self.entry.winfo_reqwidth()-1, relheight=1, width=17, bordermode="outside")
+
+        if values is not None:
+            self._values = values
+            for i, value in enumerate(self._values):
+                self.listbox.insert(i, value)
+    
+    def __getitem__(self, key):
+        if key == "values":
+            return self._values
+        else:
+            return super().__getitem__(key)
+    
+    def __setitem__(self, key, value):
+        if key == "values":
+            self.values = value
+        else:
+            return super().__setitem__(key, value)
+    
+    @property
+    def values(self):
+        return self._values
+    
+    @values.setter
+    def values(self, new_values):
+        """
+        Make sure if we try to do Combobox.values (or Combobox["values"]) = list, we properly insert them into the tk.Listbox
+        """
+        self.entry.delete(0, "end")
+        self._values = new_values
+        for i, value in enumerate(new_values):
+                self.listbox.insert(i, value)
+
+
+
+    def _on_focusout(self, event: tk.Event):
+        """
+        If we click outside of the drop down menu, make sure we close out of it. Since this method is bound to root,
+        it WILL get overridden by another Combobox object (or any other root bindings, so be careful!!). 
+        To counter this, we iterate through the widget tree to close out of ALL listboxes, regardless of which one is open.
+        (since if they have already lost focus they should be closed anyway)
+        """
+        if event.char != "\x1b": # \x1b is the string representation of the escape key
+            for widget in self.winfo_toplevel().winfo_children():
+                if isinstance(widget, _ListboxFrame):
+                    if event.widget not in widget.winfo_children() and not isinstance(event.widget, _Canvas):
+                        widget.place_forget()
+                    
+        else: # Triggers on pressing the escape key
+            for widget in self.winfo_toplevel().winfo_children():
+                if isinstance(widget, _ListboxFrame):
+                    widget.place_forget()
+
+    def _canvas_on_disable(self):
+        """
+        Properly grey out the surrounding border around the canvas widget when disabling
+        """
+        self.canvas.itemconfigure(self.outline1, fill="#cccccc")
+
+    def _canvas_on_enable(self):
+        """
+        Properly set the color surrounding border around the canvas widget when enabling
+        """
+        self.canvas.itemconfigure(self.outline1, fill="#7a7a7a")
+
+
+    
+    def _entry_on_enter(self, event):
+        """
+        If we enter the entry widget, make sure to also tell the canvas widget to update
+        its border colors to black
+        """
+        self.entry._on_enter(event)
+        if self.focus_get() != self.entry and self.canvas.cget("state") == "normal":
+            self.canvas.itemconfig(self.outline1, fill="#000000")
+
+    def _entry_on_leave(self, event):
+        """
+        If we enter the entry widget, make sure to also tell the canvas widet to reset
+        its border colors back to grey
+        """
+        self.entry._on_leave(event)
+        if self.focus_get() != self.entry and self.canvas.cget("state") == "normal":
+            self.canvas.itemconfigure(self.outline1, fill="#7a7a7a")
+    
+    def _entry_on_focusin(self, event):
+        """
+        If we focus on (by clicking on) the entry widget, make sure to tell the canvas to
+        update its border colors to blue
+        """
+        self.canvas.itemconfigure(self.outline1, fill="#0078d7")
+    
+    def _entry_on_focusout(self, event):
+        """
+        If we lose focus on the entry widget, make sure to tell the canvas and entry widgets to
+        reset their border colors to grey (or blue in the case we defocus the entry to enter the canvas)
+        """
+        self._canvas_on_leave(event)
+    
+    def _configure_canvas(self, event):
+        """
+        Make sure the canvas "button" actually goes where we want it to. Rescale the canvas to fit the correct xpos and height
+        """
+        if self.canvas.winfo_height() != self.entry.winfo_height():
+            self.canvas.config(height=self.entry.winfo_height())
+            self.canvas.coords(self.canvas_image, 8, self.entry.winfo_height()/2)
+            self.canvas.coords(self.outline1, 0, 0, 16, 0, 16, self.entry.winfo_height()-1, -1, self.entry.winfo_height()-1)
+            self.canvas.coords(self.outline2, 0, 1, 0, self.entry.winfo_height()-1)
+        if self.canvas.winfo_x() != self.entry.winfo_width()-1:
+            self.canvas.place_forget()
+            self.canvas.place(in_=self.entry, x=self.entry.winfo_width()-1, relheight=1, width=17, bordermode="outside")
+
+
+
+    def _canvas_on_click(self, event):
+        """
+        Create the listbox drop down menu when clicking on the canvas
+        """
+        if self.canvas.cget("state") == "normal":
+            if self.listbox_frame.winfo_ismapped():
+                self.listbox_frame.place_forget()
+            else:
+                self.listbox_frame.lift()
+                self.listbox_frame.place(in_=self, x=0, rely=1, relwidth=1, bordermode="outside")
+    
+    def _canvas_on_enter(self, event):
+        """
+        If we enter the canvas widget, update the border colors to blue
+        and background to (light baby blue? I'm not sure what to call this color)
+        """
+        if self.canvas.cget("state") == "normal":
+            self.entry._on_enter(event)
+            self.canvas.config(bg="#E5F1FB")
+            self.canvas.itemconfigure(self.outline1, fill="#0078D7")
+            self.canvas.itemconfigure(self.outline2, fill="#0078D7")
+    
+    def _canvas_on_leave(self, event):
+        """
+        If we leave the canvas widget, update the border colors to blue or grey
+        and background to white. If we leave towards the entry widget, the grey color
+        gets immediately overwritten by the call to _entry_on_enter() and turns black
+        """
+        if self.canvas.cget("state") == "normal":
+            self.entry._on_leave(event)
+            self.canvas.config(bg="#ffffff")
+            if self.focus_get() != self.entry:
+                self.canvas.itemconfigure(self.outline1, fill="#7a7a7a")
+                self.canvas.itemconfigure(self.outline2, fill="#ffffff")
+            else:
+                self.canvas.itemconfigure(self.outline1, fill="#0078D7")
+                self.canvas.itemconfigure(self.outline2, fill="#ffffff")
+    
+
+    
+    def _listbox_on_click(self, event: tk.Event):
+        """
+        When clicking on a listbox item, close out of the listbox and write that
+        item to the entry widget
+        """
+        entry_index = self.listbox.nearest(event.y)
+        self.listbox.selection_set(entry_index)
+        self.entry.delete(0, "end")
+        self.entry.insert(0, str(self.listbox.selection_get()))
+        self.listbox_frame.place_forget()
+
+    def _listbox_on_mouse_motion(self, event: tk.Event):
+        """
+        "Highlights" the listbox entry closest to the mouse. Under the hood its
+        actually selecting the item to get the effect.
+        """
+        entry_index = self.listbox.nearest(event.y)
+        if entry_index != self.sel_index:
+            try:
+                self.listbox.selection_clear(self.sel_index)
+            except IndexError:
+                pass
+            self.sel_index = entry_index
+            self.listbox.selection_set(entry_index)

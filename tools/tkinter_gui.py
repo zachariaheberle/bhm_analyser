@@ -19,6 +19,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import json
 import numpy as np
+import sys
 
 
 def gui():
@@ -278,7 +279,10 @@ def gui():
 
     # Root Window Properties
     root = tk.Tk()
-    root.geometry("700x665")
+    if sys.platform == "linux":
+        root.geometry("700x685") # Linux is funny and needs a bit more space to display everything without crushing some widgets
+    else:
+        root.geometry("700x665")
     root.resizable(True, True)
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
@@ -326,15 +330,53 @@ def gui():
     # print(root.winfo_screenheight())
     # print(root.winfo_fpixels('1i'))
 
-    #@@@@@@@@@@@@@@@@@ FONT SETUP @@@@@@@@@@@@@@@@@@@@@
+    #@@@@@@@@@@@@@@@@@ STYLE SETUP @@@@@@@@@@@@@@@@@@@@@
+
+    s = ttk.Style()
+    if sys.platform == "win32":
+        s.theme_use("vista")
+    elif sys.platform == "linux":
+        s.theme_use("alt")
 
     # Font Stuff
     default_font = commonVars.default_font = ("Segoe UI", 12)
     label_font = commonVars.label_font = ("Segoe UI", 15)
-    s = ttk.Style()
-    s.configure(".", font=default_font) # Applies default font to all widgets, can be manually changed for an individual widget later
+
+    s.configure(".", font=default_font) # Applies default font to all widgets, can be manually changed for an individual widget later 
     root.option_add('*TCombobox*Listbox.font', default_font) # combobox is dumb, this line is necessary to make drop down list have font applied
     s.configure("Treeview.Heading", font=default_font) # Treeview is also dumb, I don't understand why these things are necessary
+
+    # Set default background colors (Mainly for linux)
+    s.configure(".", background="#f0f0f0") # Sets default background for most widgets
+    s.map(".", background=[("disabled", "#f0f0f0")], foreground=[("disabled", "#6d6d6d")])
+    root.configure(bg="#f0f0f0") # Set root background color
+
+    # Labelframe colors
+    s.configure("TLabelframe", bordercolor="#d9d9d9", relief="solid", borderwidth=1)
+
+    # Notebook colors
+    s.configure("TNotebook", bordercolor="#d9d9d9", relief="solid", borderwidth=1)
+    s.configure("TNotebook.Tab", background="#e0e0e0", bordercolor="#d9d9d9")
+    s.map("TNotebook.Tab", background=[("selected", "#ffffff"), ("active", "#d8eAf9")])
+
+    # Button colors
+    s.configure("TButton", background="#E1E1E1", bordercolor="#ADADAD", relief="solid", borderwidth=1)
+    s.map("TButton", background=[("active", "#E5F1FB"), ("disabled", "#CCCCCC")], bordercolor=[("active", "#0078D7"), ("disabled", "#BFBFBF")], 
+          relief=[("active", "solid")], foreground=[("disabled", "#6d6d6d")])
+
+    # Label colors
+    s.configure("TLabel", borderwidth=1, bordercolor="#A0A0A0")
+
+    # Treeview colors
+    s.configure("Heading", background="#ffffff")
+    s.map("Heading", background=[("active", "#ffffff")])
+    s.configure("Treeview", background="#ffffff")
+    s.map("Treeview", background=[("disabled", "#f0f0f0")])
+
+    # Entry colors
+    s.configure("TEntry", borderwidth=1, bordercolor="#7a7a7a", relief="solid")
+    s.map("TEntry", bordercolor=[("active", "#0078d7"), ("disabled", "#cccccc")])
+
 
     #@@@@@@@@@@@@@@@@ MAIN WINDOW FRAME CREATION @@@@@@@@@@@@@@@@@@@
 
@@ -390,7 +432,7 @@ def gui():
     data_folder.set("<<No Data Selected>>")
     loaded_data_folder = StringVar() # Keeps track of currently loaded folder, used in do_analysis for folder naming
     loaded_data_folder.set("")
-    data_selection_box = ttk.Combobox(DataSelectionLabel, textvariable=data_folder, font=default_font, values=data_folders_names, height=5)
+    data_selection_box = Combobox(DataSelectionLabel, textvariable=data_folder, font=default_font, values=data_folders_names, height=5)
 
     data_load_button = ttk.Button(DataSelection, text="Load Data", command=load_data)
 
@@ -405,7 +447,7 @@ def gui():
 
     
     # Placing Items in Data Selection Frame
-    data_selection_box.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+    data_selection_box.grid(row=0, column=0, ipadx=6, ipady=6, padx=5, pady=5, sticky=EW)
     data_load_button.grid(row=1, column=0, ipadx=5, ipady=5, padx=10, pady=5, sticky=EW)
     data_status.grid(row=2, column=0, ipadx=5, ipady=5, padx=10, pady=5, sticky=EW)
 
@@ -461,7 +503,7 @@ def gui():
     IndividualRun = ttk.Frame(RunSelectionBox)#, bg="#00FFFF")
     individual_run_var = StringVar()
     individual_run_var.set("Please select a run")
-    individual_run_display_box = ttk.Combobox(IndividualRun, textvariable=individual_run_var, font=default_font, values=loaded_runs, height=4)
+    individual_run_display_box = Combobox(IndividualRun, textvariable=individual_run_var, font=default_font, values=loaded_runs, height=4)
 
     # display for picking a custom set of runs
     CustomRun = ttk.Frame(RunSelectionBox)#, bg="#0000FF")
@@ -539,7 +581,7 @@ def gui():
     # Folder Selection
     FolderLabel = ttk.LabelFrame(MainPage, text="Figure Folder Name")
     folder_name_var = StringVar()
-    folder_name = ttk.Entry(FolderLabel, textvariable=folder_name_var, font=default_font)
+    folder_name = ValidatedEntry(FolderLabel, textvariable=folder_name_var, font=default_font)
     folder_name.bind("<Return>", lambda event : do_analysis()) # Bind pressing enter to start analysis
 
     # Placing items in Folder selection frame
@@ -547,7 +589,7 @@ def gui():
     FolderLabel.grid_columnconfigure(0, weight=1)
     FolderLabel.grid_rowconfigure(0, weight=1)
     
-    folder_name.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky=EW)
+    folder_name.grid(row=0, column=0, ipadx=6, ipady=6, padx=5, pady=5, sticky=EW)
 
     disable_widget(RunSelection)
     disable_widget(FolderLabel)
