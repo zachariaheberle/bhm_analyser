@@ -64,12 +64,14 @@ def find_data():
         if os.stat(file).st_size != 0: # exclude directories that contain only zero length files
             data_folders.append(os.path.split(file)[0])
     data_folders = np.unique(np.asarray(data_folders))
-    data_folders = data_folders[data_folders != "./data"]
+
+    if data_folders.size == 0:
+        raise FileNotFoundError
+    else:
+        data_folders = data_folders[data_folders != "./data"] 
+
     data_folders_names = [find_folder_name(folder) for folder in data_folders]
     data_folders_dict = {find_folder_name(folder) : folder for folder in data_folders}
-
-    if len(data_folders) == 0:
-        raise FileNotFoundError
     
     return data_folders, data_folders_names, data_folders_dict
 
