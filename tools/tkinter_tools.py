@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+import matplotlib.dates as dates
 import numpy as np
 import pandas as pd
 from threading import Thread
@@ -594,6 +595,10 @@ class LegoToolbar(PlotToolbar):
 
         h, xbins, ybins = np.histogram2d(xdata,ydata, bins=(np.arange(-0.5,50,1),np.arange(0,180,1)))
         plotting.plot_lego_gui(uHTR.uHTR, xbins, ybins, h)
+    
+    @staticmethod
+    def _mouse_event_to_message(event): # Ignore lego plot axes, since these are typically nonsensical/unintuitive coordinates
+        return None
 
 
 class ADCToolbar(PlotToolbar):
@@ -621,6 +626,15 @@ class ADCToolbar(PlotToolbar):
                 continue
 
             plotting.plot_adc_gui(ch, x, binx, binx_tick, uHTR.adc_plt_tdc_width)
+    
+    @staticmethod
+    def _mouse_event_to_message(event):
+        """
+        Override method for formatting the x/y position of the mouse within subplots in gui to make sense for our use case.
+        """
+        if event.inaxes and event.inaxes.get_navigate():
+            s = f"ADC Bin: {round(event.xdata)}, Event: {round(event.ydata)}"
+            return s
 
 
 class TDCToolbar(PlotToolbar):
@@ -646,11 +660,20 @@ class TDCToolbar(PlotToolbar):
                 continue
 
             plotting.plot_tdc_gui(ch, x, peak, delay)
+    
+    @staticmethod
+    def _mouse_event_to_message(event):
+        if event.inaxes and event.inaxes.get_navigate():
+            s = f"TDC Bin: {round(event.xdata)}, Event: {round(event.ydata)}"
+            return s
 
 
 class TDCStabilityToolbar(PlotToolbar):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, ch_sel=False, region_sel=False, **kwargs)
+
+        self.ch_map = {i : key for i, key in enumerate({**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()}.keys())}
+        self.ch_map.update({-1 : "None", 40 : "None"}) # If outside channels bounds, set channel = None
     
     def draw_plot(self, uHTR, theCut):
 
@@ -702,6 +725,25 @@ class TDCStabilityToolbar(PlotToolbar):
                 _sig = t_df.tdc.std()
 
         plotting.plot_tdc_stability_gui(uHTR.uHTR, t_df, _mode, _mode_val, _std_dev, _sig)
+    
+    def _mouse_event_to_message(self, event):
+        if event.inaxes and event.inaxes.get_navigate():
+            plot_side = round(event.inaxes.get_position().get_points()[0][0]) # 0 = PN/PF, 1 = MN/MF
+            ch_index = round(event.xdata) + 20*plot_side
+
+            if not plot_side: # Ensure that our algorithm doesn't break if we're slightly outside the normal bounds
+                if ch_index < 0:
+                    ch_index = -1
+                elif ch_index > 19:
+                    ch_index = 19
+            else:
+                if ch_index < 20:
+                    ch_index = 20
+                elif ch_index > 39:
+                    ch_index = 40
+
+            s = f"Channel: {self.ch_map[ch_index]}, TDC: {round(event.ydata)}"
+            return s
 
 
 class OccupancyToolbar(PlotToolbar):
@@ -720,6 +762,12 @@ class OccupancyToolbar(PlotToolbar):
             return
 
         plotting.plot_occupancy_gui(uHTR.uHTR, BR_bx, SR_bx)
+    
+    @staticmethod
+    def _mouse_event_to_message(event):
+        if event.inaxes and event.inaxes.get_navigate():
+            s = f"BX: {round(event.xdata)}, Event: {round(event.ydata)}"
+            return s
 
 
 class RateToolbar(PlotToolbar):
@@ -905,11 +953,20 @@ class RateToolbar(PlotToolbar):
         plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, plot_regions=region_names, start_time=commonVars.start_time_utc_ms, 
                             lumi_bins=commonVars.lumi_bins, delivered_lumi=commonVars.delivered_lumi, beam_status=commonVars.beam_status,
                             theCuts=theCuts, save_fig=False)
+    
+    @staticmethod
+    def _mouse_event_to_message(event):
+        if event.inaxes and event.inaxes.get_navigate():
+            s = f"Time: {dates.num2date(event.xdata).strftime('%Y/%m/%d - %H:%M:%S')}, Event: {round(event.ydata)}"
+            return s
         
 
 class ChannelEventsToolbar(PlotToolbar):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, ch_sel=False, **kwargs)
+
+        self.ch_map = {i : key for i, key in enumerate({**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()}.keys())}
+        self.ch_map.update({-1 : "None", 40 : "None"}) # If outside channels bounds, set channel = None
     
     def draw_plot(self, uHTR, theCut):
         
@@ -934,6 +991,25 @@ class ChannelEventsToolbar(PlotToolbar):
             return
 
         plotting.plot_channel_events_gui(uHTR.uHTR, channels, SR_events, BR_events)
+    
+    def _mouse_event_to_message(self, event):
+        if event.inaxes and event.inaxes.get_navigate():
+            plot_side = round(event.inaxes.get_position().get_points()[0][0]) # 0 = PN/PF, 1 = MN/MF
+            ch_index = round(event.xdata) + 20*plot_side
+
+            if not plot_side: # Ensure that our algorithm doesn't break if we're slightly outside the normal bounds
+                if ch_index < 0:
+                    ch_index = -1
+                elif ch_index > 19:
+                    ch_index = 19
+            else:
+                if ch_index < 20:
+                    ch_index = 20
+                elif ch_index > 39:
+                    ch_index = 40
+
+            s = f"Channel: {self.ch_map[ch_index]}, Event: {round(event.ydata)}"
+            return s
 
 
 class DateEntry(ttk.LabelFrame):
@@ -1110,6 +1186,25 @@ class DateEntry(ttk.LabelFrame):
             raise AssertionError
         
         return self.utc_time
+    
+    def _mouse_event_to_message(self, event):
+        if event.inaxes and event.inaxes.get_navigate():
+            plot_side = round(event.inaxes.get_position().get_points()[0][0]) # 0 = PN/PF, 1 = MN/MF
+            ch_index = round(event.xdata) + 20*plot_side
+
+            if not plot_side: # Ensure that our algorithm doesn't break if we're slightly outside the normal bounds
+                if ch_index < 0:
+                    ch_index = -1
+                elif ch_index > 19:
+                    ch_index = 19
+            else:
+                if ch_index < 20:
+                    ch_index = 20
+                elif ch_index > 39:
+                    ch_index = 40
+
+            s = f"Channel: {self.ch_map[ch_index]}, TDC: {round(event.ydata)}"
+            return s
 
 class ChannelSelection(ttk.LabelFrame):
     """
