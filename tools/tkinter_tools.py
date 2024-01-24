@@ -819,6 +819,24 @@ class RateToolbar(PlotToolbar):
         self.draw_button = ttk.Button(self.frame, text="Redraw Plots", command=lambda : Thread(target=self._redraw, daemon=True).start())
         self.draw_button.pack(side="bottom", fill="x", expand=True, ipadx=5, ipady=5, padx=5, pady=5)
     
+    def toggle_settings(self):
+        """
+        Toggles the view of the settings frame. If the frame already exists, hide it, else bring up the frame.
+        """
+        if not self.frame.winfo_ismapped():
+            self.frame.place(x=5, rely=(self.master.winfo_height()-self.winfo_height()-5)/self.master.winfo_height(),
+                                anchor="sw")
+            height_diff1 = self.region_select1.winfo_height() - self.channel_select1.winfo_height()
+            height_diff2 = self.region_select2.winfo_height() - self.channel_select2.winfo_height()
+            if height_diff1:
+                new_height1 = int(self.channel_select1.frame.canvas.cget("height")) + height_diff1
+                self.channel_select1.frame.canvas.config(height=new_height1)
+            if height_diff2:
+                new_height2 = int(self.channel_select2.frame.canvas.cget("height")) + height_diff2
+                self.channel_select2.frame.canvas.config(height=new_height2)
+        else:
+            self.frame.place_forget()
+    
     def _validate(self):
         """
         Set variables to be used for data cutting. Each of these getters have their own internal way
