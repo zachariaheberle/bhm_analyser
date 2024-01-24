@@ -914,13 +914,13 @@ class RateToolbar(PlotToolbar):
         PlotToolbar._set_loading_state with modifications for the rate plots specifically
         """
         if state == True:
-            enable_widget(self.frame)
+            disable_widget(self.frame)
             self.loading_text = ttk.Label(self.frame, text="Redrawing plots...", font=commonVars.label_font) # Plop some loading text on our frame
             self.loading_text.place(relx=0.5, y=self.frame.winfo_height()/2 - self.draw_button.winfo_height() + 16, anchor="center")
 
         elif state == False:
             self.loading_text.destroy() # Remove loading text
-            disable_widget(self.frame)
+            enable_widget(self.frame)
             self.region_select1._update_region_display() # Update our region displays so we disable the correct sub-widgets
             self.region_select2._update_region_display()
     
