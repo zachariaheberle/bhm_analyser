@@ -430,7 +430,7 @@ class bhm_analyser():
             total_counts = sum(adc_vals[min_index:max_index])
 
             while area_ratio < .68 and total_counts != 0: # Use ~1 sigma bounds as the adc cut
-                if left_bound > min_index + 1:
+                if left_bound >= min_index:
                     left_bound -= 1
                 if right_bound < max_index:
                     right_bound += 1
