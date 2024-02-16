@@ -7,6 +7,9 @@ from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 
+if not hasattr(Image, 'Resampling'): # Make sure various versions of pillow work
+    Image.Resampling = Image
+
 import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
