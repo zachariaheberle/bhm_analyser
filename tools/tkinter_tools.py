@@ -25,13 +25,15 @@ import tools.calibration as calib
 import tools.plotting as plotting
 import tools.analysis_helpers as analysis_helpers
 
+from typing import Union
+
 def raise_frame(frame):
     """
     Raises a frame to be visible from hidden
     """
     frame.tkraise()
     
-def disable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
+def disable_widget(widget: Union[tk.Widget, ttk.Widget], only_children=False):
     """
     Disables the widget and all child widgets, can specify only disabling child widgets instead of parent + children
     """
@@ -44,7 +46,7 @@ def disable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
     for child in widget.winfo_children():
         disable_widget(child)
 
-def enable_widget(widget: tk.Widget | ttk.Widget, only_children=False):
+def enable_widget(widget: Union[tk.Widget, ttk.Widget], only_children=False):
     """
     Disables the widget and all child widgets, can specify only disabling child widgets instead of parent + children
     """
