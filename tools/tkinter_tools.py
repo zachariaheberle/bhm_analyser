@@ -1243,14 +1243,18 @@ class ChannelSelection(ttk.LabelFrame):
 
         self.channels = {**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()} # Get CMAPs for both uHTR4 and uHTR11
 
-        # self.button_frame = tk.Frame(self, bg="#ff00ff")
-        # self.button_frame.pack(fill="x", expand=True)
+        self.button_frame = ttk.Frame(self)
+        self.button_frame.pack(fill="both", expand=True)
 
-        self.select_button = ttk.Button(self, text="Select all", command=self.select_all)
-        self.deselect_button = ttk.Button(self, text="Deselect all", command=self.deselect_all)
+        self.select_button = ttk.Button(self.button_frame, text="Select all", command=self.select_all)
+        self.deselect_button = ttk.Button(self.button_frame, text="Deselect all", command=self.deselect_all)
+        self.select_plusZ_button = ttk.Button(self.button_frame, text="Select +Z", command=self.select_plusZ)
+        self.select_minusZ_button = ttk.Button(self.button_frame, text="Select -Z", command=self.select_minusZ)
         
-        self.select_button.pack(fill="x", expand=True, padx=5)
-        self.deselect_button.pack(fill="x", expand=True, padx=5)
+        self.select_button.grid(column=0, row=0, sticky="nsew", padx=5)
+        self.deselect_button.grid(column=0, row=1, sticky="nsew", padx=5)
+        self.select_plusZ_button.grid(column=1, row=0, sticky="nsew", padx=5)
+        self.select_minusZ_button.grid(column=1, row=1, sticky="nsew", padx=5)
 
         for i, ch_name in enumerate(self.channels):
             row = i % 20
@@ -1268,6 +1272,20 @@ class ChannelSelection(ttk.LabelFrame):
     def select_all(self):
         for check_button, check_var in self.checkbutton_info.values():
             check_var.set(True)
+    
+    def select_plusZ(self):
+        for ch_name in self.checkbutton_info.keys():
+            if "P" in ch_name:
+                self.checkbutton_info[ch_name][1].set(True)
+            else:
+                self.checkbutton_info[ch_name][1].set(False)
+    
+    def select_minusZ(self):
+        for ch_name in self.checkbutton_info.keys():
+            if "M" in ch_name:
+                self.checkbutton_info[ch_name][1].set(True)
+            else:
+                self.checkbutton_info[ch_name][1].set(False)
     
     def get_selected_channels(self):
         """
