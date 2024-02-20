@@ -16,6 +16,8 @@ from datetime import datetime
 from tkinter import messagebox
 import os
 
+DATA_FOLDER = "./data"
+
 """
 Various helper functions needed for both no gui and gui analysis files. These
 functions are placed in here to prevent redundancy
@@ -45,7 +47,7 @@ def find_folder_name(file_path):
     """
     Seperates out the final folder name from its entire file path name
     """
-    return file_path.split("./data")[-1][1:]
+    return file_path.split(f"{DATA_FOLDER}")[-1][1:]
 
 def find_unique_runs(uHTR4, uHTR11):
     """
@@ -58,7 +60,7 @@ def find_data():
     """
     Uses glob to find all folders present in ./data/ subdirectory of the script 
     """
-    data_files = glob("./data/**/*.txt", recursive=True) + glob("./data/**/*.uhtr", recursive=True)
+    data_files = glob(f"{DATA_FOLDER}/**/*.txt", recursive=True) + glob(f"{DATA_FOLDER}/**/*.uhtr", recursive=True)
     data_folders = []
     for file in data_files:
         if os.stat(file).st_size != 0: # exclude directories that contain only zero length files
@@ -68,7 +70,7 @@ def find_data():
     if data_folders.size == 0:
         raise FileNotFoundError
     else:
-        data_folders = data_folders[data_folders != "./data"] 
+        data_folders = data_folders[data_folders != DATA_FOLDER] 
 
     data_folders_names = [find_folder_name(folder) for folder in data_folders]
     data_folders_dict = {find_folder_name(folder) : folder for folder in data_folders}
@@ -273,7 +275,7 @@ def load_uHTR_data(data_folder_str):
                            " significantly faster and uses less disk space? (Note, this will not erase the original files)",
                            title="Data Conversion Check")
         if consent:
-            for file in glob(f"./data/{data_folder_str}/*.txt"):
+            for file in glob(f"{DATA_FOLDER}/{data_folder_str}/*.txt"):
                 parser.txt_to_bin(file)
 
     def load_from_file(uHTR, files, data_type=None):
@@ -353,11 +355,11 @@ def load_uHTR_data(data_folder_str):
     uHTR4 = create_empty_bhm("4")
     uHTR11 = create_empty_bhm("11")
 
-    uHTR4_files = glob(f"./data/{data_folder_str}/uHTR4*.txt") + glob(f"./data/{data_folder_str}/uHTR_4*.txt") + \
-                    glob(f"./data/{data_folder_str}/uHTR4*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_4*.uhtr")
+    uHTR4_files = glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR4*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_4*.txt") + \
+                    glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR4*.uhtr") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_4*.uhtr")
     
-    uHTR11_files = glob(f"./data/{data_folder_str}/uHTR11*.txt") + glob(f"./data/{data_folder_str}/uHTR_11*.txt") + \
-                    glob(f"./data/{data_folder_str}/uHTR11*.uhtr") + glob(f"./data/{data_folder_str}/uHTR_11*.uhtr")
+    uHTR11_files = glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR11*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_11*.txt") + \
+                    glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR11*.uhtr") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_11*.uhtr")
     
     if not any([".uhtr" in file for file in uHTR4_files + uHTR11_files]) and len(uHTR4_files + uHTR11_files) > 0:
         check_conversion_consent()
@@ -373,7 +375,7 @@ def load_uHTR_data(data_folder_str):
 
     else: # Check for different known file naming schemes
 
-        data_files =  glob(f"./data/{data_folder_str}/*.txt") + glob(f"./data/{data_folder_str}/*.uhtr")
+        data_files =  glob(f"{DATA_FOLDER}/{data_folder_str}/*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*.uhtr")
 
         if not any([".uhtr" in file for file in data_files]) and len(data_files) > 0:
             check_conversion_consent()
@@ -382,8 +384,8 @@ def load_uHTR_data(data_folder_str):
 
             commonVars.unknown_side = False
 
-            uHTR4_files = glob(f"./data/{data_folder_str}/*PLUS*.txt") + glob(f"./data/{data_folder_str}/*PLUS*.uhtr")
-            uHTR11_files = glob(f"./data/{data_folder_str}/*MINUS*.txt") + glob(f"./data/{data_folder_str}/*MINUS*.uhtr")
+            uHTR4_files = glob(f"{DATA_FOLDER}/{data_folder_str}/*PLUS*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*PLUS*.uhtr")
+            uHTR11_files = glob(f"{DATA_FOLDER}/{data_folder_str}/*MINUS*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*MINUS*.uhtr")
 
             if len(uHTR4_files) > 0:
                 uHTR4 = load_from_file(uHTR="4", files=uHTR4_files)
@@ -396,8 +398,8 @@ def load_uHTR_data(data_folder_str):
 
             commonVars.unknown_side = False
 
-            uHTR4_text_files = glob(f"./data/{data_folder_str}/*PF*.txt") + glob(f"./data/{data_folder_str}/*PN*.txt")
-            uHTR11_text_files = glob(f"./data/{data_folder_str}/*MF*.txt") + glob(f"./data/{data_folder_str}/*MN*.txt")
+            uHTR4_text_files = glob(f"{DATA_FOLDER}/{data_folder_str}/*PF*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*PN*.txt")
+            uHTR11_text_files = glob(f"{DATA_FOLDER}/{data_folder_str}/*MF*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*MN*.txt")
 
             if len(uHTR4_text_files) > 0:
                 uHTR4 = load_from_file(uHTR="4", data_type="text", files=uHTR4_text_files)
