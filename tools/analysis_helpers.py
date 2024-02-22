@@ -16,7 +16,7 @@ from datetime import datetime
 from tkinter import messagebox
 import os
 
-DATA_FOLDER = "./data"
+DATA_FOLDER = "/eos/cms/store/group/dpg_bril/comm_bril/bhm/self-trigger"
 
 """
 Various helper functions needed for both no gui and gui analysis files. These
