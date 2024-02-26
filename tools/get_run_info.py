@@ -66,14 +66,13 @@ def query_run(run: int = 375000):
     except URLError:
         cmd = f"ssh cmsusr \"curl -g -s {url}\""
         process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
-        run_info = pd.read_csv(StringIO(process.stdout)).squeeze()
-    
-    finally:
         if process.stderr != "" and "warning" not in process.stderr.lower():
             raise Exception(process.stderr)
-        start = run_info.start_time
-        end = run_info.end_time
-        return (int(pd.Timestamp(start).replace().timestamp()*1e3), int(pd.Timestamp(end).replace().timestamp()*1e3))
+        run_info = pd.read_csv(StringIO(process.stdout)).squeeze()
+    
+    start = run_info.start_time
+    end = run_info.end_time
+    return (int(pd.Timestamp(start).replace().timestamp()*1e3), int(pd.Timestamp(end).replace().timestamp()*1e3))
 
 
 def get_lumisections(runs: list = [375000]):
