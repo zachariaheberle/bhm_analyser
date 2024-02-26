@@ -7,6 +7,7 @@ import shlex
 import numpy as np
 from io import StringIO
 import subprocess
+import os
 # import requests
 # import json
 # import socket
@@ -66,69 +67,67 @@ def query_run(run: int = 375000):
     except URLError:
         cmd = f"ssh cmsusr \"curl -g -s {url}\""
         process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
-        run_info = pd.read_csv(StringIO(process.stdout)).squeeze()
-    
-    finally:
         if process.stderr != "" and "warning" not in process.stderr.lower():
             raise Exception(process.stderr)
-        start = run_info.start_time
-        end = run_info.end_time
-        return (int(pd.Timestamp(start).replace().timestamp()*1e3), int(pd.Timestamp(end).replace().timestamp()*1e3))
+        run_info = pd.read_csv(StringIO(process.stdout)).squeeze()
+    
+    start = run_info.start_time
+    end = run_info.end_time
+    return (int(pd.Timestamp(start).replace().timestamp()*1e3), int(pd.Timestamp(end).replace().timestamp()*1e3))
 
 
 def get_lumisections(runs: list = [375000]):
+    home_dir = os.getenv("HOME")
     try:
         # We run two seperate brilcalcs because we want the delivered lumi data with the normtag, but want the beamstatus from the data without a normtag
-        cmd = f"brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)} &&" +\
-            f"brilcalc lumi --byls --tssec --output-style csv --begin {min(runs)} --end {max(runs)}"
-        process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
+        cmd1 = f"{home_dir}/.local/bin/brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)}"
+        cmd2 = f"{home_dir}/.local/bin/brilcalc lumi --byls --tssec --output-style csv --begin {min(runs)} --end {max(runs)}"
+        process1 = subprocess.run(shlex.split(cmd1), text=True, capture_output=True)
+        process2 = subprocess.run(shlex.split(cmd2), text=True, capture_output=True)
+
+        stdout = process1.stdout + process2.stdout
+        stderr = process1.stderr + process2.stderr
 
     except (FileNotFoundError, OSError):
-        cmd = f"ssh lxplus7 \"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json --begin {min(runs)} --end {max(runs)} && " +\
-            f"~/.local/bin/brilcalc lumi --byls --tssec --output-style csv --begin {min(runs)} --end {max(runs)}\""
-        process = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
-            
+        raise OSError("Could not find brilcalc!")
 
-    finally:
-        if "Connection closed" in process.stderr:
-            raise ConnectionAbortedError(process.stderr)
-        elif process.stderr != "" and "warning" not in process.stderr.lower():
-            raise Exception(process.stderr)
-        norm_data, web_data, _ = process.stdout.split("#Summary:\n") # Split data from data collected with normtag and without normtag
+    if stderr != "" and "warning" not in stderr.lower():
+        raise Exception(stderr)
+    norm_data, web_data, _ = stdout.split("#Summary:\n") # Split data from data collected with normtag and without normtag
 
-        norm_lumi_info = pd.read_csv(StringIO(norm_data), 
-                                names=["run:fill", "ls", "time", "beamstatus", "energy", "delivered_lumi", "recorded_lumi", "avgpu", "source"],
-                                skiprows=2).squeeze()
-        norm_lumi_info["normtag"] = [True]*len(norm_lumi_info["ls"])
+    norm_lumi_info = pd.read_csv(StringIO(norm_data), 
+                            names=["run:fill", "ls", "time", "beamstatus", "energy", "delivered_lumi", "recorded_lumi", "avgpu", "source"],
+                            skiprows=2).squeeze()
+    norm_lumi_info["normtag"] = [True]*len(norm_lumi_info["ls"])
 
-        web_lumi_info = pd.read_csv(StringIO(web_data), 
-                                names=["run:fill", "ls", "time", "beamstatus", "energy", "delivered_lumi", "recorded_lumi", "avgpu", "source"],
-                                skiprows=4).squeeze()
-        web_lumi_info["normtag"] = [False]*len(web_lumi_info["ls"])
+    web_lumi_info = pd.read_csv(StringIO(web_data), 
+                            names=["run:fill", "ls", "time", "beamstatus", "energy", "delivered_lumi", "recorded_lumi", "avgpu", "source"],
+                            skiprows=4).squeeze()
+    web_lumi_info["normtag"] = [False]*len(web_lumi_info["ls"])
 
-        lumi_info = pd.concat((norm_lumi_info, web_lumi_info)).drop_duplicates(subset=["run:fill", "ls"], keep="first").reset_index(drop=True)
+    lumi_info = pd.concat((norm_lumi_info, web_lumi_info)).drop_duplicates(subset=["run:fill", "ls"], keep="first").reset_index(drop=True)
 
-        if not lumi_info.empty:
-            lumi_info[["run", "fill"]] = lumi_info["run:fill"].str.split(":", expand=True).astype(np.int32)
-            lumi_info = lumi_info.drop(columns=["run:fill"])
-        
-        for run in runs:
-            if run not in np.unique(lumi_info["run"].to_numpy()):
-                # Create empty entries for runs that don't exist in brilcalc, this signals in our cache that we have
-                # attempted to grab run info, but there is none
-                df = pd.DataFrame({ 
-                                   "ls" : [None],
-                                 "time" : [None],
-                           "beamstatus" : [None],
-                               "energy" : [None],
-                       "delivered_lumi" : [None],
-                        "recorded_lumi" : [None],
-                                "avgpu" : [None],
-                               "source" : [None],
-                              "normtag" : [None],
-                                  "run" : [run],
-                                 "fill" : [None],
-                       })
-                lumi_info = pd.concat((lumi_info, df))
+    if not lumi_info.empty:
+        lumi_info[["run", "fill"]] = lumi_info["run:fill"].str.split(":", expand=True).astype(np.int32)
+        lumi_info = lumi_info.drop(columns=["run:fill"])
+    
+    for run in runs:
+        if run not in np.unique(lumi_info["run"].to_numpy()):
+            # Create empty entries for runs that don't exist in brilcalc, this signals in our cache that we have
+            # attempted to grab run info, but there is none
+            df = pd.DataFrame({ 
+                                "ls" : [None],
+                                "time" : [None],
+                        "beamstatus" : [None],
+                            "energy" : [None],
+                    "delivered_lumi" : [None],
+                    "recorded_lumi" : [None],
+                            "avgpu" : [None],
+                            "source" : [None],
+                            "normtag" : [None],
+                                "run" : [run],
+                                "fill" : [None],
+                    })
+            lumi_info = pd.concat((lumi_info, df))
 
-        return lumi_info
+    return lumi_info
