@@ -440,7 +440,7 @@ def gui():
     if len(data_folders_names) >= 1: # empty checks
         data_status_message.set("No data loaded")
     else:
-        data_status_message.set("No data folders located, please ensure to place data in a subdirectory of this script labeled 'data'.")
+        data_status_message.set("No data folders located, please ensure that this program is running on LXPLUS.")
         data_load_button.state(["disabled"])
     
     data_status = ttk.Label(DataSelection, textvariable=data_status_message, background="#FFFFFF", relief="solid")

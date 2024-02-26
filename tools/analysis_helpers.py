@@ -198,8 +198,8 @@ def get_run_info(run_cut):
                 raise FileNotFoundError
             
             elif not all([run in lumi_info["run"].to_numpy() for run in runs]):
-                user_consent = askyesno("In order to compare BHM event rate data to CMS Luminosity, a valid LXPLUS account is required."+\
-                                        " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
+                user_consent = askyesno("In order to compare BHM event rate data to CMS Luminosity, brilcalc is required to be installed locally on this LXPLUS account."+\
+                                        " Are you OK with obtaining this info?",
                                         title="Information Notice")
                 if not user_consent:
                     return None, None, None
@@ -209,8 +209,8 @@ def get_run_info(run_cut):
                 write_to_cache = False
 
         except (FileNotFoundError, OSError):
-            user_consent = askyesno("In order to compare BHM event rate data to CMS Luminosity, a valid LXPLUS account is required."+\
-                                        " You can enter your credentials in the terminal used to launch this program, are you OK with this?",
+            user_consent = askyesno("In order to compare BHM event rate data to CMS Luminosity, brilcalc is required to be installed locally on this LXPLUS account."+\
+                                        " Are you OK with obtaining this info?",
                                         title="Information Notice")
             if not user_consent:
                 return None, None, None
