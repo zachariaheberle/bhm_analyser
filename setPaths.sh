@@ -2,8 +2,5 @@
 
 BHM_ENV=$1
 
-export PYTHONPATH=$BHM_ENV:$PYTHONPATH
+source ${BHM_ENV}/bin/activate
 export PATH=$HOME/.local/bin:$PATH
-
-echo $PYTHONPATH
-echo $PATH
