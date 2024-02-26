@@ -30,11 +30,7 @@ This program will additionally require a few other things to run, these include:
 
 
 ## Procedure
-Run final_analysis.py with the required modules listed below. Note, if you run in a conda environment, text may not render properly. By default, the program will look for uHTR data folders in a subdirectory of the script titled "data". Make sure to create and place any data there for the program to work.
-
-This framework requires the best estimate for the ADC, TDC cuts.  If the plots look incorrect, revisit the ADC & TDC cuts that are set. The TDC estimate needs to be within +/- 2.5ns of the peak
-- Timing of the Beam Halo Events could change for various reasons
-- If HV bias for the PMTs were optimized, one needs to rederive the ADC Thresholds
+Run final_analysis.py with the required modules listed above. Note, if you run in a conda environment, text may not render properly. By default, the program will look for uHTR data folders in a subdirectory of the script titled "data". Make sure to create and place any data there for the program to work.
 
 ### SSH Setup
 When the program attempts to grab information about a particular run, it will try to grab info from the OMS API. If it fails to connect from your local machine, the program will ssh (from terminal) into your CMS User account instead and contact the API from there. To ensure this works, you must have your ssh config setup with 'cmsusr' as the hostname for your cmsusr account. You can do this by pasting the following into your ssh config file and replacing 'username' with your own username:
@@ -47,14 +43,17 @@ Host cmsusr
 You may or may not need a proxy command to connect to connect to cmsusr. If so, you can use an ssh connection to lxplus as a proxy by uncommenting the ProxyCommand line and filling in your username.
 
 ### brilcalc Setup
-In order to grab lumisection data from CMS, we use the brilcalc tool on LXPLUS. In order to use this, you must have brilcalc setup on your LXPLUS user account. To set up brilcalc using brilconda, please see the Twiki quickstart guide here: https://twiki.cern.ch/twiki/bin/viewauth/CMS/BrilcalcQuickStart
+In order to grab lumisection data from CMS, we use the brilcalc tool on LXPLUS. In order to use this, you must have brilcalc set up on your LXPLUS user account. To set up brilcalc, simply enter this command on LXPLUS:
+```bash
+/cvmfs/cms-bril.cern.ch/brilconda310/bin/python3 -m pip install --user --upgrade brilws
+```
+This should install brilcalc in ~/.local/bin/brilcalc. 
 
 ---
 ## Status
-This project is in its intial stage. If you find bugs, please reach out to rohithsaradhy@gmail.com, zachariah.eberle@gmail.com, or raise an issue.
+This project is in its intial stage. If you find bugs, please reach out to zachariah.eberle@gmail.com or raise an issue.
 
 ### To-Do
 - Run level plots
-- Automate derivation of ADC Peak without best estimate
 - Automate TDC Window [TDC Peaks are automatically derived]
 ---
