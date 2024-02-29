@@ -817,6 +817,14 @@ class RateToolbar(PlotToolbar):
         self.region_select1 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
         self.region_select2 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Lower Plot)")
 
+        # Changing default region selection (SR for top plot, CP for bottom)
+        self.region_select1.checkbutton_info["Collision Products"][1].set(0)
+        self.region_select1.checkbutton_info["Activation Region"][1].set(0)
+
+        self.region_select2.checkbutton_info["Signal Region"][1].set(0)
+        self.region_select2.checkbutton_info["Activation Region"][1].set(0)
+
+
         self.region_select1.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
             
