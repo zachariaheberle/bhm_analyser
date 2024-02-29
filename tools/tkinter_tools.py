@@ -911,10 +911,10 @@ class RateToolbar(PlotToolbar):
                     region_name = "BR"
                 
                 elif SR and AR and not CP:
-                    region_name = "SR \& AR"
+                    region_name = "SR & AR"
                 
                 elif SR and CP and not AR:
-                    region_name = "SR \& CP"
+                    region_name = "SR & CP"
                 
                 elif not (SR and CP and AR): # Empty
                     theCut = "run == -1"
