@@ -889,7 +889,7 @@ class RateToolbar(PlotToolbar):
 
             if getattr(self, f"region_settings{plot_index}")["Custom Region"]:
                 if theCut is not None:
-                    theCut = f"{theCut} & {getattr(self, f'region_select{plot_index}').query_string}"
+                    theCut = f"{theCut} & ({getattr(self, f'region_select{plot_index}').query_string})"
                 else:
                     theCut = getattr(self, f'region_select{plot_index}').query_string
                 region_name = "df"
