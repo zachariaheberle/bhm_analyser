@@ -808,14 +808,14 @@ class RateToolbar(PlotToolbar):
         
         # Add channel cut selection
         self.channel_select1 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Upper Plot)")
-        self.channel_select2 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Upper Plot)")
+        self.channel_select2 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Lower Plot)")
 
         self.channel_select1.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.channel_select2.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         
         # Add region cut selection
         self.region_select1 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
-        self.region_select2 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
+        self.region_select2 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Lower Plot)")
 
         self.region_select1.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
