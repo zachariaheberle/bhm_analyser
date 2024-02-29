@@ -1244,7 +1244,7 @@ class ChannelSelection(ttk.LabelFrame):
         self.channels = {**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()} # Get CMAPs for both uHTR4 and uHTR11
 
         self.button_frame = ttk.Frame(self)
-        self.button_frame.pack(fill="both", expand=True)
+        self.button_frame.pack(fill="both", expand=True, pady=1)
 
         self.select_button = ttk.Button(self.button_frame, text="Select all", command=self.select_all)
         self.deselect_button = ttk.Button(self.button_frame, text="Deselect all", command=self.deselect_all)
