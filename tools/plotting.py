@@ -38,6 +38,9 @@ beam_status_color_map = {
     "SQUEEZE" : "#ffff00"
 }
 
+uHTR4_CMAP = hw_info.get_uHTR4_CMAP()
+uHTR11_CMAP = hw_info.get_uHTR11_CMAP()
+
 def tex_escape(text):
     """
     Converts a string input to a correctly escaped LaTeX output.
@@ -56,6 +59,7 @@ def tex_escape(text):
         '\\' : r'\textbackslash{}',
         '<' : r'\textless{}',
         '>' : r'\textgreater{}',
+        '|' : r'\textbar{}'
     }
     regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key=lambda item: - len(item))))
     return regex.sub(lambda match : conv[match.group()], text)
@@ -147,12 +151,12 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         ax.set_yscale('symlog')
         ax.set_ylim(0.1, max_rate*1.05)
         
-    def plot_bhm(ax: plt.Axes, x1, x2, y1, y2, max_rate, region):
+    def plot_bhm(ax: plt.Axes, x1, x2, y1, y2, max_rate, region_id):
 
         if x1 is not None:
-            ax.plot(x1, y1, color='r',label=f"+Z {region}")
+            l, = ax.plot(x1, y1, color='r',label=label_from_region_id(region_id, "+Z"))
         if x2 is not None:
-            ax.plot(x2, y2, color='k',label=f"-Z {region}")
+            l, = ax.plot(x2, y2, color='k',label=label_from_region_id(region_id, "-Z"))
         ax.set_xlabel("Time Approximate")
         ax.set_ylabel("BHM Event Rate")
         ax.set_ylim(0.1, max_rate*1.05)
@@ -160,9 +164,45 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         if start_time != 0:
             textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
-    
-    # x,y,_ = uHTR4.get_rate(uHTR4.BR)
-    # plt.plot(x[:N], y[:N],color='g',label="+Z BR")
+    def label_from_region_id(region_id, side):
+
+        def cut_if_long(string, max_len=15):
+            if len(string) > max_len:
+                return string[0:max_len-3] + "..."
+            return string
+        
+        num_chan = 0
+
+        substrings = region_id.split("|")
+        if len(substrings) == 1:
+            return tex_escape(f"{side} {cut_if_long(region_id)}")        
+
+        for substring in substrings:
+            try:
+                ch_name = substring.split("\'")[1]
+            except IndexError: # If we get an index error, we probably aren't parsing channels anymore
+                continue
+            if side == "+Z":
+                if ch_name in uHTR4_CMAP:
+                    num_chan += 1
+            elif side == "-Z":
+                if ch_name in uHTR11_CMAP:
+                    num_chan += 1
+
+        if num_chan == 20:
+            label = region_id.split('))')[-1]
+            if label[0:3] == " & ":
+                return tex_escape(f"{side} {cut_if_long(label[3:])}")
+            
+            elif label.strip() == "":
+                return tex_escape(f"{side} All Events")
+            
+            return tex_escape(f"{side} {cut_if_long(label)}")
+        
+        else:
+            return tex_escape(f"{side} {cut_if_long(region_id)}")
+
+
 
     if lumi_bins is not None:
         lumi_time = [dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins]
@@ -172,8 +212,8 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
     region_df_list = []
 
     for region in plot_regions:
-        if " \& " in region:
-            regions = region.split(" \& ")
+        if " & " in region:
+            regions = region.split(" & ")
             uHTR4_df = pd.concat((getattr(uHTR4, regions[0]), getattr(uHTR4, regions[1])))
             uHTR11_df = pd.concat((getattr(uHTR11, regions[0]), getattr(uHTR11, regions[1])))
             region_df_list.append((uHTR4_df, uHTR11_df))
@@ -196,14 +236,12 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         
         if region_name == "df":
             if theCuts[i] is None:
-                region_name = "All Events"
+                region_name = region_id = "All Events"
             else:
-                if len(theCuts[i].strip()) > 15:
-                    region_name = tex_escape(f"{theCuts[i].strip()[0:12]}...") # Add ... to text that exceeds 15 characters
-                else:
-                    region_name = tex_escape(theCuts[i].strip())
-
-
+                region_id = theCuts[i].strip()
+        else:
+            region_id = region_name
+        
         x1 = x2 = y1 = y2 = None # Placeholders to prevent UnboundLocalError
 
         if commonVars.root and region4.empty and region11.empty and lumi_bins is None:
@@ -213,7 +251,7 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                 ax = commonVars.rate_fig.add_subplot(2, 1, i+1) 
             xfmt = mdates.DateFormatter('%H:%M')
             ax.xaxis.set_major_formatter(xfmt)
-            plot_bhm(ax, None, None, None, None, 10, region_name)
+            plot_bhm(ax, None, None, None, None, 10, region_id)
             continue
 
         elif region4.empty and region11.empty and lumi_bins is None:
@@ -238,7 +276,7 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                 plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
 
         if save_fig:
-            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_name)
+            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_id)
 
             #if not region4.empty or not region11.empty:
             bhm_lines, bhm_labels = ax.get_legend_handles_labels()
@@ -277,7 +315,7 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                     lumi_ax = ax.twinx()
                 plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
 
-            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_name)
+            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_id)
 
             bhm_lines, bhm_labels = ax.get_legend_handles_labels()
             try:
@@ -457,7 +495,7 @@ def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
             except IndexError:
                 violin_ax = commonVars.tdc_stability_fig.add_subplot(223)
                 vanilla_ax = commonVars.tdc_stability_fig.add_subplot(221)
-            CMAP = hw_info.get_uHTR4_CMAP()
+            CMAP = uHTR4_CMAP
         elif uHTR == "11":
             try:
                 violin_ax = commonVars.tdc_stability_fig.axes[2]
@@ -465,7 +503,7 @@ def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
             except IndexError:
                 violin_ax = commonVars.tdc_stability_fig.add_subplot(224)
                 vanilla_ax = commonVars.tdc_stability_fig.add_subplot(222)
-            CMAP = hw_info.get_uHTR11_CMAP()
+            CMAP = uHTR11_CMAP
         
         channels = [ch for ch in CMAP.keys()]
 
@@ -528,13 +566,13 @@ def plot_channel_events_gui(uHTR, channels, SR_events, BR_events):
             ax = commonVars.ch_events_fig.axes[0]
         except IndexError:
             ax = commonVars.ch_events_fig.add_subplot(121)
-        CMAP = hw_info.get_uHTR4_CMAP()
+        CMAP = uHTR4_CMAP
     elif uHTR == "11":
         try:
             ax = commonVars.ch_events_fig.axes[1]
         except IndexError:
             ax = commonVars.ch_events_fig.add_subplot(122)
-        CMAP = hw_info.get_uHTR11_CMAP()
+        CMAP = uHTR11_CMAP
 
     if channels is None:
         
