@@ -190,7 +190,7 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                     num_chan += 1
 
         if num_chan == 20:
-            label = region_id.split('))')[-1]
+            label = region_id[region_id.find("\'))") + 3:]
             if label[0:3] == " & ":
                 return tex_escape(f"{side} {cut_if_long(label[3:])}")
             
