@@ -436,6 +436,8 @@ def analysis(uHTR4: bhm_analyser, uHTR11: bhm_analyser, figure_folder, run_cut=N
     """
     Performs the data analysis given the current run selection and other plotting options
     """
+    commonVars.bhm_bins = {}
+    
     if figure_folder is not None:
         commonVars.folder_name = (f"figures/{figure_folder}")
     else:

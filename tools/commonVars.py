@@ -22,3 +22,6 @@ start_time_utc_ms = 0
 
 # currently loaded runs in the gui
 loaded_runs = []
+
+# bins used for bhm analysis, used for rate plot calculations
+bhm_bins = {}

@@ -792,7 +792,8 @@ class RateToolbar(PlotToolbar):
                         (None, None, None, None),
                         ('Save', 'Save the figure', 'filesave', 'save_figure'),
                         (None, None, None, None),
-                        ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings")
+                        ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings"),
+                        ("Stats", "Counting Statistics", os.path.relpath("./img/buttons/stats", start=plt.__file__ + "/mpl_data"), "toggle_stats")
                         )
 
         super(PlotToolbar, self).__init__(canvas, window, pack_toolbar=pack_toolbar)
@@ -800,10 +801,11 @@ class RateToolbar(PlotToolbar):
         self.window = window #(from super init)
         self.canvas = canvas #(from super init)
 
-        self.frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Plot Settings frame
-        self.frame.lift()
+        # Frame for holding plot settings
+        self.settings_frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Plot Settings frame
+        self.settings_frame.lift()
 
-        self.scroll_frame = ScrollableFrame(self.frame, canvas_height=461)
+        self.scroll_frame = ScrollableFrame(self.settings_frame, canvas_height=461)
         self.scroll_frame.pack(side="top", fill="both", expand=True)
         
         # Add channel cut selection
@@ -829,15 +831,46 @@ class RateToolbar(PlotToolbar):
         self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
             
         # Plot redraw button
-        self.draw_button = ttk.Button(self.frame, text="Redraw Plots", command=lambda : Thread(target=self._redraw, daemon=True).start())
+        self.draw_button = ttk.Button(self.settings_frame, text="Redraw Plots", command=lambda : Thread(target=self._redraw, daemon=True).start())
         self.draw_button.pack(side="bottom", fill="x", expand=True, ipadx=5, ipady=5, padx=5, pady=5)
+
+        self.figure.canvas.mpl_connect("draw_event", self._on_draw) # trigger self._on_draw whenever the plot changes
+
+        # Frame for holding counting statistics
+        self.stats_frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Counting Stats Frame
+        self.stats_frame.grid_columnconfigure(0, uniform="stats_info")
+        self.stats_frame.grid_columnconfigure(1, uniform="stats_info")
+        self.stats_frame.lift()
+
+        # Labelframes for top/bottom plots
+        self.top_plot_labelframe = ttk.LabelFrame(self.stats_frame, text="Top Plot Counting Stats")
+        self.bottom_plot_labelframe = ttk.LabelFrame(self.stats_frame, text="Bottom Plot Counting Stats")
+
+        self.top_plot_labelframe.grid(row=0, column=0, padx=5, pady=5, ipadx=5, ipady=5, sticky="nsew")
+        self.bottom_plot_labelframe.grid(row=0, column=1, padx=5, pady=5, ipadx=5, ipady=5, sticky="nsew")
+
+        # Frames to hold all the counting statistics boxes
+        self.top_plot_counts_frame = ttk.Frame(self.top_plot_labelframe)
+        self.bottom_plot_counts_frame = ttk.Frame(self.bottom_plot_labelframe)
+
+        self.top_plot_counts_frame.pack(side="top", fill="both", expand=True, padx=1, pady=(11, 1))
+        self.bottom_plot_counts_frame.pack(side="top", fill="both", expand=True, padx=1, pady=(11, 1))
+
+        # These contain the actual counting stats data, are packed/unpacked contingent on whether counting data is present
+        self.top_plot_plusZ_stats_box = CountStatsBox(self.top_plot_counts_frame)
+        self.top_plot_minusZ_stats_box = CountStatsBox(self.top_plot_counts_frame)
+        self.bottom_plot_plusZ_stats_box = CountStatsBox(self.bottom_plot_counts_frame)
+        self.bottom_plot_minusZ_stats_box = CountStatsBox(self.bottom_plot_counts_frame)
     
     def toggle_settings(self):
         """
         Toggles the view of the settings frame. If the frame already exists, hide it, else bring up the frame.
+        If the stats frame exists, hide it first.
         """
-        if not self.frame.winfo_ismapped():
-            self.frame.place(x=5, rely=(self.master.winfo_height()-self.winfo_height()-5)/self.master.winfo_height(),
+        if not self.settings_frame.winfo_ismapped():
+            if self.stats_frame.winfo_ismapped():
+                self.stats_frame.place_forget()
+            self.settings_frame.place(x=5, rely=(self.master.winfo_height()-self.winfo_height()-5)/self.master.winfo_height(),
                                 anchor="sw")
             height_diff1 = self.region_select1.winfo_height() - self.channel_select1.winfo_height()
             height_diff2 = self.region_select2.winfo_height() - self.channel_select2.winfo_height()
@@ -848,7 +881,20 @@ class RateToolbar(PlotToolbar):
                 new_height2 = int(self.channel_select2.frame.canvas.cget("height")) + height_diff2
                 self.channel_select2.frame.canvas.config(height=new_height2)
         else:
-            self.frame.place_forget()
+            self.settings_frame.place_forget()
+    
+    def toggle_stats(self):
+        """
+        Toggles the view of the stats frame. If the frame already exists, hide it, else bring up the frame.
+        If the settings frame exists, hide it first.
+        """
+        if not self.stats_frame.winfo_ismapped():
+            if self.settings_frame.winfo_ismapped():
+                self.settings_frame.place_forget()
+            self.stats_frame.place(x=5, rely=(self.master.winfo_height()-self.winfo_height()-5)/self.master.winfo_height(),
+                                anchor="sw")
+        else:
+            self.stats_frame.place_forget()
     
     def _validate(self):
         """
@@ -941,17 +987,17 @@ class RateToolbar(PlotToolbar):
 
     def _set_loading_state(self, state):
         """
-        Method to set the state of the settings frame. This will disable/enable the entire frame and change a few colors and what not, mostly taken from
-        PlotToolbar._set_loading_state with modifications for the rate plots specifically
+        Method to set the state of the settings frame. This will disable/enable the entire settings frame and change a few colors and what not, 
+        mostly taken from PlotToolbar._set_loading_state with modifications for the rate plots specifically
         """
         if state == True:
-            disable_widget(self.frame)
-            self.loading_text = ttk.Label(self.frame, text="Redrawing plots...", font=commonVars.label_font) # Plop some loading text on our frame
-            self.loading_text.place(relx=0.5, y=self.frame.winfo_height()/2 - self.draw_button.winfo_height() + 16, anchor="center")
+            disable_widget(self.settings_frame)
+            self.loading_text = ttk.Label(self.settings_frame, text="Redrawing plots...", font=commonVars.label_font) # Plop some loading text on our frame
+            self.loading_text.place(relx=0.5, y=self.settings_frame.winfo_height()/2 - self.draw_button.winfo_height() + 16, anchor="center")
 
         elif state == False:
             self.loading_text.destroy() # Remove loading text
-            enable_widget(self.frame)
+            enable_widget(self.settings_frame)
             self.region_select1._update_region_display() # Update our region displays so we disable the correct sub-widgets
             self.region_select2._update_region_display()
     
@@ -990,7 +1036,56 @@ class RateToolbar(PlotToolbar):
         if event.inaxes and event.inaxes.get_navigate():
             s = f"Time: {dates.num2date(event.xdata).strftime('%Y/%m/%d - %H:%M:%S')}, Event: {round(event.ydata)}"
             return s
-        
+    
+    def _on_draw(self, event):
+        """
+        This event triggers every time we redraw the figure (this includes zooming and panning). It currently calculates
+        the total number of events that are drawn in the plots and calculates their average rate. 
+        """
+        self.top_plot_plusZ_stats_box.pack_forget()
+        self.top_plot_minusZ_stats_box.pack_forget()
+        self.bottom_plot_plusZ_stats_box.pack_forget()
+        self.bottom_plot_minusZ_stats_box.pack_forget()
+        plot_index = 0
+        for ax in self.figure.axes:
+            lines_and_labels = zip(*ax.get_legend_handles_labels())
+            xlim = ax.get_xlim()
+
+            for line, label in lines_and_labels:
+                if "+Z" in label or "-Z" in label:
+                    x = dates.date2num(line.get_xdata())
+                    timeCut = (x >= xlim[0]) & (x <= xlim[1])
+                    bin_lens = commonVars.bhm_bins[line.get_url()][timeCut] # length of each bin in the rate plots, used for calculating total elapsed time
+                                                                            # units in ms
+                    time_elapsed = sum(bin_lens) # milliseconds
+                    total_counts = sum(line.get_ydata()[timeCut])
+                    try:
+                        average_counts = total_counts / time_elapsed
+                    except ZeroDivisionError:
+                        average_counts = float("NaN")
+                    # label = plotting.inverse_tex_escape(label)
+
+                    # Pick which widget the put the data in based on which line and plot we're looking at
+                    if "+Z" in label and plot_index == 0:
+                        widget = self.top_plot_plusZ_stats_box
+
+                    elif "-Z" in label and plot_index == 0:
+                        widget = self.top_plot_minusZ_stats_box
+
+                    elif "+Z" in label and plot_index == 1:
+                        widget = self.bottom_plot_plusZ_stats_box
+
+                    elif "-Z" in label and plot_index == 1:
+                        widget = self.bottom_plot_minusZ_stats_box
+                    
+                    widget.set_counts_bins(total_counts, average_counts, len(bin_lens))
+                    widget.total_counts_title_str.set(f"{label[0:2]} Total Counts:") # label[0:2] should always be "+Z" or "-Z"
+                    widget.average_counts_title_str.set(f"{label[0:2]} Average Rate:")
+                    widget.pack(side="top", fill="x")
+
+            if "BHM Event Rate" in ax.get_ylabel() and plot_index == 0: # plot_index != the index in self.figure.axes, since CMS rate info is a seperate Axes object
+                plot_index += 1                                         # that occupies the same plot as the BHM Event Rate Axes
+
 
 class ChannelEventsToolbar(PlotToolbar):
     def __init__(self, *args, **kwargs):
@@ -1725,3 +1820,142 @@ class Combobox(tk.Frame):
                 pass
             self.sel_index = entry_index
             self.listbox.selection_set(entry_index)
+
+
+class CountStatsBox(ttk.Frame):
+    """
+    Object which holds the data for the counting statistics of an individual line in the rate plots
+    """
+    def __init__(self, master):
+
+        super().__init__(master)
+
+        # Set min column widths so the text all lines up properly
+        self.grid_columnconfigure(0, minsize=123, uniform="count_title")
+        self.grid_columnconfigure(1, minsize=90, uniform="count_stats")
+
+        # Set fonts and text justification in labels
+        self.style = ttk.Style(self)
+        self.style.configure("count.TLabel", justify="right", anchor="e", font=(*commonVars.default_font, "bold"))
+        self.style.configure("count_title.TLabel", justify="right", anchor="e")
+
+        self.total_counts_title_str = tk.StringVar()
+        self.average_counts_title_str = tk.StringVar()
+
+        # Titles for plots, usually just "+/-Z Total/Average Counts:""
+        self.total_counts_title = ttk.Label(self, textvariable=self.total_counts_title_str, style="count_title.TLabel")
+        self.average_counts_title = ttk.Label(self, textvariable=self.average_counts_title_str, style="count_title.TLabel")
+        
+        self.total_counts_title.grid(column=0, row=0, padx=0, pady=0, ipadx=0, ipady=1, sticky="ew")
+        self.average_counts_title.grid(column=0, row=1, padx=0, pady=0, ipadx=0, ipady=1, sticky="ew")
+
+        self.total_counts_str = tk.StringVar()
+        self.average_counts_str = tk.StringVar()
+
+        # Labels to hold the string representation of the number value of their respective statistic
+        self.total_counts_label = ttk.Label(self, textvariable=self.total_counts_str, style="count.TLabel")
+        self.average_counts_label = ttk.Label(self, textvariable=self.average_counts_str, style="count.TLabel")
+
+        self.total_counts_label.grid(column=1, row=0, padx=(0,5), pady=0, ipadx=0, ipady=1, sticky="e")
+        self.average_counts_label.grid(column=1, row=1, padx=(0,5), pady=0, ipadx=0, ipady=1, sticky="e")
+
+        self.units = tk.StringVar()
+        self.units.set("cts/min") # Use this for unit conversion
+
+        self.total_counts = 0
+        self.average_counts = 0
+        self.num_bins = 1
+
+        self.units_map = {
+            "cts/min" : 60000,
+            "cts/hr"  : 3600000,
+            "cts/sec" : 1000,
+            "cts/ls"  : None
+        }
+
+        # This menu allows you to change the units of the average rate to the 4 options (counts per second/minute/hour/lumisection)
+        self.unit_selector = OptionMenu(self, self.units, *self.units_map.keys(), command=self._update_count_strings)
+
+        self.unit_selector.grid(column=2, row=1, padx=(0,5), pady=5, ipadx=5, ipady=0, sticky="ew")
+
+    
+    def set_counts_bins(self, total, average, num_bins):
+        """
+        Set values for the number and string representation of these values. self.average_count's units should be in ms.
+        """
+        self.total_counts, self.average_counts, self.num_bins = total, average, num_bins
+        self._update_count_strings()
+
+    
+    def _update_count_strings(self, *args):
+        """
+        Updates the displayed values in the GUI based on current units set.
+        """
+        self.total_counts_str.set(f"{self.total_counts:,.0f}")
+
+        if self.units.get() != "cts/ls":
+            self.average_counts_str.set(f"{self.average_counts*self.units_map[self.units.get()]:,.1f}")
+        else:
+            try:
+                self.average_counts_str.set(f"{self.total_counts/self.num_bins:,.1f}")
+            except ZeroDivisionError:
+                self.average_counts_str.set("nan")
+
+
+class OptionMenu(tk.OptionMenu):
+    """
+    Custom Tkinter OptionMenu to make things look prettier since ttk (once again) refuses to play nice cross platform
+    """
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+
+        self.img = ImageTk.PhotoImage(Image.open("./img/buttons/chevron_down_normal.png")) # load down arrow image
+
+        self.img_label = tk.Label(self, image=self.img) # Label is just meant to hold the image
+
+        self.config(justify="left", anchor="w", relief="flat", borderwidth=0, width=6, 
+                    font=commonVars.default_font, indicatoron=False, activebackground="#E5F1FB") # configure optionmenu
+        self.nametowidget(self.menuname).config(font=commonVars.default_font) # Set font for dropdown menu as well
+
+        self.img_label.place(relx=1, rely=0.5, anchor="e") # Place down arrow at rightmost side of OptionMenu
+
+        # Bindsings that make everything change colors properly and ensures events are triggered properly
+        self.bind("<Button-1>", self._on_click)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+
+        self.img_label.bind("<Button-1>", self._on_click)
+        self.img_label.bind("<ButtonRelease-1>", self._on_release)
+        self.img_label.bind("<Enter>", self._on_enter)
+
+    def _on_click(self, event: tk.Event):
+        self.config(activebackground="#CCE4F7")
+        self.img_label.config(bg="#CCE4F7")
+        if event.widget == self.img_label:
+            x = self.winfo_rootx()
+            y = self.winfo_rooty() + self.winfo_height()
+            self.nametowidget(self.menuname).post(x, y) # Open the menu if we clicked on Label instead of OptionMenu
+    
+    def _on_release(self, event: tk.Event):
+        """
+        When releasing the mouse button after a click, we want to reset colors properly based on where we release the click.
+        The OptionMenu will handle this automatically, but the Label will not.
+        """
+        self.config(activebackground="#E5F1FB")
+        if event.widget == self.img_label or event.widget == self:
+            self.img_label.config(bg="#E5F1FB")
+        else:
+            self.img_label.config(bg="#f0f0f0")
+    
+    def _on_enter(self, event):
+        """
+        Make sure we change the color of the Label widget when we enter anywhere in the OptionMenu widget
+        """
+        self.img_label.config(bg="#E5F1FB")
+    
+    def _on_leave(self, event):
+        """
+        Make sure we reset the color of the Label widget when we exit from anywhere in the OptionMenu widget
+        """
+        self.img_label.config(bg="#f0f0f0")
