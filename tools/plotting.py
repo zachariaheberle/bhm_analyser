@@ -64,6 +64,30 @@ def tex_escape(text):
     regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key=lambda item: - len(item))))
     return regex.sub(lambda match : conv[match.group()], text)
 
+# def inverse_tex_escape(latex_text):
+#     """
+#     Converts a LaTeX string input to a non-escaped utf-8 output.
+#     Mainly used for labeling in counting statistics of the rate plots.
+#     """
+#     conv = {
+#         r'\&' : '&',
+#         r'\%' : '%',
+#         r'\$' : '$',
+#         r'\#' : '#',
+#         r'\_' : '_',
+#         r'\{' : '{',
+#         r'\}' : '}',
+#         r'\textasciitilde{}' : '~',
+#         r'\^{}' : '^',
+#         r'\textbackslash{}' : '\\',
+#         r'\textless{}' : '<',
+#         r'\textgreater{}' : '>',
+#         r'\textbar{}' : '|'
+#     }
+#     regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key=lambda item: - len(item))))
+#     return regex.sub(lambda match : conv[match.group()], latex_text)
+
+
 def textbox(x,y,text,size=14,frameon=False, ax=None):
     if ax == None:
         text_obj = plt.gca().text(x, y, text, transform=plt.gca().transAxes, fontsize=size,
@@ -155,8 +179,10 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
 
         if x1 is not None:
             l, = ax.plot(x1, y1, color='r',label=label_from_region_id(region_id, "+Z"))
+            l.set_url(f"+Z {region_id}") # I'm hiding region metadata in the url property of these lines, this is just used for tagging them for counting stats
         if x2 is not None:
             l, = ax.plot(x2, y2, color='k',label=label_from_region_id(region_id, "-Z"))
+            l.set_url(f"-Z {region_id}")
         ax.set_xlabel("Time Approximate")
         ax.set_ylabel("BHM Event Rate")
         ax.set_ylim(0.1, max_rate*1.05)
@@ -260,10 +286,14 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         if not region4.empty:
             x1,y1,binx = uHTR4.get_rate(region4, bins=lumi_bins, start_time=start_time)
             if max(y1) > max_rate: max_rate = max(y1)
+            if f"+Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
+                commonVars.bhm_bins[f"+Z {region_id}"] = binx[1:] - binx[:-1]
 
         if not region11.empty:
-            x2,y2,_ = uHTR11.get_rate(region11, bins=lumi_bins, start_time=start_time)
+            x2,y2,binx = uHTR11.get_rate(region11, bins=lumi_bins, start_time=start_time)
             if max(y2) > max_rate: max_rate = max(y2)
+            if f"-Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
+                commonVars.bhm_bins[f"-Z {region_id}"] = binx[1:] - binx[:-1]
 
         if lumi_bins is not None:
             for scale_factor in [10**i for i in range(-9, 6, 3)]:

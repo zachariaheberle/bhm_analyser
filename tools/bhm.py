@@ -795,7 +795,7 @@ class bhm_analyser():
         #     y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=bins)
 
         # plotting.textbox(1.1,0.7,f"Run No:{run}")
-        x = binx[:-1] + (binx[1]-binx[0])*0.5
+        x = binx[:-1] + (binx[1:]-binx[:-1])*0.5
         x = [dt_conv.get_date_time(i) for i in x]
         return x,y,binx
     
