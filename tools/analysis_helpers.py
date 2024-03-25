@@ -355,11 +355,11 @@ def load_uHTR_data(data_folder_str):
     uHTR4 = create_empty_bhm("4")
     uHTR11 = create_empty_bhm("11")
 
-    uHTR4_files = glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR4*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_4*.txt") + \
-                    glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR4*.uhtr") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_4*.uhtr")
+    uHTR4_files = glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR4*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR_4*.txt") + \
+                    glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR4*.uhtr") + glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR_4*.uhtr")
     
-    uHTR11_files = glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR11*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_11*.txt") + \
-                    glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR11*.uhtr") + glob(f"{DATA_FOLDER}/{data_folder_str}/uHTR_11*.uhtr")
+    uHTR11_files = glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR11*.txt") + glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR_11*.txt") + \
+                    glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR11*.uhtr") + glob(f"{DATA_FOLDER}/{data_folder_str}/*uHTR_11*.uhtr")
     
     if not any([".uhtr" in file for file in uHTR4_files + uHTR11_files]) and len(uHTR4_files + uHTR11_files) > 0:
         check_conversion_consent()
