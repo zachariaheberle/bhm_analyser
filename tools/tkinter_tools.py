@@ -1669,9 +1669,10 @@ class Combobox(tk.Frame):
         Make sure if we try to do Combobox.values (or Combobox["values"]) = list, we properly insert them into the tk.Listbox
         """
         self.entry.delete(0, "end")
+        self.listbox.delete(0, "end")
         self._values = new_values
         for i, value in enumerate(new_values):
-                self.listbox.insert(i, value)
+            self.listbox.insert(i, value)
 
 
 
