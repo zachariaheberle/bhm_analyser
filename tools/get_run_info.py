@@ -123,8 +123,10 @@ def get_lumisections(runs: list = [375000]):
         lumi_info["fill"] = pd.Series(dtype=np.int32)
         lumi_info = lumi_info.drop(columns=["run:fill"])
     
+    unique_runs = np.unique(lumi_info["run"].to_numpy())
+    
     for run in runs:
-        if run not in np.unique(lumi_info["run"].to_numpy()):
+        if run not in unique_runs:
             # Create empty entries for runs that don't exist in brilcalc, this signals in our cache that we have
             # attempted to grab run info, but there is none
             df = pd.DataFrame({ 
