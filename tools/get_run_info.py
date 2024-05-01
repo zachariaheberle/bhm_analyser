@@ -118,6 +118,10 @@ def get_lumisections(runs: list = [375000]):
     if not lumi_info.empty:
         lumi_info[["run", "fill"]] = lumi_info["run:fill"].str.split(":", expand=True).astype(np.int32)
         lumi_info = lumi_info.drop(columns=["run:fill"])
+    else:
+        lumi_info["run"] = pd.Series(dtype=np.int32)
+        lumi_info["fill"] = pd.Series(dtype=np.int32)
+        lumi_info = lumi_info.drop(columns=["run:fill"])
     
     for run in runs:
         if run not in np.unique(lumi_info["run"].to_numpy()):
