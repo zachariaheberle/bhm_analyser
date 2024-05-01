@@ -246,6 +246,7 @@ def gui():
         
         except LookupError as err:
             data_status_message.set("Something went wrong with plotting and analysis!")
+            analysis_helpers.error_handler(err)
             messagebox.showerror("File Format Error", err)
 
         except Exception as err:
