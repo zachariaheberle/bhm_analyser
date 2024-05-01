@@ -224,6 +224,9 @@ def get_run_info(run_cut):
         lumi_info = lumi_info.query(f"(run >= {min(runs)}) & (run <= {max(runs)})").dropna().sort_values(by="time")
         lumi_info.loc[lumi_info["normtag"] == False, ["delivered_lumi", "recorded_lumi"]] = 0, 0
 
+        if lumi_info.empty: # If for some reason there is no data about a run (ie brilcalc returned nothing), return None
+            return None, None, None 
+
         time_vals = lumi_info["time"].to_numpy()*1000 # convert to ms
         lumi_vals = lumi_info["delivered_lumi"].to_numpy() # In units of ub^-1
         beam_vals = lumi_info["beamstatus"].to_numpy() # beam status, one of FLAT TOP, ADJUST, SQUEEZE, or STABLE BEAMS
