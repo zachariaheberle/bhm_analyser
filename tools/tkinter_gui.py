@@ -372,7 +372,7 @@ def gui():
     s.configure("Heading", background="#ffffff")
     s.map("Heading", background=[("active", "#ffffff")])
     s.configure("Treeview", background="#ffffff")
-    s.map("Treeview", background=[("disabled", "#f0f0f0")])
+    s.map("Treeview", background=[("disabled", "#f0f0f0"), ("selected", "#0078D7")])
 
     # Entry colors
     s.configure("TEntry", borderwidth=1, bordercolor="#7a7a7a", relief="solid")
