@@ -333,21 +333,23 @@ class PlotToolbar(NavigationToolbar2Tk):
     Custom Matplotlib toolbar class that has an additional Plot Settings option in addition the other home/zoom/pan functions.
     """
 
-    def __init__(self, canvas, window, figure, time_sel=True, ch_sel=True, region_sel=True, pack_toolbar=False):
-        
-        self.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
-                        ('Home', 'Reset original view', 'home', 'home'),
-                        ('Back', 'Back to  previous view', 'back', 'back'),
-                        ('Forward', 'Forward to next view', 'forward', 'forward'),
-                        (None, None, None, None),
-                        ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
-                        ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
-                        (None, None, None, None),
-                        ('Save', 'Save the figure', 'filesave', 'save_figure'),
-                        (None, None, None, None),
-                        ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings")
-                        ) # Use relpath because matplotlib is hardcoded to use its own install location for image files (Maybe there's a way around this)
-                            # Turns into some goofy (/path/to/matplotlib/../../../../../desired/image/path) looking string
+    def __init__(self, canvas, window, figure, time_sel=True, ch_sel=True, region_sel=True, pack_toolbar=False, toolitems=None):
+        if toolitems is None:
+            self.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
+                            ('Home', 'Reset original view', 'home', 'home'),
+                            ('Back', 'Back to  previous view', 'back', 'back'),
+                            ('Forward', 'Forward to next view', 'forward', 'forward'),
+                            (None, None, None, None),
+                            ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+                            ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+                            (None, None, None, None),
+                            ('Save', 'Save the figure', 'filesave', 'save_figure'),
+                            (None, None, None, None),
+                            ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings")
+                            ) # Use relpath because matplotlib is hardcoded to use its own install location for image files (Maybe there's a way around this)
+                                # Turns into some goofy (/path/to/matplotlib/../../../../../desired/image/path) looking string
+        else:
+            self.toolitems = toolitems
 
         super().__init__(canvas, window, pack_toolbar=pack_toolbar)
         self.config(bg="#f0f0f0") # Setting toolbar frame background
@@ -1089,7 +1091,14 @@ class RateToolbar(PlotToolbar):
 
 class ChannelEventsToolbar(PlotToolbar):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, ch_sel=False, **kwargs)
+
+        toolitems = ( # removing anything that has to do with moving/zooming the plots
+                    ('Save', 'Save the figure', 'filesave', 'save_figure'),
+                    (None, None, None, None),
+                    ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings"),
+                    )
+        
+        super().__init__(*args, ch_sel=False, region_sel=False, toolitems=toolitems, **kwargs)
 
         self.ch_map = {i : key for i, key in enumerate({**hw_info.get_uHTR4_CMAP(), **hw_info.get_uHTR11_CMAP()}.keys())}
         self.ch_map.update({-1 : "None", 40 : "None"}) # If outside channels bounds, set channel = None
@@ -1105,40 +1114,36 @@ class ChannelEventsToolbar(PlotToolbar):
         # engine python is required for this query to not crash due to trying to cast uint64 (orbit value) to int64
         # which pandas does not like apparently
         SR_events = uHTR.SR.query(theCut, engine="python")["ch"].value_counts(sort=False)#.to_numpy()
-        BR_events = uHTR.BR.query(theCut, engine="python")["ch"].value_counts(sort=False)#.to_numpy()
+        # BR_events = uHTR.BR.query(theCut, engine="python")["ch"].value_counts(sort=False)#.to_numpy()
 
         for ch in uHTR.CMAP.values(): # Pad pd.Series with zeros to ensure proper plotting
             if ch not in SR_events:
                 SR_events.loc[ch] = 0
-            if ch not in BR_events:
-                BR_events.loc[ch] = 0
+            # if ch not in BR_events:
+            #     BR_events.loc[ch] = 0
         SR_events.sort_index(inplace=True)
-        BR_events.sort_index(inplace=True)
+        # BR_events.sort_index(inplace=True)
 
-        if SR_events.empty and BR_events.empty:
+        if SR_events.empty:# and BR_events.empty:
             plotting.plot_channel_events_gui(uHTR.uHTR, None, None, None)
             return
 
-        plotting.plot_channel_events_gui(uHTR.uHTR, channels, SR_events, BR_events)
+        plotting.plot_channel_events_gui(uHTR.uHTR, channels, SR_events)
     
     def _mouse_event_to_message(self, event):
         if event.inaxes and event.inaxes.get_navigate():
             plot_side = round(event.inaxes.get_position().get_points()[0][0]) # 0 = PN/PF, 1 = MN/MF
-            ch_index = round(event.xdata) + 20*plot_side
 
-            if not plot_side: # Ensure that our algorithm doesn't break if we're slightly outside the normal bounds
-                if ch_index < 0:
-                    ch_index = -1
-                elif ch_index > 19:
-                    ch_index = 19
-            else:
-                if ch_index < 20:
-                    ch_index = 20
-                elif ch_index > 39:
-                    ch_index = 40
+            ax: plotting.EllipseAxes = self.figure.axes[plot_side] # Get access to the corresponding EllipseAxes to perform transform
+            theta, r = ax._transform.inverted().transform(np.column_stack([event.xdata, event.ydata])).T # Transform x,y to theta,r coordinates
+            theta, r = theta[0], r[0]
 
-            s = f"Channel: {self.ch_map[ch_index]}, Event: {round(event.ydata)}"
-            return s
+            if not r < 0 or (theta - ax.min_angle) % (2*np.pi) <= (ax.max_angle - ax.min_angle) % (2*np.pi):
+                return ""
+
+            ch_index = np.argmin(np.abs(commonVars.angle_map % (2*np.pi) - theta % (2*np.pi))) + 20*plot_side
+
+            return f"Channel: {self.ch_map[ch_index]}, Event Count: {round(r)}"
 
 
 class DateEntry(ttk.LabelFrame):

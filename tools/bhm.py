@@ -658,40 +658,40 @@ class bhm_analyser():
 
         channels = [ch for ch in self.CMAP.keys()]
         SR_events = self.SR["ch"].value_counts(sort=False)#.to_numpy()
-        BR_events = self.BR["ch"].value_counts(sort=False)#.to_numpy()
+        # BR_events = self.BR["ch"].value_counts(sort=False)#.to_numpy()
 
         for ch in self.CMAP.values(): # Pad pd.Series with zeros to ensure proper plotting
             if ch not in SR_events:
                 SR_events.loc[ch] = 0
-            if ch not in BR_events:
-                BR_events.loc[ch] = 0
+            # if ch not in BR_events:
+            #     BR_events.loc[ch] = 0
         SR_events.sort_index(inplace=True)
-        BR_events.sort_index(inplace=True)
+        # BR_events.sort_index(inplace=True)
 
         if self.save_fig:
 
-            f, ax = plt.subplots()
-            width = 0.9
-            sr_poly = plotting.get_poly(SR_events.to_numpy(), width, "r", label="BIB")
-            br_poly = plotting.get_poly(BR_events.to_numpy(), width, "k", label="Collision $\&$ Activation")
-            ax.add_patch(br_poly)
-            ax.add_patch(sr_poly)
-            # ax.bar(channel_vals, BR_events, width=width, align="center",color='k',label = "Collision $\&$ Activation")
-            # ax.bar(channel_vals, SR_events, width=width, align="center",color='r', label = "BIB")
-            plotting.textbox(0.0,1.11,'Preliminary', 15, ax=ax)
-            plotting.textbox(0.5,1.11,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
-            ax.set_xticks(np.arange(20))
-            ax.set_xticklabels(labels=channels, rotation=45, ha="center", fontsize=5)
+            f = plt.figure(figsize=(6.5,6.5), dpi=300)
+            ax: plotting.EllipseAxes = f.add_subplot(axes_class=plotting.EllipseAxes, ab_ratio=1/.95, min_angle=-45, max_angle=225)
+            angle_map = commonVars.angle_map
+
+            ax.set_xticks(angle_map)
+            ax.set_xticklabels(labels=channels, fontsize=8)
+            ax.grid(axis="both")
+            
+            ax.bar(angle_map, SR_events.to_numpy(), width=np.max(SR_events.to_numpy()) / 5, facecolor="red", label="BIB")
             ax.set_xlabel("Channels", fontsize=15)
-            ax.set_ylabel("Events/1", fontsize=15)
-            ax.set_yscale("log")
-            ax.set_xlim(-1, 20)
+            ax.set_ylabel("Event Count", fontsize=15)
+
+            plotting.textbox(0.0,1.05,'Preliminary', 15, ax=ax)
+            plotting.textbox(0.5,1.05,f'{self.beam_side[self.uHTR]} [uHTR-{self.uHTR}]', 15, ax=ax)
+            #textbox(1,1.05,f'{beam_side[uHTR]} [uHTR-{uHTR}]', 15, ax=ax, horizontalalignment="right")
+
             ax.legend(loc='upper right', frameon=True)
 
-            plt.savefig(f"{self.figure_folder}//uHTR{self.uHTR}_channel_events.png", dpi=300)
+            plt.savefig(f"{self.figure_folder}/uHTR{self.uHTR}_channel_events.png", bbox_inches="tight")
 
         if commonVars.root:
-            plotting.plot_channel_events_gui(self.uHTR, channels, SR_events, BR_events)
+            plotting.plot_channel_events_gui(self.uHTR, channels, SR_events)
             
         plt.close()
         

@@ -1,4 +1,6 @@
-# Written by Rohith Saradhy rohithsaradhy@gmail.com
+# Written by Rohith Saradhy rohithsaradhy@gmail.com and Zachariah Eberle zachariah.eberle@gmail.com
+import numpy as np
+
 '''
 Common Variables
 
@@ -25,3 +27,12 @@ loaded_runs = []
 
 # bins used for bhm analysis, used for rate plot calculations
 bhm_bins = {}
+
+# Angle map for BHM detectors
+angle_map_N = np.asarray( # Near side of angle_map
+                [100.32, 112.91, 124.57, 138.20, 150.47, 162.74, 175.16, -173.02, -160.27, -148.77]
+                )
+angle_map_F = 180 - angle_map_N # Far side of angle_map, simple 180 degree reflection of near side
+
+# angle_map is in order of (P/M)N01, (P/M)N02, ..., (P/M)F01, ..., (P/M)F10
+angle_map = np.deg2rad(np.concatenate((angle_map_N, angle_map_F)))
