@@ -1138,7 +1138,7 @@ class ChannelEventsToolbar(PlotToolbar):
             theta, r = ax._transform.inverted().transform(np.column_stack([event.xdata, event.ydata])).T # Transform x,y to theta,r coordinates
             theta, r = theta[0], r[0]
 
-            if not r < 0 or (theta - ax.min_angle) % (2*np.pi) <= (ax.max_angle - ax.min_angle) % (2*np.pi):
+            if r < 0 or (theta - ax.min_angle) % (2*np.pi) > (ax.max_angle - ax.min_angle) % (2*np.pi):
                 return ""
 
             ch_index = np.argmin(np.abs(commonVars.angle_map % (2*np.pi) - theta % (2*np.pi))) + 20*plot_side
