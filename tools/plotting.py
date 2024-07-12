@@ -996,8 +996,8 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         ax.fill_between(lumi_time, np.where(beam_status=="FLAT TOP", max_rate, 0), 0, color=beam_status_color_map["FLAT TOP"], alpha=0.1, step="post", label="Flat Top")
         ax.fill_between(lumi_time, np.where(beam_status=="OTHER", max_rate, 0), 0, color=beam_status_color_map["OTHER"], alpha=0.1, step="post", label="Other")
         ax.set_ylabel(unit_labels[scale_factor])
-        ax.set_yscale('symlog')
-        ax.set_ylim(0.1, max_rate*1.05)
+        ax.set_yscale('linear')
+        ax.set_ylim(0, np.max(delivered_lumi)*scale_factor*1.05)
         
     def plot_bhm(ax: plt.Axes, x1, x2, y1, y2, max_rate, region_id):
 
@@ -1009,8 +1009,8 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
             l.set_url(f"-Z {region_id}")
         ax.set_xlabel("Time Approximate")
         ax.set_ylabel("BHM Event Rate")
-        ax.set_ylim(0.1, max_rate*1.05)
-        ax.set_yscale('symlog')
+        ax.set_ylim(0, max_rate*1.05)
+        ax.set_yscale('linear')
         if start_time != 0:
             textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
 
@@ -1120,14 +1120,19 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                 commonVars.bhm_bins[f"-Z {region_id}"] = binx[1:] - binx[:-1]
 
         if lumi_bins is not None:
-            for scale_factor in [10**i for i in range(-9, 6, 3)]:
-                if np.min(delivered_lumi[np.nonzero(delivered_lumi)])*scale_factor >= 1:
-                    break
-            if max(delivered_lumi)*scale_factor > max_rate: max_rate = max(delivered_lumi)*scale_factor
+
+            # Pick the scaling such that we minimize the distance between max lumi and max bhm rate
+            scales = np.logspace(-9, 6, num=6, endpoint=True)
+            scale_factor = scales[np.argmin(np.abs(np.max(delivered_lumi)*scales - max_rate))]
 
             if save_fig:
                 lumi_ax = ax.twinx()
-                plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
+                plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
+            
+            # test_fig, test_ax = plt.subplots()
+
+            # plot_lumi_v_bhm(test_ax, y1, y2, delivered_lumi, scale_factor=scale_factor)
+            # test_fig.savefig(f"{uHTR4.figure_folder}/TEST_{region_name}.png",dpi=300)
 
         if save_fig:
             plot_bhm(ax, x1, x2, y1, y2, max_rate, region_id)
@@ -1167,7 +1172,7 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                     lumi_ax = commonVars.rate_fig.axes[2*i+1]
                 except:
                     lumi_ax = ax.twinx()
-                plot_lumi(lumi_ax, lumi_time, scale_factor, max_rate)
+                plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
 
             plot_bhm(ax, x1, x2, y1, y2, max_rate, region_id)
 
