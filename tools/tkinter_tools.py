@@ -757,8 +757,10 @@ class OccupancyToolbar(PlotToolbar):
             plotting.plot_occupancy_gui(uHTR.uHTR, None, None)
             return
 
-        BR_bx = uHTR.BR.query(theCut)["bx"]
-        SR_bx = uHTR.SR.query(theCut)["bx"]
+        # engine python is required for this query to not crash due to trying to cast uint64 (orbit value) to int64
+        # which pandas does not like apparently
+        BR_bx = uHTR.BR.query(theCut, engine="python")["bx"]
+        SR_bx = uHTR.SR.query(theCut, engine="python")["bx"]
 
         if BR_bx.empty and SR_bx.empty:
             plotting.plot_occupancy_gui(uHTR.uHTR, None, None)
@@ -1099,8 +1101,11 @@ class ChannelEventsToolbar(PlotToolbar):
             return
 
         channels = [ch for ch in uHTR.CMAP.keys()]
-        SR_events = uHTR.SR.query(theCut)["ch"].value_counts(sort=False)#.to_numpy()
-        BR_events = uHTR.BR.query(theCut)["ch"].value_counts(sort=False)#.to_numpy()
+
+        # engine python is required for this query to not crash due to trying to cast uint64 (orbit value) to int64
+        # which pandas does not like apparently
+        SR_events = uHTR.SR.query(theCut, engine="python")["ch"].value_counts(sort=False)#.to_numpy()
+        BR_events = uHTR.BR.query(theCut, engine="python")["ch"].value_counts(sort=False)#.to_numpy()
 
         for ch in uHTR.CMAP.values(): # Pad pd.Series with zeros to ensure proper plotting
             if ch not in SR_events:
