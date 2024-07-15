@@ -270,11 +270,11 @@ def gui():
         for toolbar in toolbar_list:
             if hasattr(toolbar, "start_time"):
                 if lumi_bins is not None:
-                    toolbar.start_time.set_time(min(min(lumi_bins), (min_orbit.astype(np.float64) - commonVars.reference_orbit)*3564*25*10**-6 + start_time))
-                    toolbar.end_time.set_time(max(max(lumi_bins), (max_orbit.astype(np.float64) - commonVars.reference_orbit)*3564*25*10**-6 + start_time))
+                    toolbar.start_time.set_time(min(min(lumi_bins), (min_orbit.astype(np.float64) - commonVars.reference_orbit)*(26_659/299_792_458*1000) + start_time))
+                    toolbar.end_time.set_time(max(max(lumi_bins), (max_orbit.astype(np.float64) - commonVars.reference_orbit)*(26_659/299_792_458*1000) + start_time))
                 else:
                     toolbar.start_time.set_time(0)
-                    toolbar.end_time.set_time((max_orbit-min_orbit)*3564*25*10**-6)
+                    toolbar.end_time.set_time((max_orbit-min_orbit)*(26_659/299_792_458*1000))
 
     #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
 

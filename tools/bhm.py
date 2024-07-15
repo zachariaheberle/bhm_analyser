@@ -775,7 +775,12 @@ class bhm_analyser():
         df = df.sort_values("orbit")
 
         # Very important to cast to 64bit float to prevent crashing!!
-        x = start_time+(df.orbit.to_numpy().astype(np.float64)-commonVars.reference_orbit)*3564*25*10**-6## miliseconds
+
+        # x = start_time+(df.orbit.to_numpy().astype(np.float64)-commonVars.reference_orbit)*(3564*25*10**-6)## miliseconds
+
+        # LHC length -> 26_659 m, speed of light -> 299_792_458 m/s. 
+        # Provides a much more accurate orbit time than 25ns per bx (of which there are 3564)
+        x = start_time+(df.orbit.to_numpy().astype(np.float64)-commonVars.reference_orbit)*(26_659/299_792_458*1000)## milliseconds
         if len(x) == 1:
             return [dt_conv.get_date_time(x[0])], [1], [None]
         if bins==None:

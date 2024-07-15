@@ -41,4 +41,4 @@ def utc_ms_to_orbit(utc_ms, start_time, reference_orbit):
     """
     Converts a utc ms timestamp to an orbit number (given a reference start time (utc ms) and orbit)
     """
-    return int((utc_ms - start_time)/3564/25/10**-6 + reference_orbit)
+    return int((utc_ms - start_time)/(26_659/299_792_458*1000) + reference_orbit)
