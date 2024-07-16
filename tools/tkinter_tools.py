@@ -941,6 +941,7 @@ class RateToolbar(PlotToolbar):
                     theCut = f"({chCut})"
                 else:
                     theCuts.append("run == -1")
+                    region_names.append("df")
                     continue
 
             if getattr(self, f"region_settings{plot_index}")["Custom Region"]:
