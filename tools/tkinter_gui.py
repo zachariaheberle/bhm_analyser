@@ -233,9 +233,19 @@ def gui():
                 FigurePage.hide(ChannelEventsPage)
             else:
                 FigurePage.select(ChannelEventsPage)
+            
+            if delivered_lumi is None: # Hide lumi rates if we don't have lumi to compare against
+                RatePage.hide(RateByLumiPage)
+            else:
+                RatePage.select(RateByLumiPage)
 
+            # Set default pages when opening the figure window
             FigurePage.select(ADCPage)
+            RatePage.select(RateByTimePage)
+
+            # Raise the figure window
             fig_window.deiconify()
+
             if figure_folder is not None:
                 data_status_message.set(f"Figures written to {os.getcwd()}/{commonVars.folder_name}")
             else:
@@ -268,6 +278,7 @@ def gui():
         max_orbit = max(max(uHTR4.orbit, default=-float("inf")), max(uHTR11.orbit, default=-float("inf")))
 
         for toolbar in toolbar_list:
+            
             if hasattr(toolbar, "start_time"):
                 if lumi_bins is not None:
                     toolbar.start_time.set_time(min(min(lumi_bins), (min_orbit.astype(np.float64) - commonVars.reference_orbit)*(26_659/299_792_458*1000) + start_time))
@@ -275,6 +286,15 @@ def gui():
                 else:
                     toolbar.start_time.set_time(0)
                     toolbar.end_time.set_time((max_orbit-min_orbit)*(26_659/299_792_458*1000))
+
+            elif hasattr(toolbar, "start_time1"):
+                for plot_index in (1, 2):
+                    if lumi_bins is not None:
+                        getattr(toolbar, f"start_time{plot_index}").set_time(min(min(lumi_bins), (min_orbit.astype(np.float64) - commonVars.reference_orbit)*(26_659/299_792_458*1000) + start_time))
+                        getattr(toolbar, f"end_time{plot_index}").set_time(max(max(lumi_bins), (max_orbit.astype(np.float64) - commonVars.reference_orbit)*(26_659/299_792_458*1000) + start_time))
+                    else:
+                        getattr(toolbar, f"start_time{plot_index}").set_time(0)
+                        getattr(toolbar, f"end_time{plot_index}").set_time((max_orbit-min_orbit)*(26_659/299_792_458*1000))
 
     #@@@@@@@@@@@@@@@@@ BEGIN TKINTER SETUP @@@@@@@@@@@@@@@@@@@@
 
@@ -305,17 +325,26 @@ def gui():
     # Setting up global figures to attach plots to gui
     commonVars.adc_fig = Figure(figsize=(6,70), dpi=100)
     commonVars.adc_fig.subplots_adjust(left=0.06, bottom=0.01, right=0.964, top=0.996, wspace=0.242, hspace=0.282)
+
     commonVars.tdc_fig = Figure(figsize=(6,70), dpi=100)
     commonVars.tdc_fig.subplots_adjust(left=0.06, bottom=0.01, right=0.964, top=0.996, wspace=0.242, hspace=0.282)
+
     commonVars.tdc_stability_fig = Figure(figsize=(7, 6.18), dpi=100)
     commonVars.tdc_stability_fig.subplots_adjust(left=0.06, bottom=0.11, right=0.96, top=0.933, wspace=0.22, hspace=0.578)
+
     commonVars.occupancy_fig = Figure(figsize=(7, 2.7), dpi=100)
     commonVars.occupancy_fig.subplots_adjust(left=0.055, bottom=0.11, right=0.96, top=0.913)
-    commonVars.rate_fig = Figure(figsize=(7, 2.625), dpi=100)
-    commonVars.rate_fig.autofmt_xdate()
-    commonVars.rate_fig.subplots_adjust(left=0.06, bottom=0.1, right=0.8, top=0.9, wspace=0.6, hspace=0.3)
+
+    commonVars.rate_time_fig = Figure(figsize=(7, 2.625), dpi=100)
+    commonVars.rate_time_fig.autofmt_xdate()
+    commonVars.rate_time_fig.subplots_adjust(left=0.06, bottom=0.1, right=0.8, top=0.925, wspace=0.6, hspace=0.3)
+
+    commonVars.rate_lumi_fig = Figure(dpi=100)
+    commonVars.rate_lumi_fig.subplots_adjust(left=0.06, bottom=0.1, right=0.875, top=0.925, wspace=0.6, hspace=0.3)
+
     commonVars.lego_fig = Figure(dpi=100)
     commonVars.lego_fig.subplots_adjust(left=0.04, bottom=0.043, right=0.966, top=0.923, wspace=0.176)
+
     commonVars.ch_events_fig = Figure(dpi=100)
     commonVars.ch_events_fig.subplots_adjust(left=0.075, bottom=0.11, right=0.975, top=0.91)
 
@@ -323,7 +352,8 @@ def gui():
                    commonVars.tdc_fig, 
                    commonVars.tdc_stability_fig, 
                    commonVars.occupancy_fig, 
-                   commonVars.rate_fig, 
+                   commonVars.rate_time_fig,
+                   commonVars.rate_lumi_fig, 
                    commonVars.lego_fig,
                    commonVars.ch_events_fig]
 
@@ -793,13 +823,15 @@ def gui():
 
     # Creating a tabbed index of the various graphs
     FigurePage = ttk.Notebook(fig_window)
+    RatePage = ttk.Notebook(FigurePage) # The rate page is itself a notebook
 
     # Each frame will handle a different set of graphs
     ADCPage = ttk.Frame(FigurePage)
     TDCPage = ttk.Frame(FigurePage)
     TDCStabilityPage = ttk.Frame(FigurePage)
     OccupancyPage = ttk.Frame(FigurePage)
-    RatePage = ttk.Frame(FigurePage)
+    RateByTimePage = ttk.Frame(RatePage)
+    RateByLumiPage = ttk.Frame(RatePage)
     LegoPage = ttk.Frame(FigurePage)
     ChannelEventsPage = ttk.Frame(FigurePage)
 
@@ -811,6 +843,10 @@ def gui():
     FigurePage.add(RatePage, text="Rate Plots")
     FigurePage.add(LegoPage, text="Lego Plots")
     FigurePage.add(ChannelEventsPage, text="Channel Event Plots")
+
+    RatePage.add(RateByTimePage, text="By Time")
+    RatePage.add(RateByLumiPage, text="By Lumi")
+
 
     FigurePage.pack(side=TOP, ipadx=5, ipady=5, padx=5, pady=5, fill=BOTH, expand=True)
 
@@ -858,12 +894,20 @@ def gui():
     occupancy_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
 
-    # Rate Plots
-    rate_canvas = FigureCanvasTkAgg(commonVars.rate_fig, RatePage)
-    rate_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
-    rate_toolbar = RateToolbar(rate_canvas, RatePage, commonVars.rate_fig, pack_toolbar=False)
-    rate_toolbar.update()
-    rate_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+    # Rate Plots (By time)
+    rate_time_canvas = FigureCanvasTkAgg(commonVars.rate_time_fig, RateByTimePage)
+    rate_time_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    rate_time_toolbar = RateToolbarByTime(rate_time_canvas, RateByTimePage, commonVars.rate_time_fig, pack_toolbar=False)
+    rate_time_toolbar.update()
+    rate_time_toolbar.pack(side=BOTTOM, fill=X, expand=False)
+
+
+    # Rate Plots (By lumi)
+    rate_lumi_canvas = FigureCanvasTkAgg(commonVars.rate_lumi_fig, RateByLumiPage)
+    rate_lumi_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+    rate_lumi_toolbar = RateToolbarByLumi(rate_lumi_canvas, RateByLumiPage, commonVars.rate_lumi_fig, pack_toolbar=False)
+    rate_lumi_toolbar.update()
+    rate_lumi_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
 
     # Lego Plots
@@ -881,8 +925,10 @@ def gui():
     ch_events_toolbar.update()
     ch_events_toolbar.pack(side=BOTTOM, fill=X, expand=False)
 
-    commonVars.canvas_list = canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, rate_canvas, lego_canvas, ch_events_canvas]
-    commonVars.toolbar_list = toolbar_list = [adc_toolbar, tdc1_toolbar, tdc2_toolbar, occupancy_toolbar, rate_toolbar, lego_toolbar, ch_events_toolbar]
+    commonVars.canvas_list = canvas_list = [adc_canvas, tdc_canvas, tdc_stability_canvas, occupancy_canvas, 
+                                            rate_time_canvas, rate_lumi_canvas, lego_canvas, ch_events_canvas]
+    commonVars.toolbar_list = toolbar_list = [adc_toolbar, tdc1_toolbar, tdc2_toolbar, occupancy_toolbar, 
+                                              rate_time_toolbar, rate_lumi_toolbar, lego_toolbar, ch_events_toolbar]
 
     fig_window.withdraw()
 

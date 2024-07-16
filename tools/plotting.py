@@ -954,39 +954,50 @@ def lego(h, xbins, ybins, ax=None, **plt_kwargs):
     ax.bar3d(_xx.flatten()[~mask], _yy.flatten()[~mask], bottom.flatten()[~mask], width, depth, h.flatten()[~mask], shade=True,color='red')
     return ax  
 
-def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "CP"], start_time=0, 
+def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str] = ["SR", "CP"], start_time=0, 
                lumi_bins=None, delivered_lumi=None, beam_status=None, theCuts=[None, None],
-               save_fig=True):
+               save_fig=True, by_time=True, by_lumi=True):
     '''
     After analysis step has been completed, and the plots look reasonable, you can get the rate plot
     uHTR4  --> BHM Analyser object for uHTR4 
     uHTR11 --> BHM Analyser object for uHTR11 
     Run Level needs to be implemented
 
+    This function is in shambles and needs serious cleaning up
+
     '''
-    for uHTR in (uHTR4, uHTR11): # Make sure getattr() and query don't break if we don't have any data and thus never generated the uHTR dataframe
-        if len(uHTR.run) == 0:
-            # Fill attributes with (empty) placeholder dataframes
-            uHTR.df = uHTR.SR = uHTR.AR = uHTR.BR = uHTR.CP = pd.DataFrame(columns=("bx", "tdc", "tdc_2", "ch", "ch_name", "orbit", "run", "peak_ampl"))
 
-    if delivered_lumi is not None:
-        delivered_lumi = np.asarray(delivered_lumi)
+        #Plotting the Run No:
+    # def plot_runNo(uHTR):
+    #     for run in np.unique(uHTR.run)[:]:
+    #         orbit_value = (np.min(uHTR.orbit[uHTR.run == run])-uHTR.orbit[0])*3564*25*10**-6 + start_time # time in mille-seconds
+    #         x=dt_conv.get_date_time(orbit_value)
+    #         ax.axvline(x,color='k',linestyle='--')
+    #         # ax.text(x, 1.2, run, transform=ax.transAxes, fontsize=10,
+    #         #         verticalalignment='top',rotation=90)
 
-    beam_status = np.asarray(beam_status)
+    def get_bhm_rate(region4: pd.DataFrame, region11: pd.DataFrame, lumi_bins, start_time):
 
-    # get correct binx
-    # binx = np.arange(np.min(uHTR4.orbit),np.max(uHTR4.orbit),3564*25*10**-6*25000)# 25 secs
+        max_rate = 0
 
+        if not region4.empty:
+            x1,y1,binx = uHTR4.get_rate(region4, bins=lumi_bins, start_time=start_time)
+            if max(y1) > max_rate: max_rate = max(y1)
+            if f"+Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
+                commonVars.bhm_bins[f"+Z {region_id}"] = binx[1:] - binx[:-1]
+        else:
+            x1 = y1 = None
 
+        if not region11.empty:
+            x2,y2,binx = uHTR11.get_rate(region11, bins=lumi_bins, start_time=start_time)
+            if max(y2) > max_rate: max_rate = max(y2)
+            if f"-Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
+                commonVars.bhm_bins[f"-Z {region_id}"] = binx[1:] - binx[:-1]
+        else:
+            x2 = y2 = None
+        
+        return x1, y1, x2, y2, max_rate
 
-    #Plotting the Run No:
-    def plot_runNo(uHTR):
-        for run in np.unique(uHTR.run)[:]:
-            orbit_value = (np.min(uHTR.orbit[uHTR.run == run])-uHTR.orbit[0])*3564*25*10**-6 + start_time # time in mille-seconds
-            x=dt_conv.get_date_time(orbit_value)
-            ax.axvline(x,color='k',linestyle='--')
-            # ax.text(x, 1.2, run, transform=ax.transAxes, fontsize=10,
-            #         verticalalignment='top',rotation=90)
 
     def plot_lumi(ax: plt.Axes, lumi_time, scale_factor, max_rate):
         ax.plot(lumi_time, delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
@@ -999,6 +1010,7 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         ax.set_yscale('linear')
         ax.set_ylim(0, np.max(delivered_lumi)*scale_factor*1.05)
         
+
     def plot_bhm(ax: plt.Axes, x1, x2, y1, y2, max_rate, region_id):
 
         if x1 is not None:
@@ -1013,6 +1025,37 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
         ax.set_yscale('linear')
         if start_time != 0:
             textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
+    
+
+    def plot_lumi_v_bhm(ax: plt.Axes, y1, y2, delivered_lumi, scale_factor):
+        if delivered_lumi is not None:
+
+            lumi = delivered_lumi*scale_factor
+            bins = np.linspace(start=0, stop=np.max(lumi), num=100, endpoint=True)
+
+            y1_lumi_counts = []
+            y2_lumi_counts = []
+
+            # delivered lumi always has + 1 bins because the final lumi is used as the final (right edge) bin for bhm
+            for i in range(len(lumi)-1):
+                if y1 is not None:
+                    y1_lumi_counts.extend([lumi[i]]*y1[i])
+                if y2 is not None:
+                    y2_lumi_counts.extend([lumi[i]]*y2[i])
+
+            if len(y1_lumi_counts) > 0:
+                ax.hist(y1_lumi_counts, bins=bins, histtype="step", color='r', label=label_from_region_id(region_id, "+Z"))
+
+            if len(y2_lumi_counts) > 0:
+                ax.hist(y2_lumi_counts, bins=bins, histtype="step", color='k', label=label_from_region_id(region_id, "-Z"))
+
+        ax.set_xlabel(unit_labels[scale_factor])
+        ax.set_ylabel("BHM Events")
+        ax.set_yscale('linear')
+        if len(y1_lumi_counts) > 0 or len(y2_lumi_counts) > 0:
+            ax.legend(loc=(1.0325, 0.8), frameon=1)
+        # ax.set_ylim(0.1, max_rate*1.05)
+
 
     def label_from_region_id(region_id, side):
 
@@ -1053,13 +1096,53 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
             return tex_escape(f"{side} {cut_if_long(region_id)}")
 
 
+    def get_legend_handles_labels(bhm_ax, lumi_ax, bhm_empty=False, lumi_empty=False):
+
+        bhm_lines, bhm_labels = bhm_ax.get_legend_handles_labels()
+
+        if not lumi_empty:
+            lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
+        else:
+            lumi_lines, lumi_labels = ([], [])
+        
+        # Default values
+        handles1 = labels1 = handles2 = labels2 = ()
+        
+        if not bhm_empty:
+            # Seperate out the color map from the rest of the legend
+            handles1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                if label.upper() not in beam_status_color_map.keys()])
+
+        if not lumi_empty:
+            # color map stuff
+            handles2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
+                                if label.upper() in beam_status_color_map.keys()])
+        
+        return handles1, labels1, handles2, labels2
+    
+
+
+
+
+
+
+
+    for uHTR in (uHTR4, uHTR11): # Make sure getattr() and query don't break if we don't have any data and thus never generated the uHTR dataframe
+        if len(uHTR.run) == 0:
+            # Fill attributes with (empty) placeholder dataframes
+            uHTR.df = uHTR.SR = uHTR.AR = uHTR.BR = uHTR.CP = pd.DataFrame(columns=("bx", "tdc", "tdc_2", "ch", "ch_name", "orbit", "run", "peak_ampl"))
+
+    if delivered_lumi is not None:
+        delivered_lumi = np.asarray(delivered_lumi)
+
+    beam_status = np.asarray(beam_status)
 
     if lumi_bins is not None:
         lumi_time = [dt_conv.get_date_time(utc_ms) for utc_ms in lumi_bins]
     else:
         lumi_time = None
     
-    region_df_list = []
+    region_df_list: list[tuple[pd.DataFrame, pd.DataFrame]] = []
 
     for region in plot_regions:
         if " & " in region:
@@ -1072,17 +1155,18 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
 
     for i, (region_name, region4, region11) in enumerate([(plot_regions[0], region_df_list[0][0], region_df_list[0][1]), 
                                                           (plot_regions[1], region_df_list[1][0], region_df_list[1][1])]):
-        
-        if save_fig:
-            f,ax = plt.subplots()
-            f.autofmt_xdate()
-            xfmt = mdates.DateFormatter('%H:%M')
-            ax.xaxis.set_major_formatter(xfmt)
-        max_rate = 0
 
         if theCuts[i] is not None: # theCut should be a pandas query string
-            region4 = region4.query(theCuts[i])
-            region11 = region11.query(theCuts[i])
+            if "orbit" in theCuts[i]:
+                # Pandas gets very mad if you query with uint64, so we need to use the python engine to not crash
+                # This is a slower engine, so only use it if we have to by first checking if orbit is in our cuts (since orbit is a uint64)
+                # This issue doesn't exist for uint8, 16, or 32, which is really weird...
+                # I should probably just change it to int64 when it's loaded from the data files to begin with, but we'll do this for now
+                region4 = region4.query(theCuts[i], engine="python")
+                region11 = region11.query(theCuts[i], engine="python")
+            else:
+                region4 = region4.query(theCuts[i])
+                region11 = region11.query(theCuts[i])
         
         if region_name == "df":
             if theCuts[i] is None:
@@ -1091,112 +1175,118 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions=["SR", "C
                 region_id = theCuts[i].strip()
         else:
             region_id = region_name
-        
-        x1 = x2 = y1 = y2 = None # Placeholders to prevent UnboundLocalError
 
-        if commonVars.root and region4.empty and region11.empty and lumi_bins is None:
-            try:
-                ax = commonVars.rate_fig.axes[2*i]
-            except IndexError:
-                ax = commonVars.rate_fig.add_subplot(2, 1, i+1) 
-            xfmt = mdates.DateFormatter('%H:%M')
-            ax.xaxis.set_major_formatter(xfmt)
-            plot_bhm(ax, None, None, None, None, 10, region_id)
+        bhm_empty = region4.empty and region11.empty
+        lumi_empty = lumi_bins is None
+        no_data = region4.empty and region11.empty and lumi_bins is None
+
+        if no_data:
+
+            if commonVars.root:
+                if by_time:
+                    try:
+                        bhm_ax = commonVars.rate_time_fig.axes[2*i]
+                    except IndexError:
+                        bhm_ax = commonVars.rate_time_fig.add_subplot(2, 1, i+1) 
+                    xfmt = mdates.DateFormatter('%H:%M')
+                    bhm_ax.xaxis.set_major_formatter(xfmt)
+                    plot_bhm(bhm_ax, None, None, None, None, 10, region_id)
+                if by_lumi:
+                    try:
+                        by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.axes[i]
+                    except IndexError:
+                        by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 1, i+1)
+                    plot_lumi_v_bhm(by_lumi_ax, None, None, None, None)
             continue
 
-        elif region4.empty and region11.empty and lumi_bins is None:
-            continue
+        # x1/x2 -> time values for uHTR4/uHTR11 respectively
+        # y1/y2 -> event rate for uHTR4/uHTR11 respectively
+        x1, y1, x2, y2, max_rate = get_bhm_rate(region4, region11, lumi_bins, start_time)
 
-        if not region4.empty:
-            x1,y1,binx = uHTR4.get_rate(region4, bins=lumi_bins, start_time=start_time)
-            if max(y1) > max_rate: max_rate = max(y1)
-            if f"+Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
-                commonVars.bhm_bins[f"+Z {region_id}"] = binx[1:] - binx[:-1]
-
-        if not region11.empty:
-            x2,y2,binx = uHTR11.get_rate(region11, bins=lumi_bins, start_time=start_time)
-            if max(y2) > max_rate: max_rate = max(y2)
-            if f"-Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
-                commonVars.bhm_bins[f"-Z {region_id}"] = binx[1:] - binx[:-1]
-
-        if lumi_bins is not None:
-
+        if not lumi_empty:
             # Pick the scaling such that we minimize the distance between max lumi and max bhm rate
             scales = np.logspace(-9, 6, num=6, endpoint=True)
             scale_factor = scales[np.argmin(np.abs(np.max(delivered_lumi)*scales - max_rate))]
 
-            if save_fig:
-                lumi_ax = ax.twinx()
-                plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
-            
-            # test_fig, test_ax = plt.subplots()
-
-            # plot_lumi_v_bhm(test_ax, y1, y2, delivered_lumi, scale_factor=scale_factor)
-            # test_fig.savefig(f"{uHTR4.figure_folder}/TEST_{region_name}.png",dpi=300)
 
         if save_fig:
-            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_id)
 
-            #if not region4.empty or not region11.empty:
-            bhm_lines, bhm_labels = ax.get_legend_handles_labels()
-            try:
-                lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
-            except UnboundLocalError:
-                lumi_lines, lumi_labels = ([], [])
+            if by_time:
+                by_time_fig, bhm_ax = plt.subplots()
+                by_time_fig.autofmt_xdate()
+                xfmt = mdates.DateFormatter('%H:%M')
+                bhm_ax.xaxis.set_major_formatter(xfmt)
+
+                plot_bhm(bhm_ax, x1, x2, y1, y2, max_rate, region_id)
+
+                if not lumi_empty:
+                    lumi_ax: plt.Axes = bhm_ax.twinx()
+                    plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
+                
+                bhm_handles, bhm_labels, lumi_handles, lumi_labels = get_legend_handles_labels(bhm_ax, lumi_ax, bhm_empty, lumi_empty)
+
+                if bhm_handles:
+                    bhm_ax.legend(handles=bhm_handles, labels=bhm_labels, loc=(1.2,0.8), frameon=1)
+                if lumi_handles:
+                    lumi_ax.legend(handles=lumi_handles, labels=lumi_labels, loc=(1.2, 0), title="LHC Beam Status", frameon=1)
+
+                by_time_fig.savefig(f"{uHTR4.figure_folder}/rates_{region_name}.png",dpi=300)
+                
+
+            if not lumi_empty and by_lumi:
+                by_lumi_fig, by_lumi_ax = plt.subplots()
+                plot_lumi_v_bhm(by_lumi_ax, y1, y2, delivered_lumi, scale_factor=scale_factor)
+
+                by_lumi_fig.savefig(f"{uHTR4.figure_folder}/rates_by_lumi_{region_name}.png",dpi=300)
+
+
             
-            if not region4.empty or not region11.empty:
-                # Seperate out the color map from the rest of the legend
-                lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                    if label.upper() not in beam_status_color_map.keys()])
-                ax.legend(handles=lines1, labels=labels1, loc=(1.2,0.8), frameon=1)
 
-            if lumi_bins is not None:
-                # color map stuff
-                lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                    if label.upper() in beam_status_color_map.keys()])
-                lumi_ax.legend(handles=lines2, labels=labels2, loc=(1.2, 0), title="LHC Beam Status", frameon=1)
 
-            f.savefig(f"{uHTR4.figure_folder}/rates_{region_name}.png",dpi=300)
 
         if commonVars.root:
-            try:
-                ax = commonVars.rate_fig.axes[2*i]
-            except IndexError:
-                ax = commonVars.rate_fig.add_subplot(2, 1, i+1)
-
-            xfmt = mdates.DateFormatter('%H:%M')
-            ax.xaxis.set_major_formatter(xfmt)
-
-            if lumi_bins is not None:
+            if by_time:
                 try:
-                    lumi_ax = commonVars.rate_fig.axes[2*i+1]
-                except:
-                    lumi_ax = ax.twinx()
-                plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
+                    bhm_ax: plt.Axes = commonVars.rate_time_fig.axes[2*i]
+                except IndexError:
+                    bhm_ax: plt.Axes = commonVars.rate_time_fig.add_subplot(2, 1, i+1)
 
-            plot_bhm(ax, x1, x2, y1, y2, max_rate, region_id)
+                xfmt = mdates.DateFormatter('%H:%M')
+                bhm_ax.xaxis.set_major_formatter(xfmt)
 
-            bhm_lines, bhm_labels = ax.get_legend_handles_labels()
-            try:
-                lumi_lines, lumi_labels = lumi_ax.get_legend_handles_labels()
-            except UnboundLocalError:
-                lumi_lines, lumi_labels = ([], [])
+                plot_bhm(bhm_ax, x1, x2, y1, y2, max_rate, region_id)
 
-            ax_bbox = ax.get_position()
+                if not lumi_empty:
+                    try:
+                        lumi_ax: plt.Axes = commonVars.rate_time_fig.axes[2*i+1]
+                    except:
+                        lumi_ax: plt.Axes = bhm_ax.twinx()
+                    plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
+                
+                bhm_handles, bhm_labels, lumi_handles, lumi_labels = get_legend_handles_labels(bhm_ax, lumi_ax, bhm_empty, lumi_empty)
 
-            if not region4.empty or not region11.empty or lumi_bins is not None:
-                # Seperate out the color map from the rest of the legend
-                lines1, labels1 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                    if label.upper() not in beam_status_color_map.keys()])
-                ax.legend(handles=lines1, labels=labels1, loc="upper left", bbox_to_anchor=(ax_bbox.x0+ax_bbox.width+0.05, ax_bbox.y0+ax_bbox.height), 
-                          bbox_transform=commonVars.rate_fig.transFigure, frameon=1)
+                bhm_ax_bbox = bhm_ax.get_position()
+                
+                if bhm_handles:
+                    bhm_ax.legend(handles=bhm_handles, labels=bhm_labels, loc="upper left", 
+                                bbox_to_anchor=(bhm_ax_bbox.x0+bhm_ax_bbox.width+0.05, bhm_ax_bbox.y0+bhm_ax_bbox.height), 
+                                bbox_transform=commonVars.rate_time_fig.transFigure, 
+                                frameon=1)
+                if lumi_handles:
+                    lumi_ax.legend(handles=lumi_handles, labels=lumi_labels, loc="lower left", 
+                                bbox_to_anchor=(bhm_ax_bbox.x0+bhm_ax_bbox.width+0.05, bhm_ax_bbox.y0), 
+                                bbox_transform=commonVars.rate_time_fig.transFigure, 
+                                title="LHC\nBeam Status", frameon=1)
 
-            if lumi_bins is not None:
-                # color map stuff
-                lines2, labels2 = zip(*[(line, label) for line, label in zip(bhm_lines+lumi_lines, bhm_labels+lumi_labels) 
-                                    if label.upper() in beam_status_color_map.keys()])
-                lumi_ax.legend(handles=lines2, labels=labels2, loc="lower left", bbox_to_anchor=(ax_bbox.x0+ax_bbox.width+0.05, ax_bbox.y0), 
-                          bbox_transform=commonVars.rate_fig.transFigure, title="LHC\nBeam Status", frameon=1)
+                    
+
+            if not lumi_empty and by_lumi:
+                try:
+                    by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.axes[i]
+                except IndexError:
+                    by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 1, i+1)
+                plot_lumi_v_bhm(by_lumi_ax, y1, y2, delivered_lumi, scale_factor)
+
         
         plt.close()
 

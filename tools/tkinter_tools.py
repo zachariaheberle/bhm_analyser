@@ -777,26 +777,42 @@ class OccupancyToolbar(PlotToolbar):
             return s
 
 
-class RateToolbar(PlotToolbar):
+class RateToolbarBase(PlotToolbar):
     """
     Because the rate plots rely on BOTH uHTR4 and uHTR11 and comes in a pair of plots including elements from both uHTR's, we have
-    to make an entirely new toolbar just for the rate plots
+    to make an entirely new toolbar just for the rate plots.
+
+    This is base class (meaning no draw method nor mouse event handling are implemented) for the by time or by lumi rate plots, each is a subclass of this
     """
 
-    def __init__(self, canvas, window, figure, pack_toolbar=False):
-        self.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
-                        ('Home', 'Reset original view', 'home', 'home'),
-                        ('Back', 'Back to  previous view', 'back', 'back'),
-                        ('Forward', 'Forward to next view', 'forward', 'forward'),
-                        (None, None, None, None),
-                        ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
-                        ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
-                        (None, None, None, None),
-                        ('Save', 'Save the figure', 'filesave', 'save_figure'),
-                        (None, None, None, None),
-                        ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings"),
-                        ("Stats", "Counting Statistics", os.path.relpath("./img/buttons/stats", start=plt.__file__ + "/mpl_data"), "toggle_stats")
-                        )
+    def __init__(self, canvas, window, figure, time_sel=False, ch_sel=True, region_sel=True, count_stats=True, pack_toolbar=False):
+        if count_stats:
+            self.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
+                            ('Home', 'Reset original view', 'home', 'home'),
+                            ('Back', 'Back to  previous view', 'back', 'back'),
+                            ('Forward', 'Forward to next view', 'forward', 'forward'),
+                            (None, None, None, None),
+                            ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+                            ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+                            (None, None, None, None),
+                            ('Save', 'Save the figure', 'filesave', 'save_figure'),
+                            (None, None, None, None),
+                            ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings"),
+                            ("Stats", "Counting Statistics", os.path.relpath("./img/buttons/stats", start=plt.__file__ + "/mpl_data"), "toggle_stats")
+                            )
+        else:
+            self.toolitems = ( # removing configure subplots option on toolbar because it doesn't work with the agg backend for matplotlib
+                            ('Home', 'Reset original view', 'home', 'home'),
+                            ('Back', 'Back to  previous view', 'back', 'back'),
+                            ('Forward', 'Forward to next view', 'forward', 'forward'),
+                            (None, None, None, None),
+                            ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+                            ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+                            (None, None, None, None),
+                            ('Save', 'Save the figure', 'filesave', 'save_figure'),
+                            (None, None, None, None),
+                            ("Settings", "Plot Settings", os.path.relpath("./img/buttons/settings", start=plt.__file__ + "/mpl_data"), "toggle_settings"),
+                            )
 
         super(PlotToolbar, self).__init__(canvas, window, pack_toolbar=pack_toolbar)
         self.figure = figure
@@ -809,60 +825,81 @@ class RateToolbar(PlotToolbar):
 
         self.scroll_frame = ScrollableFrame(self.settings_frame, canvas_height=461)
         self.scroll_frame.pack(side="top", fill="both", expand=True)
-        
-        # Add channel cut selection
-        self.channel_select1 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Upper Plot)")
-        self.channel_select2 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Lower Plot)")
 
-        self.channel_select1.grid(row=0, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
-        self.channel_select2.grid(row=1, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+        # Add time cut selection
+        if time_sel: 
+            self.start_time1 = DateEntry(self.scroll_frame, text="Start Date/Time (Upper Plot)")
+            self.end_time1 = DateEntry(self.scroll_frame, text="End Date/Time (Upper Plot)")
+
+            self.start_time2 = DateEntry(self.scroll_frame, text="Start Date/Time (Lower Plot)")
+            self.end_time2 = DateEntry(self.scroll_frame, text="End Date/Time (Lower Plot)")
+
+            self.start_time1.grid(row=0, column=0, columnspan=2, ipadx=5, ipady=5, padx=5, pady=5, sticky="ew")
+            self.end_time1.grid(row=1, column=0, columnspan=2, ipadx=5, ipady=5, padx=5, pady=5, sticky="ew")
+
+            self.start_time2.grid(row=3, column=0, columnspan=2, ipadx=5, ipady=5, padx=5, pady=5, sticky="ew")
+            self.end_time2.grid(row=4, column=0, columnspan=2, ipadx=5, ipady=5, padx=5, pady=5, sticky="ew")
+
+        # Add channel cut selection
+        if ch_sel:
+            self.channel_select1 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Upper Plot)")
+            self.channel_select2 = ChannelSelection(self.scroll_frame, text="BHM Channel Selection\n(Lower Plot)")
+
+            self.channel_select1.grid(row=2, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+            self.channel_select2.grid(row=5, column=0, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
         
         # Add region cut selection
-        self.region_select1 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
-        self.region_select2 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Lower Plot)")
+        if region_sel:
+            self.region_select1 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Upper Plot)")
+            self.region_select2 = RegionSelection(self.scroll_frame, text="BHM Region Selection\n(Lower Plot)")
 
-        # Changing default region selection (SR for top plot, CP for bottom)
-        self.region_select1.checkbutton_info["Collision Products"][1].set(0)
-        self.region_select1.checkbutton_info["Activation Region"][1].set(0)
+            # Changing default region selection (SR for top plot, CP for bottom)
+            self.region_select1.checkbutton_info["Collision Products"][1].set(0)
+            self.region_select1.checkbutton_info["Activation Region"][1].set(0)
 
-        self.region_select2.checkbutton_info["Signal Region"][1].set(0)
-        self.region_select2.checkbutton_info["Activation Region"][1].set(0)
+            self.region_select2.checkbutton_info["Signal Region"][1].set(0)
+            self.region_select2.checkbutton_info["Activation Region"][1].set(0)
 
 
-        self.region_select1.grid(row=0, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
-        self.region_select2.grid(row=1, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+            self.region_select1.grid(row=2, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+            self.region_select2.grid(row=5, column=1, ipadx=5, ipady=5, padx=5, pady=5, sticky="nw")
+        
+        # Counting stats stuff
+        if count_stats:
+            self.figure.canvas.mpl_connect("draw_event", self._on_draw) # trigger self._on_draw whenever the plot changes
+
+            # Frame for holding counting statistics
+            self.stats_frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Counting Stats Frame
+            self.stats_frame.grid_columnconfigure(0, uniform="stats_info")
+            self.stats_frame.grid_columnconfigure(1, uniform="stats_info")
+            self.stats_frame.lift()
+
+            # Labelframes for top/bottom plots
+            self.top_plot_labelframe = ttk.LabelFrame(self.stats_frame, text="Top Plot Counting Stats")
+            self.bottom_plot_labelframe = ttk.LabelFrame(self.stats_frame, text="Bottom Plot Counting Stats")
+
+            self.top_plot_labelframe.grid(row=0, column=0, padx=5, pady=5, ipadx=5, ipady=5, sticky="nsew")
+            self.bottom_plot_labelframe.grid(row=0, column=1, padx=5, pady=5, ipadx=5, ipady=5, sticky="nsew")
+
+            # Frames to hold all the counting statistics boxes
+            self.top_plot_counts_frame = ttk.Frame(self.top_plot_labelframe)
+            self.bottom_plot_counts_frame = ttk.Frame(self.bottom_plot_labelframe)
+
+            self.top_plot_counts_frame.pack(side="top", fill="both", expand=True, padx=1, pady=(11, 1))
+            self.bottom_plot_counts_frame.pack(side="top", fill="both", expand=True, padx=1, pady=(11, 1))
+
+            # These contain the actual counting stats data, are packed/unpacked contingent on whether counting data is present
+            self.top_plot_plusZ_stats_box = CountStatsBox(self.top_plot_counts_frame)
+            self.top_plot_minusZ_stats_box = CountStatsBox(self.top_plot_counts_frame)
+            self.bottom_plot_plusZ_stats_box = CountStatsBox(self.bottom_plot_counts_frame)
+            self.bottom_plot_minusZ_stats_box = CountStatsBox(self.bottom_plot_counts_frame)
+
             
         # Plot redraw button
         self.draw_button = ttk.Button(self.settings_frame, text="Redraw Plots", command=lambda : Thread(target=self._redraw, daemon=True).start())
         self.draw_button.pack(side="bottom", fill="x", expand=True, ipadx=5, ipady=5, padx=5, pady=5)
 
-        self.figure.canvas.mpl_connect("draw_event", self._on_draw) # trigger self._on_draw whenever the plot changes
-
-        # Frame for holding counting statistics
-        self.stats_frame = tk.Frame(window, highlightbackground="#bbbbbb", highlightcolor="#bbbbbb", highlightthickness=2, bg="#f0f0f0") # Counting Stats Frame
-        self.stats_frame.grid_columnconfigure(0, uniform="stats_info")
-        self.stats_frame.grid_columnconfigure(1, uniform="stats_info")
-        self.stats_frame.lift()
-
-        # Labelframes for top/bottom plots
-        self.top_plot_labelframe = ttk.LabelFrame(self.stats_frame, text="Top Plot Counting Stats")
-        self.bottom_plot_labelframe = ttk.LabelFrame(self.stats_frame, text="Bottom Plot Counting Stats")
-
-        self.top_plot_labelframe.grid(row=0, column=0, padx=5, pady=5, ipadx=5, ipady=5, sticky="nsew")
-        self.bottom_plot_labelframe.grid(row=0, column=1, padx=5, pady=5, ipadx=5, ipady=5, sticky="nsew")
-
-        # Frames to hold all the counting statistics boxes
-        self.top_plot_counts_frame = ttk.Frame(self.top_plot_labelframe)
-        self.bottom_plot_counts_frame = ttk.Frame(self.bottom_plot_labelframe)
-
-        self.top_plot_counts_frame.pack(side="top", fill="both", expand=True, padx=1, pady=(11, 1))
-        self.bottom_plot_counts_frame.pack(side="top", fill="both", expand=True, padx=1, pady=(11, 1))
-
-        # These contain the actual counting stats data, are packed/unpacked contingent on whether counting data is present
-        self.top_plot_plusZ_stats_box = CountStatsBox(self.top_plot_counts_frame)
-        self.top_plot_minusZ_stats_box = CountStatsBox(self.top_plot_counts_frame)
-        self.bottom_plot_plusZ_stats_box = CountStatsBox(self.bottom_plot_counts_frame)
-        self.bottom_plot_minusZ_stats_box = CountStatsBox(self.bottom_plot_counts_frame)
+        
     
     def toggle_settings(self):
         """
@@ -870,7 +907,7 @@ class RateToolbar(PlotToolbar):
         If the stats frame exists, hide it first.
         """
         if not self.settings_frame.winfo_ismapped():
-            if self.stats_frame.winfo_ismapped():
+            if hasattr(self, "stats_frame") and self.stats_frame.winfo_ismapped():
                 self.stats_frame.place_forget()
             self.settings_frame.place(x=5, rely=(self.master.winfo_height()-self.winfo_height()-5)/self.master.winfo_height(),
                                 anchor="sw")
@@ -904,18 +941,26 @@ class RateToolbar(PlotToolbar):
         of handling errors from their respecitive widgets.
         """
         valid_state = True
-        self.draw_channels1 = self.channel_select1.get_selected_channels()
-        self.draw_channels2 = self.channel_select2.get_selected_channels()
+        if hasattr(self, "start_time1"):
+            try:
+                self.start_utc1 = self.start_time1.get_time()
+                self.end_utc1 = self.end_time2.get_time()
 
-        try:
-            self.region_settings1 = self.region_select1.get_region_settings()
-        except AssertionError:
-            valid_state = False
+                self.start_utc2 = self.start_time2.get_time()
+                self.end_utc2 = self.end_time2.get_time()
+            except AssertionError:
+                valid_state = False
 
-        try:
-            self.region_settings2 = self.region_select2.get_region_settings()
-        except AssertionError:
-            valid_state = False
+        if hasattr(self, "channel_select1"):
+            self.draw_channels1 = self.channel_select1.get_selected_channels()
+            self.draw_channels2 = self.channel_select2.get_selected_channels()
+        
+        if hasattr(self, "region_select1"):
+            try:
+                self.region_settings1 = self.region_select1.get_region_settings()
+                self.region_settings2 = self.region_select2.get_region_settings()
+            except AssertionError:
+                valid_state = False
         
         return valid_state
 
@@ -928,59 +973,70 @@ class RateToolbar(PlotToolbar):
 
             theCut = None
             chCut = ""
-            channels = [channel for channel in getattr(self, f"draw_channels{plot_index}")]
 
-            if len(channels) < 40:
-                for i, ch_name in enumerate(channels):
-                    if i == 0:
-                        chCut = f"(ch_name == '{ch_name}')"
+            if hasattr(self, f"start_time{plot_index}"):
+                
+                theCut = f"(orbit >= {dt_conv.utc_ms_to_orbit(getattr(self, f'start_utc{plot_index}'), commonVars.start_time_utc_ms, commonVars.reference_orbit)} & " +\
+                         f"orbit <= {dt_conv.utc_ms_to_orbit(getattr(self, f'end_utc{plot_index}'), commonVars.start_time_utc_ms, commonVars.reference_orbit)})"
+
+            if hasattr(self, f"draw_channels{plot_index}"):
+                channels = [channel for channel in getattr(self, f"draw_channels{plot_index}")]
+
+                if len(channels) < 40:
+                    for i, ch_name in enumerate(channels):
+                        if i == 0:
+                            chCut = f"(ch_name == '{ch_name}')"
+                        else:
+                            chCut = f"{chCut} | (ch_name == '{ch_name}')"
+
+                    if chCut != "":
+                        if theCut is None:
+                            theCut = f"({chCut})"
+                        else:
+                            theCut = f"{theCut} & ({chCut})"
                     else:
-                        chCut = f"{chCut} | (ch_name == '{ch_name}')"
+                        theCuts.append("run == -1")
+                        region_names.append("df")
+                        continue
 
-                if chCut != "":
-                    theCut = f"({chCut})"
-                else:
-                    theCuts.append("run == -1")
-                    region_names.append("df")
-                    continue
-
-            if getattr(self, f"region_settings{plot_index}")["Custom Region"]:
-                if theCut is not None:
-                    theCut = f"{theCut} & ({getattr(self, f'region_select{plot_index}').query_string})"
-                else:
-                    theCut = getattr(self, f'region_select{plot_index}').query_string
-                region_name = "df"
-            
-            else:
-
-                SR = getattr(self, f"region_settings{plot_index}")["Signal Region"]
-                AR = getattr(self, f"region_settings{plot_index}")["Activation Region"]
-                CP = getattr(self, f"region_settings{plot_index}")["Collision Products"]
-
-                if SR and not AR and not CP: # Ugly and inefficient, but oh well, there's only 8 combos anyway
-                    region_name = "SR"
-                
-                elif AR and not SR and not CP:
-                    region_name = "AR"
-                
-                elif CP and not SR and not AR:
-                    region_name = "CP"
-                
-                elif AR and CP and not SR:
-                    region_name = "BR"
-                
-                elif SR and AR and not CP:
-                    region_name = "SR & AR"
-                
-                elif SR and CP and not AR:
-                    region_name = "SR & CP"
-                
-                elif not (SR and CP and AR): # Empty
-                    theCut = "run == -1"
-                    region_name = "df" 
-                
-                else: # All events
+            if hasattr(self, f"region_settings{plot_index}"):
+                if getattr(self, f"region_settings{plot_index}")["Custom Region"]:
+                    if theCut is not None:
+                        theCut = f"{theCut} & ({getattr(self, f'region_select{plot_index}').query_string})"
+                    else:
+                        theCut = getattr(self, f'region_select{plot_index}').query_string
                     region_name = "df"
+                
+                else:
+
+                    SR = getattr(self, f"region_settings{plot_index}")["Signal Region"]
+                    AR = getattr(self, f"region_settings{plot_index}")["Activation Region"]
+                    CP = getattr(self, f"region_settings{plot_index}")["Collision Products"]
+
+                    if SR and not AR and not CP: # Ugly and inefficient, but oh well, there's only 8 combos anyway
+                        region_name = "SR"
+                    
+                    elif AR and not SR and not CP:
+                        region_name = "AR"
+                    
+                    elif CP and not SR and not AR:
+                        region_name = "CP"
+                    
+                    elif AR and CP and not SR:
+                        region_name = "BR"
+                    
+                    elif SR and AR and not CP:
+                        region_name = "SR & AR"
+                    
+                    elif SR and CP and not AR:
+                        region_name = "SR & CP"
+                    
+                    elif not (SR and CP and AR): # Empty
+                        theCut = "run == -1"
+                        region_name = "df" 
+                    
+                    else: # All events
+                        region_name = "df"
             
 
             theCuts.append(theCut)
@@ -1001,8 +1057,9 @@ class RateToolbar(PlotToolbar):
         elif state == False:
             self.loading_text.destroy() # Remove loading text
             enable_widget(self.settings_frame)
-            self.region_select1._update_region_display() # Update our region displays so we disable the correct sub-widgets
-            self.region_select2._update_region_display()
+            if hasattr(self, "region_select1"):
+                self.region_select1._update_region_display() # Update our region displays so we disable the correct sub-widgets
+                self.region_select2._update_region_display()
     
     def _redraw(self):
         """
@@ -1028,17 +1085,6 @@ class RateToolbar(PlotToolbar):
         self.canvas.draw_idle() # Redraw new canvas
         self.update() # Update toolbar memory, basically makes sure the "home", "back" and "forward" buttons all work properly
         self._set_loading_state(False)
-    
-    def draw_plot(self, theCuts, region_names):
-        plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, plot_regions=region_names, start_time=commonVars.start_time_utc_ms, 
-                            lumi_bins=commonVars.lumi_bins, delivered_lumi=commonVars.delivered_lumi, beam_status=commonVars.beam_status,
-                            theCuts=theCuts, save_fig=False)
-    
-    @staticmethod
-    def _mouse_event_to_message(event):
-        if event.inaxes and event.inaxes.get_navigate():
-            s = f"Time: {dates.num2date(event.xdata).strftime('%Y/%m/%d - %H:%M:%S')}, Event: {round(event.ydata)}"
-            return s
     
     def _on_draw(self, event):
         """
@@ -1088,6 +1134,36 @@ class RateToolbar(PlotToolbar):
 
             if "BHM Event Rate" in ax.get_ylabel() and plot_index == 0: # plot_index != the index in self.figure.axes, since CMS rate info is a seperate Axes object
                 plot_index += 1                                         # that occupies the same plot as the BHM Event Rate Axes
+
+
+class RateToolbarByTime(RateToolbarBase):
+
+    def draw_plot(self, theCuts, region_names):
+        plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, plot_regions=region_names, start_time=commonVars.start_time_utc_ms, 
+                            lumi_bins=commonVars.lumi_bins, delivered_lumi=commonVars.delivered_lumi, beam_status=commonVars.beam_status,
+                            theCuts=theCuts, save_fig=False, by_lumi=False, by_time=True)
+    
+    @staticmethod
+    def _mouse_event_to_message(event):
+        if event.inaxes and event.inaxes.get_navigate():
+            s = f"Time: {dates.num2date(event.xdata).strftime('%Y/%m/%d - %H:%M:%S')}, Event: {round(event.ydata)}"
+            return s
+
+class RateToolbarByLumi(RateToolbarBase):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, time_sel=True, count_stats=False, **kwargs)
+
+    def draw_plot(self, theCuts, region_names):
+        plotting.rate_plots(commonVars.uHTR4, commonVars.uHTR11, plot_regions=region_names, start_time=commonVars.start_time_utc_ms, 
+                            lumi_bins=commonVars.lumi_bins, delivered_lumi=commonVars.delivered_lumi, beam_status=commonVars.beam_status,
+                            theCuts=theCuts, save_fig=False, by_lumi=True, by_time=False)
+    
+    @staticmethod
+    def _mouse_event_to_message(event):
+        if event.inaxes and event.inaxes.get_navigate():
+            s = f"Delivered Lumi: {event.xdata:.3f}, Event: {round(event.ydata)}"
+            return s
 
 
 class ChannelEventsToolbar(PlotToolbar):

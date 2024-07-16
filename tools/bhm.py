@@ -800,8 +800,11 @@ class bhm_analyser():
         #     y,binx,_ = stats.binned_statistic(x,np.ones(x.size),statistic='sum',bins=bins)
 
         # plotting.textbox(1.1,0.7,f"Run No:{run}")
-        x = binx[:-1] + (binx[1:]-binx[:-1])*0.5
-        x = [dt_conv.get_date_time(i) for i in x]
+        # x = binx[:-1] + (binx[1:]-binx[:-1])*0.5
+        x = [dt_conv.get_date_time(i) for i in binx[:-1]]
+
+        # Cast float64 to int64 for use with by_lumi plots (y vals are already integers anyway)
+        y: np.ndarray = y.astype(np.int64) 
         return x,y,binx
     
     def print_values(self):
