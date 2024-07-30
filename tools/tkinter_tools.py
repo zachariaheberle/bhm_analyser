@@ -944,7 +944,7 @@ class RateToolbarBase(PlotToolbar):
         if hasattr(self, "start_time1"):
             try:
                 self.start_utc1 = self.start_time1.get_time()
-                self.end_utc1 = self.end_time2.get_time()
+                self.end_utc1 = self.end_time1.get_time()
 
                 self.start_utc2 = self.start_time2.get_time()
                 self.end_utc2 = self.end_time2.get_time()
