@@ -1303,6 +1303,8 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
                     except:
                         lumi_ax: plt.Axes = bhm_ax.twinx()
                     plot_lumi(lumi_ax, lumi_time, scale_factor, np.max(delivered_lumi)*scale_factor)
+                else:
+                    lumi_ax = None
                 
                 bhm_handles, bhm_labels, lumi_handles, lumi_labels = get_legend_handles_labels(bhm_ax, lumi_ax, bhm_empty, lumi_empty)
 
