@@ -273,6 +273,9 @@ class ValidatedEntry(tk.Entry):
         self.config = self.configure # Adding config alias to remap to overridden configure function
 
     def _on_enter(self, event):
+        """
+        Event trigger when mouse enters the bbox of the widget
+        """
         if self.cget("state") == "normal":
             if self.valid:
                 self.config(highlightbackground="#000000")
@@ -280,6 +283,9 @@ class ValidatedEntry(tk.Entry):
                 self.config(highlightbackground="#ff0000")
     
     def _on_leave(self, event):
+        """
+        Event trigger when mouse leaves the bbox of the widget
+        """
         if self.cget("state") == "normal":
             if self.valid:
                 self.config(highlightbackground="#7a7a7a")
@@ -287,10 +293,16 @@ class ValidatedEntry(tk.Entry):
                 self.config(highlightbackground="#ff7069")
     
     def _on_disable(self):
+        """
+        Trigger when the widget is disabled
+        """
         self.config(highlightbackground="#cccccc")
         self._remove_message()
     
     def _on_enable(self):
+        """
+        Trigger when the widget is enabled
+        """
         if self.valid:
             self.config(highlightbackground="#7a7a7a", highlightcolor="#0078d7")
             self._remove_message()
@@ -310,6 +322,9 @@ class ValidatedEntry(tk.Entry):
                 self._on_enable()
 
     def set_valid(self, valid_state):
+        """
+        Sets the validity of the widget (T/F)
+        """
         self.valid = valid_state
 
         if self.valid == True:
@@ -320,11 +335,17 @@ class ValidatedEntry(tk.Entry):
             self._show_message()
     
     def _show_message(self):
+        """
+        Creates a popup with an error message for why the widget is invalid
+        """
         if not self.message_label.winfo_ismapped():
             self.message_label.config(wraplength=self.winfo_width())
             self.message_label.place(in_=self, x=-1, y=-2, anchor="sw")
 
     def _remove_message(self):
+        """
+        Removes widget invalid popup
+        """
         if self.message_label.winfo_ismapped():
             self.message_label.place_forget()
 
@@ -2016,6 +2037,10 @@ class OptionMenu(tk.OptionMenu):
         self.img_label.bind("<Enter>", self._on_enter)
 
     def _on_click(self, event: tk.Event):
+        """
+        Event trigger when clicking on the option meanu. 
+        Allows us to open the optionmenu if we clicked on the img_label rather than the main widget
+        """
         self.config(activebackground="#CCE4F7")
         self.img_label.config(bg="#CCE4F7")
         if event.widget == self.img_label:

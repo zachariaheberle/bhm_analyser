@@ -276,7 +276,9 @@ class EllipseAxes(Axes):
         self.clear()
 
     def clear(self):
-
+        """
+        Clears / initializes the axes
+        """
         self._legend_handles = [] # List for storing handles for the legend since PatchCollections aren't automatically added to legends
 
         self._xticklabel_kwargs = {} # dictionaries to hold x/y (theta/r) ticklabel info
@@ -963,8 +965,9 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
     uHTR11 --> BHM Analyser object for uHTR11 
     Run Level needs to be implemented
 
-    This function is in shambles and needs serious cleaning up
+    Additionally plots the luminosity (if available) and creates both the by time and by lumi plots
 
+    This function is in shambles and needs serious cleaning up
     '''
 
         #Plotting the Run No:
@@ -1000,6 +1003,9 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
 
 
     def plot_lumi(ax: plt.Axes, lumi_time, scale_factor, max_rate):
+        """
+        Plot the CMS instantaneous luminosity and the beam status
+        """
         ax.plot(lumi_time, delivered_lumi*scale_factor, color="#a600ff", label="CMS Lumi")
         ax.fill_between(lumi_time, np.where(beam_status=="STABLE BEAMS", max_rate, 0), 0, color=beam_status_color_map["STABLE BEAMS"], alpha=0.1, step="post", label="Stable Beams")
         ax.fill_between(lumi_time, np.where(beam_status=="ADJUST", max_rate, 0), 0, color=beam_status_color_map["ADJUST"], alpha=0.1, step="post", label="Adjust")
@@ -1012,7 +1018,9 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
         
 
     def plot_bhm(ax: plt.Axes, x1, x2, y1, y2, max_rate, region_id):
-
+        """
+        Plot the BHM self-trigger data over time.
+        """
         if x1 is not None:
             l, = ax.plot(x1, y1, color='r',label=label_from_region_id(region_id, "+Z"))
             l.set_url(f"+Z {region_id}") # I'm hiding region metadata in the url property of these lines, this is just used for tagging them for counting stats
@@ -1028,6 +1036,9 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
     
 
     def plot_lumi_v_bhm(ax1: plt.Axes, ax2: plt.Axes, cax1, cax2, binx1, binx2, y1, y2, delivered_lumi, lumi_bins, scale_factor, region_id):
+        """
+        Plots a 2d histogram comparing the BHM event rate to the CMS instantaneous luminosity
+        """
         if delivered_lumi is not None:
 
             lumi = delivered_lumi*scale_factor
@@ -1095,6 +1106,9 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
 
 
     def label_from_region_id(region_id, side):
+        """
+        Converts the region id into a string to be used for the legends of the rate plots
+        """
 
         def cut_if_long(string, max_len=15):
             if len(string) > max_len:
@@ -1134,6 +1148,10 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
 
 
     def get_legend_handles_labels(bhm_ax, lumi_ax, bhm_empty=False, lumi_empty=False):
+        """
+        Seperates the BHM and lumi legend from the LHC Beam status legend. To do this, we grab the handles and labels from
+        the self-trigger and lumi and put these in the bhm_ax legend, while the beam status is put in the lumi_ax legend.
+        """
 
         bhm_lines, bhm_labels = bhm_ax.get_legend_handles_labels()
 
@@ -1348,6 +1366,9 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
 
 
 def plot_lego_gui(uHTR, xbins, ybins, h):
+    """
+    Plots the lego plots to the GUI (does not save to disk)
+    """
 
     if uHTR == "4":
         try:
@@ -1379,7 +1400,9 @@ def plot_lego_gui(uHTR, xbins, ybins, h):
     
     
 def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
-
+    """
+    Plots the ADC plots to the GUI (does not save to disk)
+    """
     try:
         # More complex ord mapping
         ax = commonVars.adc_fig.axes[int(20*(80 - ord(ch[0]))/3 + 10*(78-ord(ch[1]))/8 + int(ch[2:]) - 1)]
@@ -1413,7 +1436,9 @@ def plot_adc_gui(ch, x, binx, binx_tick, adc_plt_tdc_width):
     
 
 def plot_tdc_gui(ch, x, peak, delay=0):
-
+    """
+    Plots the TDC plots to the GUI (does not save to disk)
+    """
     try:
         ax = commonVars.tdc_fig.axes[int(20*(80 - ord(ch[0]))/3 + 10*(78-ord(ch[1]))/8 + int(ch[2:]) - 1)]
     except IndexError:
@@ -1435,7 +1460,9 @@ def plot_tdc_gui(ch, x, peak, delay=0):
 
 
 def plot_occupancy_gui(uHTR, BR_bx, SR_bx):
-
+    """
+    Plots the occupancy plots to the GUI (does not save to disk)
+    """
     if uHTR == "4":
         try:
             ax = commonVars.occupancy_fig.axes[0]
@@ -1471,7 +1498,9 @@ def plot_occupancy_gui(uHTR, BR_bx, SR_bx):
 
 
 def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
-
+    """
+    Plots the tdc stability plots to the GUI (does not save to disk)
+    """
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
         
@@ -1548,7 +1577,9 @@ def plot_tdc_stability_gui(uHTR, t_df, _mode, _mode_val, _std_dev, _sig):
 
 
 def plot_channel_events_gui(uHTR, channels, SR_events):
-
+    """
+    Plots the channel event plots to the GUI (does not save to disk)
+    """
     if uHTR == "4":
         try:
             ax: EllipseAxes = commonVars.ch_events_fig.axes[0]

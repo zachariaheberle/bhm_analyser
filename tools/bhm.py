@@ -71,20 +71,6 @@ class bhm_analyser():
 
         pass
 
-    def load_data_from_memory(self,ch,ampl, tdc,tdc_2, bx,orbit,run):
-        '''
-        quick load for debugging purposes
-        will be removed
-        '''
-        self.ch = ch
-        self.ampl = ampl
-        self.tdc = tdc
-        self.tdc_2 = tdc_2
-        self.bx = bx
-        self.orbit = orbit
-        self.run = run
-        self.ch_mapped= ch.T[0]*10 + ch.T[1] #Quick Channel Mapping
-
 
     def load_data(self,folder_name, data_type):
         '''
@@ -156,7 +142,7 @@ class bhm_analyser():
 
     def remove25glich(self):
         """
-        Removes all 25 tdc entries with 188 ampl peaks and also counts how many items were removed
+        Removes all 25 tdc entries with 188 ampl peaks
         """
         theCut = ((self.tdc != 25) | (self.peak_ampl != 188))
 
@@ -175,7 +161,7 @@ class bhm_analyser():
 
     def remove124amp0tdc(self):
         """
-        Removes all 0 tdc 124 ampl peak entries and also counts how many items were removed
+        Removes all 0 tdc 124 ampl peak entries
         """
         theCut = (self.tdc != 0) | (self.peak_ampl != 124)
 
@@ -264,6 +250,9 @@ class bhm_analyser():
         plt.close()
 
     def saveADCplots(self,binx=None,binx_tick=None):
+        """
+        Plots the ADC Peaks plots
+        """
         if binx is None:
             binx = np.arange(120,181,1)  # Changed 119.5 to 120 to remove .5 from x-axis scale.
         if binx_tick is None:    
@@ -852,6 +841,7 @@ class bhm_analyser():
         # combine all the plots into pdfs
         if len(self.run) != 0:
             if save_fig:
+                # montage is a command line executable of ImageMagick, so if we are failing here, you may not have it installed
                 os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}F*.png  {self.figure_folder}/adc_{detector_side}F.pdf")
                 os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/adc_peaks/uHTR_{self.uHTR}_{detector_side}N*.png  {self.figure_folder}/adc_{detector_side}N.pdf")
                 os.system(f"montage -density 300 -tile 2x0 -geometry +5+50 -border 10  {self.figure_folder}/tdc_peaks/{detector_side}F*.png  {self.figure_folder}/tdc_{detector_side}F.pdf")

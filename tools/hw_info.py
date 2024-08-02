@@ -42,6 +42,10 @@ qiecodes=np.asarray([1.58,   4.73,   7.88,   11.0,   14.2,   17.3,   20.5,   23.
 not_connected_channels = [82,53,83,52]
 
 def get_uHTR4_CMAP():
+    """
+    Creates a dictionary to convert 
+    channel name to channel number for uHTR4
+    """
     CMAP = {}
     fibre = 3
     cable = 0
@@ -70,6 +74,10 @@ def get_uHTR4_CMAP():
 
 
 def get_uHTR11_CMAP():
+    """
+    Creates a dictionary to convert 
+    channel name to channel number for uHTR11
+    """
     CMAP = {}
     fibre = 3
     cable = 0

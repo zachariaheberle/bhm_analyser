@@ -150,11 +150,15 @@ def get_run_orbit_ref(uHTR4, uHTR11):
 
 def get_run_info(run_cut):
     """
-    Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh) where get_run_time.py will be executed
+    Opens up the terminal/command line where the user will input their password to connect to cmsusr (via ssh)
+    where we will interact with the OMS API to get run information (lumi and start time)
     """
     mkdir("./cache")
 
     def get_runs_from_cut(run_cut):
+        """
+        Get list of runs to query based on the run_cut value
+        """
         if run_cut == None:
             return commonVars.loaded_runs
         elif isinstance(run_cut, int):
@@ -163,6 +167,9 @@ def get_run_info(run_cut):
             return run_cut
 
     def get_run_time_ms(run):
+        """
+        Gets the start time of a run in milliseconds. Will attempt to look in the local cache files before querying OMS
+        """
 
         try:
             run_times = np.loadtxt("./cache/run_times.cache", dtype=np.uint64, delimiter=",") # Check if info exists in a local cache
@@ -188,6 +195,11 @@ def get_run_info(run_cut):
         return run_time_ms
     
     def get_lumi_info(runs):
+        """
+        Gets the instantaneous luminosity information about a list of runs. Will attempt to look in the local cache files before
+        querying brilcalc on lxplus
+        """
+
         write_to_cache = True
 
         try:

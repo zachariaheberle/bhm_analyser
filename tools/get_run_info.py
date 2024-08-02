@@ -59,6 +59,9 @@ import subprocess
 #             raise ConnectionError("Failed to connect to cmsusr!")
 
 def query_run(run: int = 375000):
+    """
+    Grabs information about the start of a run through the OMS API.
+    """
     url = f"http://cmsoms.cms/agg/api/v1/runs/csv?filter[run_number][EQ]={run}"
     try:
         run_info = pd.read_csv(url).squeeze()
@@ -76,6 +79,9 @@ def query_run(run: int = 375000):
 
 
 def get_lumisections(runs: list = [375000]):
+    """
+    Grabs information about the CMS instantaneous luminosity for the given runs through the brilcalc tool on lxplus
+    """
     try:
         # We run two seperate brilcalcs because we want the delivered lumi data with the normtag, but want the beamstatus from the data without a normtag
         # Note: because we assume we are not running on lxplus (or linux for that matter), for this to work, ensure the brilcalc is added to your path
