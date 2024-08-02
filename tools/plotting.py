@@ -981,22 +981,22 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
         max_rate = 0
 
         if not region4.empty:
-            x1,y1,binx = uHTR4.get_rate(region4, bins=lumi_bins, start_time=start_time)
+            x1,y1,binx1 = uHTR4.get_rate(region4, bins=lumi_bins, start_time=start_time)
             if max(y1) > max_rate: max_rate = max(y1)
             if f"+Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
-                commonVars.bhm_bins[f"+Z {region_id}"] = binx[1:] - binx[:-1]
+                commonVars.bhm_bins[f"+Z {region_id}"] = binx1[1:] - binx1[:-1]
         else:
-            x1 = y1 = None
+            x1 = y1 = binx1 = None
 
         if not region11.empty:
-            x2,y2,binx = uHTR11.get_rate(region11, bins=lumi_bins, start_time=start_time)
+            x2,y2,binx2 = uHTR11.get_rate(region11, bins=lumi_bins, start_time=start_time)
             if max(y2) > max_rate: max_rate = max(y2)
             if f"-Z {region_id}" not in commonVars.bhm_bins.keys(): # cache this data for later use
-                commonVars.bhm_bins[f"-Z {region_id}"] = binx[1:] - binx[:-1]
+                commonVars.bhm_bins[f"-Z {region_id}"] = binx2[1:] - binx2[:-1]
         else:
-            x2 = y2 = None
+            x2 = y2 = binx2 = None
         
-        return x1, y1, x2, y2, max_rate
+        return x1, y1, binx1, x2, y2, binx2, max_rate
 
 
     def plot_lumi(ax: plt.Axes, lumi_time, scale_factor, max_rate):
@@ -1027,34 +1027,71 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
             textbox(0.0,1.11, f"Start Date: {dt_conv.utc_to_string(start_time)}" , 14, ax=ax)
     
 
-    def plot_lumi_v_bhm(ax: plt.Axes, y1, y2, delivered_lumi, scale_factor):
+    def plot_lumi_v_bhm(ax1: plt.Axes, ax2: plt.Axes, cax1, cax2, binx1, binx2, y1, y2, delivered_lumi, lumi_bins, scale_factor, region_id):
         if delivered_lumi is not None:
 
             lumi = delivered_lumi*scale_factor
-            bins = np.linspace(start=0, stop=np.max(lumi), num=100, endpoint=True)
+            lumi_bins = np.asarray(lumi_bins)
 
-            y1_lumi_counts = []
-            y2_lumi_counts = []
+            if y1 is not None:
+                min_bin = max(np.min(lumi_bins), np.min(binx1))
+                max_bin = min(np.max(lumi_bins), np.max(binx1))
 
-            # delivered lumi always has + 1 bins because the final lumi is used as the final (right edge) bin for bhm
-            for i in range(len(lumi)-1):
-                if y1 is not None:
-                    y1_lumi_counts.extend([lumi[i]]*y1[i])
-                if y2 is not None:
-                    y2_lumi_counts.extend([lumi[i]]*y2[i])
+                lumi_cut = ((lumi_bins >= min_bin) & (lumi_bins <= max_bin)) # [:-1] here since bins also include the right edge
+                bhm_cut  = ((binx1 >= min_bin) & (binx1 <= max_bin))[:-1]    # which y1 doesn't
 
-            if len(y1_lumi_counts) > 0:
-                ax.hist(y1_lumi_counts, bins=bins, histtype="step", color='r', label=label_from_region_id(region_id, "+Z"))
+                # np.finfo(np.float64).tiny is equal to the smallest (positve) 64bit float ~= 2.225e-308
+                binx = np.linspace(np.finfo(np.float64).tiny, np.max(lumi), num=25) # easiest way to kick out zero values, just don't bin them :)
+                # Plus, these plots stop making sense if we include zero values, since bhm_analyser.get_rate will return extra zeros for where there
+                # are no events (like if we request only to get data from 12:00 to 18:00 or something, all events outside that range have their rates set to zero)
 
-            if len(y2_lumi_counts) > 0:
-                ax.hist(y2_lumi_counts, bins=bins, histtype="step", color='k', label=label_from_region_id(region_id, "-Z"))
+                if (max_y1 := np.max(y1)) < 25: # Prevent striping patterns if there are too many bins since BHM event rate is an integer
+                    biny = np.arange(1, max_y1+1) # BHM event rate is always an integer, we can just use 1 here to exclude zeros
+                else:
+                    biny = np.linspace(1, max_y1, num=25)
 
-        ax.set_xlabel(unit_labels[scale_factor])
-        ax.set_ylabel("BHM Events")
-        ax.set_yscale('linear')
-        if len(y1_lumi_counts) > 0 or len(y2_lumi_counts) > 0:
-            ax.legend(loc=(1.0325, 0.8), frameon=1)
-        # ax.set_ylim(0.1, max_rate*1.05)
+                if max_bin == lumi_bins[-1] and max_bin == binx1[-1]: # lumi has extra bin at the end AND a value associated with it, ignore this for our plots
+                    h, _binx, _biny, img = ax1.hist2d(lumi[lumi_cut][:-1], y1[bhm_cut], bins=(binx, biny), cmap='GnBu')
+                else:
+                    h, _binx, _biny, img = ax1.hist2d(lumi[lumi_cut], y1[bhm_cut], bins=(binx, biny), cmap='GnBu')
+
+                fig: plt.Figure = ax1.get_figure()
+                fig.colorbar(img, cax=cax1, ax=ax1, label="Count")
+                
+            
+            if y2 is not None:
+                min_bin = max(np.min(lumi_bins), np.min(binx2))
+                max_bin = min(np.max(lumi_bins), np.max(binx2))
+
+                lumi_cut = ((lumi_bins >= min_bin) & (lumi_bins <= max_bin)) # [:-1] here since bins also include the right edge
+                bhm_cut  = ((binx2 >= min_bin) & (binx2 <= max_bin))[:-1]    # which y2 doesn't
+
+                # np.finfo(np.float64).tiny is equal to the smallest (positve) 64bit float ~= 2.225e-308
+                binx = np.linspace(np.finfo(np.float64).tiny, np.max(lumi), num=25) # easiest way to kick out zero values, just don't bin them :)
+                # Plus, these plots stop making sense if we include zero values, since bhm_analyser.get_rate will return extra zeros for where there
+                # are no events (like if we request only to get data from 12:00 to 18:00 or something, all events outside that range have their rates set to zero)
+
+                if (max_y2 := np.max(y2)) < 25: # Prevent striping patterns if there are too many bins since BHM event rate is an integer
+                    biny = np.arange(1, max_y2+1) # BHM event rate is always an integer, we can just use 1 here to exclude zeros
+                else:
+                    biny = np.linspace(1, max_y2, num=25)
+
+                if max_bin == lumi_bins[-1] and max_bin == binx2[-1]: # lumi has extra bin at the end AND a value associated with it, ignore this for our plots
+                    h, _binx, _biny, img = ax2.hist2d(lumi[lumi_cut][:-1], y2[bhm_cut], bins=(binx, biny), cmap='GnBu')
+                else:
+                    h, _binx, _biny, img = ax2.hist2d(lumi[lumi_cut], y2[bhm_cut], bins=(binx, biny), cmap='GnBu')
+                
+                fig: plt.Figure = ax2.get_figure()
+                fig.colorbar(img, cax=cax2, ax=ax2, label="Count")
+
+        ax1.set_xlabel(unit_labels[scale_factor])
+        ax1.set_ylabel("BHM Event Rate")
+        ax2.set_xlabel(unit_labels[scale_factor])
+        ax2.set_ylabel("BHM Event Rate")
+        ax1.set_title(label_from_region_id(region_id, "+Z"))
+        ax2.set_title(label_from_region_id(region_id, "-Z"))
+
+
 
 
     def label_from_region_id(region_id, side):
@@ -1169,7 +1206,8 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
                 region11 = region11.query(theCuts[i])
         
         if region_name == "df":
-            if theCuts[i] is None:
+             # if we remove all non-letters and our cut is 'orbitorbit', then we still are plotting all events, just with a time cut
+            if theCuts[i] is None or re.sub('[^a-zA-Z]+', '', theCuts[i]) == "orbitorbit":
                 region_name = region_id = "All Events"
             else:
                 region_id = theCuts[i].strip()
@@ -1193,20 +1231,23 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
                     plot_bhm(bhm_ax, None, None, None, None, 10, region_id)
                 if by_lumi:
                     try:
-                        by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.axes[i]
+                        by_lumi_ax1: plt.Axes = commonVars.rate_lumi_fig.axes[2*i]
+                        by_lumi_ax2: plt.Axes = commonVars.rate_lumi_fig.axes[2*i+1]
                     except IndexError:
-                        by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 1, i+1)
-                    plot_lumi_v_bhm(by_lumi_ax, None, None, None, None)
+                        by_lumi_ax1: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 2, 2*i+1)
+                        by_lumi_ax2: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 2, 2*i+2)
+                    # God that's a lot of None...
+                    plot_lumi_v_bhm(by_lumi_ax1, by_lumi_ax2, None, None, None, None, None, None, None, None, None, None)
             continue
 
         # x1/x2 -> time values for uHTR4/uHTR11 respectively
         # y1/y2 -> event rate for uHTR4/uHTR11 respectively
-        x1, y1, x2, y2, max_rate = get_bhm_rate(region4, region11, lumi_bins, start_time)
+        x1, y1, binx1, x2, y2, binx2, max_rate = get_bhm_rate(region4, region11, lumi_bins, start_time)
 
         if not lumi_empty:
-            # Pick the scaling such that we minimize the distance between max lumi and max bhm rate
+            # Pick the scaling such that we minimize the (logarithmic) distance between max lumi and max bhm rate
             scales = np.logspace(-9, 6, num=6, endpoint=True)
-            scale_factor = scales[np.argmin(np.abs(np.max(delivered_lumi)*scales - max_rate))]
+            scale_factor = scales[np.argmin(np.abs(np.log10(np.max(delivered_lumi)*scales) - np.log10(max_rate)))]
 
 
         if save_fig:
@@ -1234,8 +1275,8 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
                 
 
             if not lumi_empty and by_lumi:
-                by_lumi_fig, by_lumi_ax = plt.subplots()
-                plot_lumi_v_bhm(by_lumi_ax, y1, y2, delivered_lumi, scale_factor=scale_factor)
+                by_lumi_fig, by_lumi_axes = plt.subplots(2, 1)
+                plot_lumi_v_bhm(by_lumi_axes[0], by_lumi_axes[1], None, None, binx1, binx2, y1, y2, delivered_lumi, lumi_bins, scale_factor, region_id)
 
                 by_lumi_fig.savefig(f"{uHTR4.figure_folder}/rates_by_lumi_{region_name}.png",dpi=300)
 
@@ -1282,10 +1323,22 @@ def rate_plots(uHTR4: bhm_analyser, uHTR11: bhm_analyser, plot_regions: list[str
 
             if not lumi_empty and by_lumi:
                 try:
-                    by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.axes[i]
+                    # 4*i because when we add the color bars, the axes list looks like this: 
+                    # [hist2d, hist2d, colorbar, colorbar, hist2d, hist2d, colorbar, colorbar]
+                    by_lumi_ax1: plt.Axes = commonVars.rate_lumi_fig.axes[4*i]
+                    by_lumi_ax2: plt.Axes = commonVars.rate_lumi_fig.axes[4*i+1]
+
+                    by_lumi_cax1: plt.Axes = commonVars.rate_lumi_fig.axes[4*i+2] # colorbar axes
+                    by_lumi_cax2: plt.Axes = commonVars.rate_lumi_fig.axes[4*i+3]
                 except IndexError:
-                    by_lumi_ax: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 1, i+1)
-                plot_lumi_v_bhm(by_lumi_ax, y1, y2, delivered_lumi, scale_factor)
+                    # Without color bars, pretend we're making a 2x2 figure
+                    by_lumi_ax1: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 2, 2*i+1)
+                    by_lumi_ax2: plt.Axes = commonVars.rate_lumi_fig.add_subplot(2, 2, 2*i+2)
+
+                    by_lumi_cax1 = None
+                    by_lumi_cax2 = None
+                plot_lumi_v_bhm(by_lumi_ax1, by_lumi_ax2, by_lumi_cax1, by_lumi_cax2,
+                                binx1, binx2, y1, y2, delivered_lumi, lumi_bins, scale_factor, region_id)
 
         
         plt.close()

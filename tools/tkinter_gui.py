@@ -340,7 +340,7 @@ def gui():
     commonVars.rate_time_fig.subplots_adjust(left=0.06, bottom=0.1, right=0.8, top=0.925, wspace=0.6, hspace=0.3)
 
     commonVars.rate_lumi_fig = Figure(dpi=100)
-    commonVars.rate_lumi_fig.subplots_adjust(left=0.06, bottom=0.1, right=0.875, top=0.925, wspace=0.6, hspace=0.3)
+    commonVars.rate_lumi_fig.subplots_adjust(left=0.124, bottom=0.1, right=0.918, top=0.925, wspace=0.56, hspace=0.46)
 
     commonVars.lego_fig = Figure(dpi=100)
     commonVars.lego_fig.subplots_adjust(left=0.04, bottom=0.043, right=0.966, top=0.923, wspace=0.176)

@@ -1162,7 +1162,7 @@ class RateToolbarByLumi(RateToolbarBase):
     @staticmethod
     def _mouse_event_to_message(event):
         if event.inaxes and event.inaxes.get_navigate():
-            s = f"Delivered Lumi: {event.xdata:.3f}, Event: {round(event.ydata)}"
+            s = f"Delivered Lumi: {event.xdata:.3f}, Event Rate: {round(event.ydata)}"
             return s
 
 
