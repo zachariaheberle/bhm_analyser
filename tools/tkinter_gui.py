@@ -300,10 +300,10 @@ def gui():
 
     # Root Window Properties
     root = tk.Tk()
-    if sys.platform == "linux":
-        root.geometry("700x685") # Linux is funny and needs a bit more space to display everything without crushing some widgets
-    else:
+    if sys.platform == "win32":
         root.geometry("700x665")
+    else:
+        root.geometry("700x685") # Linux is funny and needs a bit more space to display everything without crushing some widgets
     root.resizable(True, True)
     root.title("BHM Analysis")
     root.columnconfigure(0, weight=1)
@@ -313,7 +313,7 @@ def gui():
     # Check for CMS icon file
     try:
         img_list = []
-        for size in [8, 16, 32, 64, 128, 256, 512]:
+        for size in [512, 256, 128, 64, 32, 16, 8]:
             img = ImageTk.PhotoImage(Image.open(f"img/cms_logo/cms{size}.png"))
             img_list.append(img)
         root.wm_iconphoto(True, *img_list)
@@ -366,7 +366,7 @@ def gui():
     s = ttk.Style()
     if sys.platform == "win32":
         s.theme_use("vista")
-    elif sys.platform == "linux":
+    else:
         s.theme_use("alt")
 
     # Font Stuff
